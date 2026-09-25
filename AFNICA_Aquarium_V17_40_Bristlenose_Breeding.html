@@ -6821,7 +6821,10 @@ function v16MotionLoop(now){
      v16UpdateFish(el,state,now);
    }
  }
- 
+
+ requestAnimationFrame(v16MotionLoop);
+}
+
 function v16SnapshotMotion(){
  document.querySelectorAll('.modelFish.v16Motion:not(.deadFish)').forEach(el=>{
    const id=String(el.dataset.fishId||'');
@@ -6838,8 +6841,6 @@ document.addEventListener('pointerdown',e=>{
  if(btn)v16SnapshotMotion();
 },true);
 
-requestAnimationFrame(v16MotionLoop);
-}
 requestAnimationFrame(v16MotionLoop);
 
 </script>
