@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 AFNICA Aquarium: a browser game where you run a fishroom. You keep tanks, breed fish (guppy, molly, platy, xipho, neon, corydoras, ancistrus/bristlenose), do daily care like feeding, water changes and cleaning, treat disease, fill market orders and aquascape the tanks.
 
-The whole game is one file: `AFNICA_Aquarium_V17_40_Bristlenose_Breeding.html`. It has no build step, no dependencies, no tests and no git repo. To run it, open the file in a browser.
+The whole game is one file: `AFNICA_Aquarium_V17_40_Bristlenose_Breeding.html`. It has no build step, no dependencies and no tests. To run it, open the file in a browser. The folder is a local git repo (branch `main`, no remote). Git is installed at `D:\Git`; if `git` isn't found in the shell, refresh PATH from the Machine/User environment variables.
 
 The code was built up over many AI prompts (Codex). Each feature was added as a new block with a version tag (V7 … V17.40), and older blocks were usually left in place. Older and newer generations of the same system often exist side by side.
 
