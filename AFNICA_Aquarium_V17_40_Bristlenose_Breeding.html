@@ -1281,7 +1281,10 @@ button.danger small{color:#fff!important}
 /* keep actual fish clearly above scenery */
 .tank .modelFish{
   z-index:20!important;
-  filter:drop-shadow(0 6px 7px #0009)!important;
+  /* Player feedback: this strong drop-shadow read as a dark outline/halo around
+     every fish rather than adding depth, most noticeable on bottom-dwellers
+     resting against a surface. Removed for all species. */
+  filter:none!important;
 }
 
 /* HUD hunger/recovery stays in upper water area */
@@ -7610,9 +7613,11 @@ window.addEventListener('load',()=>setTimeout(()=>switchTankV8('main'),100),{onc
  const lo=r,hi=Math.max(r,w-r);
  const floor=tank.querySelector('.floor'),base=(floor?floor.offsetTop+floor.offsetHeight*.56:h-30)-10*scale;
  const key=tank.id+':'+el.dataset.fishId;
- let s=states.get(key);if(!s){s={x:clamp(lane*(i+.5),lo,hi),y:base,tx:clamp(lane*(i+.5),lo,hi),ty:base,mode:'rest',surface:'substrate',glass:0,angle:0,face:1,time:0,wait:2+i*2,steps:0};states.set(key,s)}
+ let s=states.get(key);if(!s){s={x:clamp(lane*(i+.5),lo,hi),y:base+10,tx:clamp(lane*(i+.5),lo,hi),ty:base+10,mode:'rest',surface:'substrate',glass:0,angle:0,face:1,time:0,wait:2+i*2,steps:0};states.set(key,s)}
  if(s.w&&s.w!==w){s.x*=w/s.w;s.tx*=w/s.w}if(s.h&&s.h!==h){s.y*=h/s.h;s.ty*=h/s.h}s.w=w;s.h=h;s.tankId=tank.id;
- s.x=clamp(s.x,lo,hi);s.tx=clamp(s.tx,lo,hi);s.y=clamp(s.y,base-85,base);s.ty=clamp(s.ty,base-85,base);
+ // Upper bound unchanged (85 above base); lower bound raised to base+10 to match
+ // the substrate rest position below, so this clamp doesn't fight that offset.
+ s.x=clamp(s.x,lo,hi);s.tx=clamp(s.tx,lo,hi);s.y=clamp(s.y,base-85,base+10);s.ty=clamp(s.ty,base-85,base+10);
  const residents=tankArrayV14(tank.dataset.tank||'main');
  const fish=residents.find(f=>String(f.id)===el.dataset.fishId);
  if(window.ancBreedingMotion40&&fish&&window.ancBreedingMotion40(tank,el,s,fish,dt,w,base,scale))return;
@@ -7660,7 +7665,7 @@ window.addEventListener('load',()=>setTimeout(()=>switchTankV8('main'),100),{onc
  s.tx=clamp(s.x+(s.surface==='glass'?rand(-12,12):rand(-32,32)),lo,hi);
  // Real bristlenose stay close to a surface (bottom-dwellers) rather than roaming
  // to mid-water height, even while grazing the front glass.
- s.ty=s.surface==='substrate'?base:(s.steps%4===3?base-22*scale:clamp(s.y-rand(5,14),base-55,base-22*scale));
+ s.ty=s.surface==='substrate'?base+10:(s.steps%4===3?base-22*scale:clamp(s.y-rand(5,14),base-55,base-22*scale));
  s.mode='move';
  }
  }
@@ -7689,7 +7694,9 @@ window.addEventListener('load',()=>setTimeout(()=>switchTankV8('main'),100),{onc
  }
  }
  // Keep substrate postures grounded, including after interruptions.
- if(s.surface==='substrate'&&!s.transition){s.y+=(base-s.y)*(1-Math.exp(-5*dt));s.ty=base;}
+ // Nudged slightly lower than the shared 'base' line so the body reads as
+ // pressed into the sand rather than hovering just above it.
+ if(s.surface==='substrate'&&!s.transition){s.y+=(base+10-s.y)*(1-Math.exp(-5*dt));s.ty=base+10;}
  let shadow=tank.querySelector('[data-anc-shadow="'+el.dataset.fishId+'"]');
  if(!shadow){shadow=document.createElement('div');shadow.dataset.ancShadow=el.dataset.fishId;shadow.className='ancContactShadow';tank.append(shadow);}
  // Only a fish actually resting on the sand casts a shadow there; one pressed
@@ -7697,7 +7704,9 @@ window.addEventListener('load',()=>setTimeout(()=>switchTankV8('main'),100),{onc
  // Use s.glass (not s.surface) so the shadow fades smoothly during the
  // attach/detach transition instead of snapping instantly at the endpoints.
  shadow.style.cssText='position:absolute;pointer-events:none;z-index:40;width:'+88*scale+'px;height:'+7*scale+'px;left:'+(s.x-44*scale)+'px;top:'+(base+15*scale)+'px;border-radius:50%;background:radial-gradient(ellipse,rgba(28,22,12,.38),transparent 72%);opacity:'+(1-s.glass)+';';
- shadow.style.display=el.classList.contains('ancInCave')?'none':'';
+ // Player feedback: the gap between the shadow and the fish's own belly made it
+ // look disconnected/hovering rather than grounded, worse than no shadow at all.
+ shadow.style.display='none';
  // Underbody art makes attachment to the front pane explicit; side art contacts sand.
  const side=el.querySelector('.ancSide');
  if(!side.dataset.articulated){const cs=getComputedStyle(side);const bg={image:cs.backgroundImage,size:cs.backgroundSize,position:cs.backgroundPosition};
