@@ -5822,7 +5822,30 @@ function v8Nav(a){
 function switchTankV8(k){v8Tank=k;renderV8('home')}
 function discoveredV8(){let x=new Set();st.fish.concat(st.fry,st.breederTank).forEach(f=>{if(knownSpecies(f))x.add(f.species)});return x}
 function showSpeciesLoreV17(k){const sp=S[k];if(!sp)return;pop(sp.icon+' '+sp.name.toUpperCase(),`<p style="text-align:left;line-height:1.5">${sp.lore||'No field notes yet for this species.'}</p>`,'CLOSE');}
-function fishDexV8(){let d=discoveredV8();return `${v8Top()}<div class="v8panel"><div class="v8head"><b>🐟 FISHDEX</b><span>${d.size}/${Object.keys(S).length} DISCOVERED</span></div><div class="dexgrid">${Object.keys(S).map(k=>`<div class="dex ${d.has(k)?'':'locked'}"${d.has(k)?` onclick="showSpeciesLoreV17('${k}')" style="cursor:pointer"`:''}><strong>${d.has(k)?speciesSprite({species:k,sex:'M',age:S[k].adult,health:100,disease:null,dead:false}):'?'}</strong><small>${d.has(k)?S[k].name:'UNKNOWN'}</small>${d.has(k)?`<small class="v9Rarity ${rarityV9(k)}">${rarityV9(k).toUpperCase()}</small>`:''}</div>`).join('')}</div></div><button class="btn green wide" style="margin-top:10px" onclick="modelsPreviewV81()">VIEW GROWTH MODELS</button>${v8Nav('dex')}`}
+// Shared by the dex grid and the growth-models preview: the "real" per-stage/sex
+// asset (same images already shown live in the tanks) boxed to a fixed size.
+// Ancistrus uses a fixed-size CSS sprite (.ancArt, 120x70) instead of a scalable
+// <img>, so it needs an explicit scale-down to fit the same small tile.
+function dexAvatarHTML(f,w,h){
+ const html=fishAvatarV154(f);
+ const inner=f.species==='anc'?`<div style="transform:scale(${Math.min(w/120,h/70).toFixed(3)});transform-origin:center">${html}</div>`:html;
+ return `<div style="position:relative;width:${w}px;height:${h}px;margin:0 auto;display:flex;align-items:center;justify-content:center;overflow:hidden">${inner}</div>`;
+}
+function fishDexV8(){let d=discoveredV8();return `${v8Top()}<div class="v8panel"><div class="v8head"><b>🐟 FISHDEX</b><span>${d.size}/${Object.keys(S).length} DISCOVERED</span></div><div class="dexgrid">${Object.keys(S).map(k=>`<div class="dex ${d.has(k)?'':'locked'}"${d.has(k)?` onclick="showSpeciesLoreV17('${k}')" style="cursor:pointer"`:''}><strong>${d.has(k)?dexAvatarHTML({species:k,sex:'M',age:S[k].adult,health:100,disease:null,dead:false},56,38):'?'}</strong><small>${d.has(k)?S[k].name:'UNKNOWN'}</small>${d.has(k)?`<small class="v9Rarity ${rarityV9(k)}">${rarityV9(k).toUpperCase()}</small>`:''}</div>`).join('')}</div></div><button class="btn green wide" style="margin-top:10px" onclick="modelsPreviewV81()">VIEW GROWTH MODELS</button>${v8Nav('dex')}`}
+function modelsPreviewV81(){
+ // Uses the same "real" per-stage/sex assets already rendered live in the tanks
+ // (REAL_FISH_ASSETS_V154 via fishAvatarV154), so growth models stay in sync
+ // with what players actually see on their fish - no separate art to maintain.
+ const stagesOf=k=>{const adult=S[k].adult;return [
+  {label:'Fry',age:Math.max(1,Math.round(adult*0.15)),sex:'M'},
+  {label:'Juvenile',age:Math.max(1,Math.round(adult*0.5)),sex:'M'},
+  {label:'Adult ♀',age:adult,sex:'F'},
+  {label:'Adult ♂',age:adult,sex:'M'}
+ ];};
+ const tile=(k,st)=>`<div style="display:flex;flex-direction:column;align-items:center;gap:4px"><div style="background:#0d2b38;border-radius:8px">${dexAvatarHTML({species:k,sex:st.sex,age:st.age,health:100,disease:null,dead:false},66,46)}</div><small style="font-size:9px;opacity:.8">${st.label}</small></div>`;
+ const body=Object.keys(S).map(k=>`<div style="margin-bottom:16px"><div style="font-weight:bold;margin-bottom:6px;text-align:left">${S[k].icon} ${S[k].name}</div><div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">${stagesOf(k).map(st=>tile(k,st)).join('')}</div></div>`).join('');
+ pop('GROWTH MODELS',`<div style="max-height:60vh;overflow-y:auto">${body}</div>`,'CLOSE');
+}
 
 
 function diseaseSummaryForTank(key){
