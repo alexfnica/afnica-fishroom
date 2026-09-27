@@ -3411,13 +3411,13 @@ anc:{
 };
 
 const S={
-guppy:{name:'Guppy',adult:12,rarity:'Common',price:55,icon:'🐠'},
-molly:{name:'Molly Black',adult:13,rarity:'Common',price:70,icon:'⚫'},
-platy:{name:'Platy Yellow',adult:13,rarity:'Common',price:65,icon:'🟡'},
-xipho:{name:'Xipho',adult:14,rarity:'Common',price:80,icon:'🗡️'},
-neon:{name:'Neon Tetra',adult:12,rarity:'Uncommon',price:75,icon:'🔵'},
-cory:{name:'Corydoras',adult:14,rarity:'Uncommon',price:95,icon:'🐟'},
-anc:{name:'Ancistrus',adult:16,rarity:'Rare',price:140,icon:'🖤'}
+guppy:{name:'Guppy',adult:12,rarity:'Common',price:55,icon:'🐠',lore:"Poecilia reticulata, first described from Trinidad in 1859 and named after collector Robert Guppy. Wild guppies live in streams across Venezuela, the Guyanas and Trinidad. Populations under heavy predation mature earlier and smaller than those in safer waters — one of the best-studied examples of evolution in the wild."},
+molly:{name:'Molly Black',adult:13,rarity:'Common',price:70,icon:'⚫',lore:"Poecilia sphenops, native to rivers, ponds and coastal lagoons from Mexico to Colombia. Mollies tolerate everything from fresh to brackish and even full seawater, and in the wild often graze algae from rocks alongside their livebearing relatives."},
+platy:{name:'Platy Yellow',adult:13,rarity:'Common',price:65,icon:'🟡',lore:"Xiphophorus maculatus, from slow streams and roadside ditches of southern Mexico, Guatemala and Honduras. Platies split from the swordtail branch of their genus long ago and never regrew the sword — an easygoing livebearer that breeds almost as readily in a home tank as in the wild."},
+xipho:{name:'Xipho',adult:14,rarity:'Common',price:80,icon:'🗡️',lore:"Xiphophorus hellerii, the green swordtail, native to fast streams of Mexico and Central America. Named for the male's elongated lower tail lobe, used to signal size and health to rivals and mates rather than as a weapon."},
+neon:{name:'Neon Tetra',adult:12,rarity:'Uncommon',price:75,icon:'🔵',lore:"Paracheirodon innesi, from the soft, acidic blackwater tributaries of the Amazon basin in Peru, Colombia and Brazil. Neons are compulsive shoalers — a lone fish grows visibly stressed, and the species is rarely content in groups smaller than six."},
+cory:{name:'Corydoras',adult:14,rarity:'Uncommon',price:95,icon:'🐟',lore:"An armoured catfish of the genus Corydoras, native to shallow, slow-moving South American waters from the Amazon basin down to Argentina. Sensitive barbels sift sand for food, and most species shoal tightly and will dart to the surface to gulp air when oxygen runs low."},
+anc:{name:'Ancistrus',adult:16,rarity:'Rare',price:140,icon:'🖤',lore:"A bristlenose pleco of the genus Ancistrus, native to clear, fast-flowing rivers of South America and Panama. Nocturnal and herbivorous, it spends the day pressed flat against wood, rock or glass, grazing algae, and becomes far more active after dark. Males grow fleshy bristles on the snout and guard cave nests — sometimes several broods at once — fanning eggs for days without eating."}
 };
 let st=JSON.parse(localStorage.getItem('afnicaFreshRestart1789317515442')||'null')||{started:true,day:1,coins:300,eggs:0,fish:Array.from({length:5},(_,i)=>({id:'natural-cory-'+i,species:'cory',sex:i%2?'F':'M',age:14,health:100,dead:false,disease:null})),fry:[],breed:null,firstBreed:false,sales:0,log:'',tankHealth:100,daily:{main:{feed:false,water:false,clean:false},fry:{feed:false,water:false,clean:false}},tankHealthMain:100,tankHealthFry:100,daysNoCleanMain:0,daysNoCleanFry:0,food:20,waterProcess:false,cleanProcess:false};
 /* V17.12 showcase migration: replace saved Neon Tetras with Corydoras so the
@@ -4812,6 +4812,7 @@ function applyPersistentWaterVisual(key){
  });
 }
 function refreshPersistentWaterUI(){
+ try{applyDayNightV17();}catch(e){console.error('AFNICA day/night',e);}
  ['main','fry','breeder'].forEach(key=>{
    let w=waterChangeInfo(key);
 
@@ -5417,6 +5418,8 @@ function nextDay(){
  st.day++;
  finishCorySpawnV172();
  if(window.advanceAncClutch40)advanceAncClutch40();
+ if(window.ancTrySecondClutch40)ancTrySecondClutch40();
+ if(window.ancTerritorialClashCheck40)ancTerritorialClashCheck40();
  finishBreederBreedV103();
 
  if(st.generalTreatment){
@@ -5818,7 +5821,8 @@ function v8Nav(a){
 }
 function switchTankV8(k){v8Tank=k;renderV8('home')}
 function discoveredV8(){let x=new Set();st.fish.concat(st.fry,st.breederTank).forEach(f=>{if(knownSpecies(f))x.add(f.species)});return x}
-function fishDexV8(){let d=discoveredV8();return `${v8Top()}<div class="v8panel"><div class="v8head"><b>🐟 FISHDEX</b><span>${d.size}/${Object.keys(S).length} DISCOVERED</span></div><div class="dexgrid">${Object.keys(S).map(k=>`<div class="dex ${d.has(k)?'':'locked'}"><strong>${d.has(k)?speciesSprite({species:k,sex:'M',age:S[k].adult,health:100,disease:null,dead:false}):'?'}</strong><small>${d.has(k)?S[k].name:'UNKNOWN'}</small>${d.has(k)?`<small class="v9Rarity ${rarityV9(k)}">${rarityV9(k).toUpperCase()}</small>`:''}</div>`).join('')}</div></div><button class="btn green wide" style="margin-top:10px" onclick="modelsPreviewV81()">VIEW GROWTH MODELS</button>${v8Nav('dex')}`}
+function showSpeciesLoreV17(k){const sp=S[k];if(!sp)return;pop(sp.icon+' '+sp.name.toUpperCase(),`<p style="text-align:left;line-height:1.5">${sp.lore||'No field notes yet for this species.'}</p>`,'CLOSE');}
+function fishDexV8(){let d=discoveredV8();return `${v8Top()}<div class="v8panel"><div class="v8head"><b>🐟 FISHDEX</b><span>${d.size}/${Object.keys(S).length} DISCOVERED</span></div><div class="dexgrid">${Object.keys(S).map(k=>`<div class="dex ${d.has(k)?'':'locked'}"${d.has(k)?` onclick="showSpeciesLoreV17('${k}')" style="cursor:pointer"`:''}><strong>${d.has(k)?speciesSprite({species:k,sex:'M',age:S[k].adult,health:100,disease:null,dead:false}):'?'}</strong><small>${d.has(k)?S[k].name:'UNKNOWN'}</small>${d.has(k)?`<small class="v9Rarity ${rarityV9(k)}">${rarityV9(k).toUpperCase()}</small>`:''}</div>`).join('')}</div></div><button class="btn green wide" style="margin-top:10px" onclick="modelsPreviewV81()">VIEW GROWTH MODELS</button>${v8Nav('dex')}`}
 
 
 function diseaseSummaryForTank(key){
@@ -6314,6 +6318,24 @@ function v1681SetupNeonOnlyTest(){
  try{
    localStorage.setItem('afnicaFreshRestart1789317515442',JSON.stringify(st));
  }catch(e){}
+}
+
+/* ================= V17.41 DAY/NIGHT LIGHTING ================= */
+// A soft, diffuse ambient cycle tied to the player's real device clock (no new
+// save data needed). Foundation for a future tank-lamp system: lamps will be
+// able to override or supplement this ambient light for planted aquascapes.
+function ancDayNightFactorV17(){
+ const d=new Date(),h=d.getHours()+d.getMinutes()/60;
+ // Smooth single-peak curve: 1 at solar noon (13:00), 0 at midnight (01:00).
+ return (1+Math.cos(2*Math.PI*(h-13)/24))/2;
+}
+// How active bottom-dwelling nocturnal fish (Ancistrus) should be right now:
+// shorter rests and more movement at night, calmer and stiller by day.
+function ancActivityScaleV17(){return 0.7+0.6*ancDayNightFactorV17();}
+function applyDayNightV17(){
+ const day=ancDayNightFactorV17();
+ const brightness=(0.62+0.4*day).toFixed(3),saturate=(0.78+0.32*day).toFixed(3);
+ document.querySelectorAll('.tank').forEach(t=>{t.style.filter='brightness('+brightness+') saturate('+saturate+')';});
 }
 
 function bootAfnica(){
@@ -7606,7 +7628,7 @@ window.addEventListener('load',()=>setTimeout(()=>switchTankV8('main'),100),{onc
  s.x=tr.x+tr.dx*ease;s.y=tr.y+tr.dy*ease;
  s.angle=tr.angle+(tr.endAngle-tr.angle)*ease;
  s.glass=s.mode==='attach'?ease:1-ease;
- if(s.wait<=0){s.surface=s.mode==='attach'?'glass':'substrate';s.glass=s.surface==='glass'?1:0;s.mode='graze';s.wait=s.surface==='glass'?rand(15,25):rand(6,12);s.transition=null;}
+ if(s.wait<=0){s.surface=s.mode==='attach'?'glass':'substrate';s.glass=s.surface==='glass'?1:0;s.mode='graze';s.wait=(s.surface==='glass'?rand(15,25):rand(6,12))*ancActivityScaleV17();s.transition=null;}
  }else if(s.mode!=='move'&&s.wait<=0){
  s.steps++;
  if(s.surface==='substrate'&&s.steps%3===0){s.mode='attach';s.wait=6;s.face=s.face<0?-1:1;s.transition={x:s.x,y:s.y,dx:clamp(s.x+8*s.face,lo,hi)-s.x,dy:-22*scale,angle:s.angle,endAngle:-90*s.face};}
@@ -7640,7 +7662,7 @@ window.addEventListener('load',()=>setTimeout(()=>switchTankV8('main'),100),{onc
  // Small grazing adjustments keep the attached, head-up posture seen in the clips.
  let desired=-90*s.face+Math.max(-12,Math.min(12,dx*2))*s.face;let delta=((desired-s.angle+540)%360)-180;s.angle+=clamp(delta,-90*dt,90*dt);
  }else{s.angle=0;}
- }else{s.mode=s.steps%3?'graze':'rest';s.wait=s.surface==='glass'?rand(16,30):rand(7,16);}
+ }else{s.mode=s.steps%3?'graze':'rest';s.wait=(s.surface==='glass'?rand(16,30):rand(7,16))*ancActivityScaleV17();}
  }
  }
  // Keep substrate postures grounded, including after interruptions.
@@ -7708,7 +7730,23 @@ function ancYoungSVG40(kind){
  if(kind==='eggs')return '<svg viewBox="0 0 120 70" role="img" aria-label="Orange adhesive bristlenose eggs">'+Array.from({length:18},(_,i)=>`<circle cx="${35+i%6*10}" cy="${24+Math.floor(i/6)*10}" r="6" fill="#db8c27" stroke="#9d531d"/><circle cx="${33+i%6*10}" cy="${22+Math.floor(i/6)*10}" r="1.6" fill="#ffe5a0"/>`).join('')+'</svg>';
  return `<svg viewBox="0 0 120 70" role="img" aria-label="${yolk?'Yolk-sac fry':juvenile?'Juvenile bristlenose':'Bristlenose fry with absorbed yolk'}"><path d="M12 28L32 34 12 46Q20 36 12 28" fill="#8d805e" opacity=".7"/><path d="M28 36Q48 29 66 26Q92 24 103 36Q88 48 65 43Q47 40 28 36" fill="${juvenile?'#75634c':'#a2936e'}" stroke="#514635"/><path d="M65 29L55 15 84 29M67 41L58 53 88 42" fill="#9b8967" opacity=".75"/>${yolk?'<ellipse cx="80" cy="43" rx="14" ry="11" fill="#e6a331" stroke="#b57620"/><ellipse cx="77" cy="39" rx="6" ry="3" fill="#ffe4a0" opacity=".7"/>':''}<circle cx="94" cy="32" r="3" fill="#151811"/><circle cx="95" cy="31" r=".8" fill="#ddd"/>${[45,54,63,72,81].map(x=>`<circle cx="${x}" cy="35" r="1.3" fill="#c9b689"/>`).join('')}</svg>`;
 }
-function ancClutchStatus40(){const c=st.ancClutch;if(!c)return 'No clutch · select one healthy adult male and female';if(c.stage==='spawning'){if(c.phase==='trapped')return 'Male has trapped the female in the cave · she lays her eggs in '+Math.max(0,(c.trapDay+c.trapDays)-st.day)+' game days';return 'Courtship · '+c.phase.replaceAll('-',' ');}if(c.stage==='eggs')return c.count+' eggs · male fanning · hatch in '+Math.max(0,c.hatchDay-st.day)+' game days';if(c.stage==='yolk')return c.count+' yolk-sac fry · male guarding · free-swimming in '+Math.max(0,c.releaseDay-st.day)+' game days';return c.stage==='lost'?'Clutch lost · the male ate the eggs':c.count+' fry emerged into the breeding tank';}
+function ancClutchStatus40(){
+ const c=st.ancClutch;let s;
+ if(!c)s='No clutch · select one healthy adult male and female';
+ else if(c.stage==='spawning'){
+  if(c.phase==='trapped')s='Male has trapped the female in the cave · she lays her eggs in '+Math.max(0,(c.trapDay+c.trapDays)-st.day)+' game days';
+  else s='Courtship · '+c.phase.replaceAll('-',' ');
+ }
+ else if(c.stage==='eggs')s=c.count+' eggs · male fanning · hatch in '+Math.max(0,c.hatchDay-st.day)+' game days';
+ else if(c.stage==='yolk')s=c.count+' yolk-sac fry · male guarding · free-swimming in '+Math.max(0,c.releaseDay-st.day)+' game days';
+ else s=c.stage==='lost'?'Clutch lost · the male ate the eggs':c.count+' fry emerged into the breeding tank';
+ // Real bristlenose males routinely guard several broods at different stages at
+ // once; very rarely a second female sneaks in while he's already tending one.
+ const c2=st.ancClutch2;
+ if(c2&&c2.stage==='eggs')s+=' · Also guarding a second clutch of '+c2.count+' eggs from another female · hatch in '+Math.max(0,c2.hatchDay-st.day)+' game days';
+ else if(c2&&c2.stage==='yolk')s+=' · Also guarding '+c2.count+' second-clutch yolk-sac fry · free-swimming in '+Math.max(0,c2.releaseDay-st.day)+' game days';
+ return s;
+}
 function startAncBreeding40(){
  if(st.ancClutch&&['spawning','eggs','yolk'].includes(st.ancClutch.stage))return toast('The cave already contains an active brood');
  const adults=st.breederTank.filter(f=>f.species==='anc'&&!f.dead&&!f.disease&&f.health>=80&&f.age>=S.anc.adult);
@@ -7719,19 +7757,59 @@ function startAncBreeding40(){
  st.ancClutch={id:'anc-'+Date.now(),stage:'spawning',phase:'female-approach',seconds:0,mom:mom.id,dad:dad.id,parents:JSON.parse(JSON.stringify({mom,dad})),attempt,count:20+Math.floor(Math.random()*21),lossRoll:Math.random(),lastDay:st.day};
  save();renderV103Breeder();toast('Bristlenose courtship started in the breeding tank');
 }
-function advanceAncClutch40(){
- const c=st.ancClutch;if(!c||c.stage==='spawning'||c.lastDay===st.day)return;c.lastDay=st.day;
+function advanceAncClutchSlot40(c,label){
+ if(!c||c.stage==='spawning'||c.lastDay===st.day)return;c.lastDay=st.day;
  if(c.stage==='eggs'){
   const dad=st.breederTank.find(f=>f.id===c.dad&&!f.dead);const risk=[.35,.25,.15,.08][c.attempt-1]||0;
-  if(!c.riskChecked&&st.day>c.laidDay){c.riskChecked=true;if(dad&&c.lossRoll<risk){c.stage='lost';toast('The inexperienced male ate the clutch. His next attempt has a lower risk.');save();return;}}
-  if(st.day>=c.hatchDay){c.stage='yolk';toast('Bristlenose eggs hatched · fry remain inside with yolk sacs');}
+  if(!c.riskChecked&&st.day>c.laidDay){c.riskChecked=true;if(dad&&c.lossRoll<risk){c.stage='lost';toast('The inexperienced male ate '+label+'. His next attempt has a lower risk.');return;}}
+  if(st.day>=c.hatchDay){c.stage='yolk';toast('Bristlenose eggs hatched'+(label?' ('+label+')':'')+' · fry remain inside with yolk sacs');}
  }
  if(c.stage==='yolk'&&st.day>=c.releaseDay){
   c.stage='released';c.fryIds=[];
   for(let i=0;i<c.count;i++){const baby={id:c.id+'-'+i,species:'anc',sex:Math.random()<.5?'M':'F',age:1,health:100,disease:null,sickDays:0,dead:false,treatment:null,hungerDays:0,ancBornDay:st.day};inheritGenesV10(baby,c.parents.mom,c.parents.dad,i);if(!st.breederTank.some(f=>f.id===baby.id))st.breederTank.push(baby);c.fryIds.push(baby.id);}
   st.breedingCount=(st.breedingCount||0)+1;toast(c.count+' bristlenose fry have left the cave · feed them and move them to the Fry Tank when ready');
  }
+}
+function advanceAncClutch40(){
+ advanceAncClutchSlot40(st.ancClutch,'the clutch');
+ advanceAncClutchSlot40(st.ancClutch2,'the second clutch');
  save();
+}
+// Very rarely, a second female slips into an already-occupied cave and lays her
+// own batch while the male is busy guarding an existing brood. Real bristlenose
+// males are known to guard several clutches at different stages at once, and
+// females prefer males already seen protecting eggs or larvae.
+function ancTrySecondClutch40(){
+ const c=st.ancClutch;
+ if(!c||!['eggs','yolk'].includes(c.stage))return;
+ if(st.ancClutch2&&['eggs','yolk'].includes(st.ancClutch2.stage))return;
+ if(tankHealthFor('breeder')<80)return;
+ const dad=st.breederTank.find(f=>f.id===c.dad&&!f.dead&&!f.disease);
+ if(!dad)return;
+ const others=st.breederTank.filter(f=>f.species==='anc'&&f.sex==='F'&&f.id!==c.mom&&!f.dead&&!f.disease&&f.health>=80&&f.age>=S.anc.adult);
+ if(!others.length||Math.random()>=0.05)return;
+ const mom2=others[Math.floor(Math.random()*others.length)];
+ const hatchIn=4+Math.floor(Math.random()*3),yolkIn=3+Math.floor(Math.random()*2);
+ st.ancClutch2={id:'anc2-'+Date.now(),stage:'eggs',mom:mom2.id,dad:dad.id,parents:JSON.parse(JSON.stringify({mom:mom2,dad})),attempt:1,count:20+Math.floor(Math.random()*21),lossRoll:Math.random(),lastDay:st.day,laidDay:st.day,hatchDay:st.day+hatchIn,releaseDay:st.day+hatchIn+yolkIn};
+ toast('Another female slipped into the cave and laid a second clutch while the male tends the first');
+ save();
+}
+// Adult male Ancistrus are territorial over caves; when two or more share a tank
+// they very rarely scuffle over territory, taking minor damage but nothing lethal.
+function ancTerritorialClashCheck40(){
+ for(const key of ['main','fry','breeder','tank4','tank5','tank6']){
+  const arr=tankArrayV14(key);
+  const males=arr.filter(f=>f.species==='anc'&&!f.dead&&!f.disease&&f.sex==='M'&&f.age>=S.anc.adult);
+  if(males.length<2||Math.random()>=0.06)continue;
+  const a=males[Math.floor(Math.random()*males.length)];
+  let b=a,tries=0;while(b.id===a.id&&tries++<5)b=males[Math.floor(Math.random()*males.length)];
+  if(b.id===a.id)continue;
+  a.health=Math.max(20,a.health-(3+Math.floor(Math.random()*6)));
+  b.health=Math.max(20,b.health-(3+Math.floor(Math.random()*6)));
+  st.log='⚔️ Two male Ancistrus clashed over territory · both lightly hurt';
+  toast('Two male Ancistrus fought over territory');
+  save();
+ }
 }
 function inspectAncCave40(){const c=st.ancClutch;const kind=c?.stage==='eggs'?'eggs':c?.stage==='yolk'?'yolk':'fry';pop('INSIDE THE DRIFTWOOD CAVE',`<div style="max-width:300px;margin:auto;background:#1b160f;border-radius:50%;padding:20px">${c&&['eggs','yolk'].includes(c.stage)?ancYoungSVG40(kind):'<div style="padding:25px;color:#c4b69c">No eggs or larvae inside</div>'}</div><p>${ancClutchStatus40()}</p><p>Male experience: ${c?.attempt||0} breeding attempts. Inspection does not disturb the brood.</p><div style="display:flex;gap:8px"><div>${ancYoungSVG40('eggs')}Eggs</div><div>${ancYoungSVG40('yolk')}Yolk sac</div><div>${ancYoungSVG40('fry')}Fry</div><div>${ancYoungSVG40('juvenile')}Juvenile</div></div>`);}
 function ancBreedingMotion40(tank,el,s,fish,dt,w,base,scale){
