@@ -7757,10 +7757,28 @@ function ancBreedingMotion40(tank,el,s,fish,dt,w,base,scale){
  const left=Math.max(5,Math.min(w-165,w*.72-78)),door=left-35,inside=left+73;
  let cave=tank.querySelector('.ancBreedingCave');if(!cave){cave=document.createElement('div');cave.className='ancBreedingCave';cave.innerHTML=ancCaveMarkupV1728();tank.append(cave);}cave.style.left=left+'px';cave.style.top=base-43+'px';
  let rim=tank.querySelector('.ancCaveRim');if(!rim){rim=document.createElement('div');rim.className='ancCaveRim';rim.innerHTML=ancCaveMarkupV1728();tank.append(rim);}rim.style.cssText='position:absolute;pointer-events:none;width:160px;height:77px;z-index:45;left:'+left+'px;top:'+(base-43)+'px;mask-image:radial-gradient(ellipse 22px 20px at 32px 46px,transparent 97%,black 100%);';
- let target=s.x,face=1,hidden=false,fan=false,enter=false;
+ // Shrinks the visible window from the full body down to the same small round
+ // opening used while fanning, so a fish entering/leaving the cave gradually
+ // disappears/reappears through the hole instead of popping or clipping through
+ // the solid log texture. p=0 -> fully visible, p=1 -> the resting peek-hole.
+ function caveReveal(p){
+  p=Math.max(0,Math.min(1,p));
+  if(p<=0)return 'none';
+  if(p>=1)return 'ellipse(20px 20px at 24px 38px)';
+  return 'inset('+(18*p)+'px '+(76*p)+'px '+(12*p)+'px '+(4*p)+'px)';
+ }
+ let target=s.x,face=1,hidden=false,fan=false,enter=false,overrideClip=null;
  if(c.stage!=='spawning'){target=inside;fan=true;}
- else if(isMom){face=-1;target=c.phase==='female-approach'?door:c.phase==='female-exit'?door-35:inside+20;enter=c.phase!=='female-approach';hidden=['male-approach','male-enter','trapped','laying'].includes(c.phase);}
- else {target=['female-approach','female-back'].includes(c.phase)?door-100:c.phase==='male-approach'?door:inside;enter=['male-enter','trapped','laying','female-exit'].includes(c.phase);fan=['trapped','laying','female-exit'].includes(c.phase);}
+ else if(isMom){face=-1;target=c.phase==='female-approach'?door:c.phase==='female-exit'?door-35:inside+20;enter=c.phase!=='female-approach';
+  if(c.phase==='female-back')overrideClip=caveReveal((s.x-door)/(inside+20-door));
+  else if(c.phase==='female-exit')overrideClip=caveReveal((s.x-left)/(inside+20-left));
+  // She stays fully hidden only while waiting deep inside during the phases where
+  // she isn't the one moving through the entrance (entry/exit fade in and out above).
+  hidden=['male-approach','male-enter','trapped','laying'].includes(c.phase);
+ }
+ else {target=['female-approach','female-back'].includes(c.phase)?door-100:c.phase==='male-approach'?door:inside;enter=['male-enter','trapped','laying','female-exit'].includes(c.phase);fan=['trapped','laying','female-exit'].includes(c.phase);
+  if(c.phase==='male-enter')overrideClip=caveReveal((s.x-door)/(inside-door));
+ }
  const dx=target-s.x,dy=base-s.y,d=Math.hypot(dx,dy),step=blocked?0:Math.min(d,22*dt);if(d>.4){s.x+=dx/d*step;s.y+=dy/d*step;}
  const arrived=d<1;
  function phase(next){c.phase=next;c.seconds=0;save();}
@@ -7782,7 +7800,7 @@ function ancBreedingMotion40(tank,el,s,fish,dt,w,base,scale){
  }
  s.face=face;s.angle=0;s.surface='substrate';s.glass=0;s.time+=blocked?0:dt;s.mode=fan?'fanning':'courtship';
  el.classList.toggle('ancInCave',fan);el.classList.toggle('ancFanning',fan&&!blocked);el.style.setProperty('--anc-side','1');el.style.setProperty('--anc-glass','0');
- const clip=fan?'ellipse(20px 20px at 24px 38px)':enter&&face===1?'inset(0 '+Math.max(0,120-(60+(left+57-s.x)/scale))+'px 0 0)':'none';
+ const clip=overrideClip!==null?overrideClip:fan?'ellipse(20px 20px at 24px 38px)':'none';
  Object.entries({left:s.x-60+'px',top:s.y-35+'px',transform:'scale('+scale+') scaleX('+face+')','z-index':enter||fan?'44':'46','clip-path':clip,opacity:hidden?'0':'1',animation:'none',transition:'none'}).forEach(([k,v])=>el.style.setProperty(k,v,'important'));
  const tail=el.querySelector('.ancTailPiece');if(tail)tail.style.transform='rotate('+(fan&&!blocked?Math.sin(s.time*11)*7:0)+'deg)';
  el.dataset.ancMode=s.mode;el.dataset.ancX=s.x;el.dataset.ancY=s.y;return true;
