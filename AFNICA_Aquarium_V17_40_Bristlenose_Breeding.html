@@ -7556,6 +7556,7 @@ window.addEventListener('load',()=>setTimeout(()=>switchTankV8('main'),100),{onc
  }
 
  function frame(t){const dt=Math.min(.04,(t-last)/1000);last=t;
+ try{
  document.querySelectorAll('.tank').forEach(tank=>{
  const w=tank.clientWidth,h=tank.clientHeight;if(!w||!h)return;
  const els=[...tank.querySelectorAll('.modelFish[data-species="anc"]:not(.deadFish)')];
@@ -7659,7 +7660,7 @@ window.addEventListener('load',()=>setTimeout(()=>switchTankV8('main'),100),{onc
  side.querySelector('.ancBodyPiece').style.transform='rotate('+((s.turnBend||0)*.35)+'deg)';
  side.querySelector('.ancBodyPiece').style.transformOrigin='76px 46px';
  // Keep the female silhouette intact rather than hinging a cut-out tail.
- if(fish.sex==='F'&&!side.dataset.femaleFixed){side.dataset.femaleFixed='1';side.style.backgroundImage=side.dataset.originalImage;side.querySelector('.ancTailPiece').style.display='none';side.querySelector('.ancBodyPiece').style.display='none';}
+ if(fish&&fish.sex==='F'&&!side.dataset.femaleFixed){side.dataset.femaleFixed='1';side.style.backgroundImage=side.dataset.originalImage;side.querySelector('.ancTailPiece').style.display='none';side.querySelector('.ancBodyPiece').style.display='none';}
  el.dataset.ancThrust=thrust.toFixed(3);
  el.style.setProperty('--anc-mouth',s.surface==='glass'&&s.mode==='graze'?(.85+.15*Math.sin(s.time*7+i)):1);
  el.style.setProperty('--anc-glass',s.glass);el.style.setProperty('--anc-side',1-s.glass);
@@ -7672,7 +7673,9 @@ window.addEventListener('load',()=>setTimeout(()=>switchTankV8('main'),100),{onc
  const props={'clip-path':s.mode==='cave-enter'?entryClip:s.mode==='fanning'?'ellipse(20px 20px at 24px 38px)':'none','z-index':s.mode==='cave-enter'||s.mode==='fanning'?'44':'46',position:'absolute','transform-origin':'center',animation:'none',transition:'none',width:'120px',height:'70px',left:(s.x-60)+'px',top:(s.y-35)+'px',right:'auto',bottom:'auto',translate:'none',rotate:'none',transform:`rotate(${s.angle}deg) scale(${scale}) scaleX(${s.face})`};for(const[k,v]of Object.entries(props))el.style.setProperty(k,v,'important');
  el.dataset.ancMode=blocked?'rest':s.mode;el.dataset.ancSurface=s.surface;el.dataset.ancX=s.x;el.dataset.ancY=s.y;
  el.title=s.mode==='fanning'?'Male bristlenose · occupying cave and fanning · breeding readiness':`Ancistrus · ${s.mode==='move'?'moving':s.mode==='rest'?'resting':'grazing'} · ${s.surface==='glass'?'front glass':'substrate'}`;
- });tank.querySelectorAll('[data-anc-shadow]').forEach(sh=>{if(!els.some(el=>el.dataset.fishId===sh.dataset.ancShadow))sh.remove()});});requestAnimationFrame(frame)}requestAnimationFrame(frame);
+ });tank.querySelectorAll('[data-anc-shadow]').forEach(sh=>{if(!els.some(el=>el.dataset.fishId===sh.dataset.ancShadow))sh.remove()});});
+ }catch(e){console.error('AFNICA anc motion',e);}
+ requestAnimationFrame(frame)}requestAnimationFrame(frame);
 })();
 
 
@@ -7699,7 +7702,7 @@ function ancYoungSVG40(kind){
  if(kind==='eggs')return '<svg viewBox="0 0 120 70" role="img" aria-label="Orange adhesive bristlenose eggs">'+Array.from({length:18},(_,i)=>`<circle cx="${35+i%6*10}" cy="${24+Math.floor(i/6)*10}" r="6" fill="#db8c27" stroke="#9d531d"/><circle cx="${33+i%6*10}" cy="${22+Math.floor(i/6)*10}" r="1.6" fill="#ffe5a0"/>`).join('')+'</svg>';
  return `<svg viewBox="0 0 120 70" role="img" aria-label="${yolk?'Yolk-sac fry':juvenile?'Juvenile bristlenose':'Bristlenose fry with absorbed yolk'}"><path d="M12 28L32 34 12 46Q20 36 12 28" fill="#8d805e" opacity=".7"/><path d="M28 36Q48 29 66 26Q92 24 103 36Q88 48 65 43Q47 40 28 36" fill="${juvenile?'#75634c':'#a2936e'}" stroke="#514635"/><path d="M65 29L55 15 84 29M67 41L58 53 88 42" fill="#9b8967" opacity=".75"/>${yolk?'<ellipse cx="80" cy="43" rx="14" ry="11" fill="#e6a331" stroke="#b57620"/><ellipse cx="77" cy="39" rx="6" ry="3" fill="#ffe4a0" opacity=".7"/>':''}<circle cx="94" cy="32" r="3" fill="#151811"/><circle cx="95" cy="31" r=".8" fill="#ddd"/>${[45,54,63,72,81].map(x=>`<circle cx="${x}" cy="35" r="1.3" fill="#c9b689"/>`).join('')}</svg>`;
 }
-function ancClutchStatus40(){const c=st.ancClutch;if(!c)return 'No clutch · select one healthy adult male and female';if(c.stage==='spawning')return 'Courtship · '+c.phase.replaceAll('-',' ');if(c.stage==='eggs')return c.count+' eggs · hatch in '+Math.max(0,c.hatchDay-st.day)+' game days';if(c.stage==='yolk')return c.count+' yolk-sac fry · emerge in '+Math.max(0,c.releaseDay-st.day)+' game days';return c.stage==='lost'?'Clutch lost · the male ate the eggs':c.count+' fry emerged into the breeding tank';}
+function ancClutchStatus40(){const c=st.ancClutch;if(!c)return 'No clutch · select one healthy adult male and female';if(c.stage==='spawning'){if(c.phase==='trapped')return 'Male has trapped the female in the cave · she lays her eggs in '+Math.max(0,(c.trapDay+c.trapDays)-st.day)+' game days';return 'Courtship · '+c.phase.replaceAll('-',' ');}if(c.stage==='eggs')return c.count+' eggs · male fanning · hatch in '+Math.max(0,c.hatchDay-st.day)+' game days';if(c.stage==='yolk')return c.count+' yolk-sac fry · male guarding · free-swimming in '+Math.max(0,c.releaseDay-st.day)+' game days';return c.stage==='lost'?'Clutch lost · the male ate the eggs':c.count+' fry emerged into the breeding tank';}
 function startAncBreeding40(){
  if(st.ancClutch&&['spawning','eggs','yolk'].includes(st.ancClutch.stage))return toast('The cave already contains an active brood');
  const adults=st.breederTank.filter(f=>f.species==='anc'&&!f.dead&&!f.disease&&f.health>=80&&f.age>=S.anc.adult);
@@ -7756,16 +7759,26 @@ function ancBreedingMotion40(tank,el,s,fish,dt,w,base,scale){
  let rim=tank.querySelector('.ancCaveRim');if(!rim){rim=document.createElement('div');rim.className='ancCaveRim';rim.innerHTML=ancCaveMarkupV1728();tank.append(rim);}rim.style.cssText='position:absolute;pointer-events:none;width:160px;height:77px;z-index:45;left:'+left+'px;top:'+(base-43)+'px;mask-image:radial-gradient(ellipse 22px 20px at 32px 46px,transparent 97%,black 100%);';
  let target=s.x,face=1,hidden=false,fan=false,enter=false;
  if(c.stage!=='spawning'){target=inside;fan=true;}
- else if(isMom){face=-1;target=c.phase==='female-approach'?door:c.phase==='female-exit'?door-35:inside+20;enter=c.phase!=='female-approach';hidden=['male-approach','male-enter','laying'].includes(c.phase);}
- else {target=['female-approach','female-back'].includes(c.phase)?door-100:c.phase==='male-approach'?door:inside;enter=['male-enter','laying','female-exit'].includes(c.phase);fan=['laying','female-exit'].includes(c.phase);}
+ else if(isMom){face=-1;target=c.phase==='female-approach'?door:c.phase==='female-exit'?door-35:inside+20;enter=c.phase!=='female-approach';hidden=['male-approach','male-enter','trapped','laying'].includes(c.phase);}
+ else {target=['female-approach','female-back'].includes(c.phase)?door-100:c.phase==='male-approach'?door:inside;enter=['male-enter','trapped','laying','female-exit'].includes(c.phase);fan=['trapped','laying','female-exit'].includes(c.phase);}
  const dx=target-s.x,dy=base-s.y,d=Math.hypot(dx,dy),step=blocked?0:Math.min(d,22*dt);if(d>.4){s.x+=dx/d*step;s.y+=dy/d*step;}
  const arrived=d<1;
  function phase(next){c.phase=next;c.seconds=0;save();}
  if(!blocked&&c.stage==='spawning'){
   if(isMom&&arrived&&c.phase==='female-approach')phase('female-back');else if(isMom&&arrived&&c.phase==='female-back')phase('male-approach');
-  else if(isDad&&arrived&&c.phase==='male-approach')phase('male-enter');else if(isDad&&arrived&&c.phase==='male-enter')phase('laying');
+  else if(isDad&&arrived&&c.phase==='male-approach')phase('male-enter');
+  else if(isDad&&arrived&&c.phase==='male-enter'){
+   // Real bristlenose males trap the female inside the cave for roughly a day (sometimes two)
+   // before she lays; the pair just holds position until that many game days have passed.
+   c.trapDay=st.day;c.trapDays=1+Math.floor(Math.random()*2);phase('trapped');toast('Male bristlenose has trapped the female inside the cave');
+  }
+  else if(isDad&&c.phase==='trapped'&&st.day>=c.trapDay+c.trapDays)phase('laying');
   else if(isDad&&c.phase==='laying'){c.seconds+=dt;if(c.seconds>=5)phase('female-exit');}
-  else if(isMom&&arrived&&c.phase==='female-exit'){c.stage='eggs';c.laidDay=st.day;c.hatchDay=st.day+4;c.releaseDay=st.day+7;c.lastDay=st.day;save();toast('Female bristlenose laid '+c.count+' eggs inside the cave · hatching in 4 game days');}
+  else if(isMom&&arrived&&c.phase==='female-exit'){
+   const hatchIn=4+Math.floor(Math.random()*3),yolkIn=3+Math.floor(Math.random()*2);
+   c.stage='eggs';c.laidDay=st.day;c.hatchDay=st.day+hatchIn;c.releaseDay=c.hatchDay+yolkIn;c.lastDay=st.day;save();
+   toast('Female bristlenose laid '+c.count+' eggs and left the cave · male fanning them for about '+hatchIn+' days');
+  }
  }
  s.face=face;s.angle=0;s.surface='substrate';s.glass=0;s.time+=blocked?0:dt;s.mode=fan?'fanning':'courtship';
  el.classList.toggle('ancInCave',fan);el.classList.toggle('ancFanning',fan&&!blocked);el.style.setProperty('--anc-side','1');el.style.setProperty('--anc-glass','0');
@@ -7779,7 +7792,7 @@ renderV103Breeder=function(){
  setAfnicaScreenV104('breeder');ensureHealthState();if(!st.unlockedTanks.tank3)return oldRenderAnc40();
  const d=dailyFor('breeder'),c=st.ancClutch;
  const adults=st.breederTank.filter(f=>f.age>=S[f.species].adult),fry=st.breederTank.filter(f=>f.age<S[f.species].adult);
- document.getElementById('screen').innerHTML=v8Top()+`<div class="v8panel"><b>BRISTLENOSE BREEDING TANK</b><p>One healthy adult male + one female · 20–40 eggs per clutch · 4 days to hatch + 3 days absorbing yolk</p><div>${ancClutchStatus40()}</div></div><div class="v8hero">${tank('BREEDER TANK',tankLitersV14('breeder'),st.breederTank,'breeder')}<div class="v8dock"><button onclick="care('feed','breeder')">FEED</button><button onclick="care('water','breeder')">WATER</button><button onclick="care('clean','breeder')">CLEAN</button><button onclick="startGeneralTreatment()">TREAT</button><button onclick="inspectAncCave40()">INSPECT CAVE</button></div></div><div class="v8panel"><button class="btn green" onclick="startAncBreeding40()">START COURTSHIP</button><p>Healthy adults: 80%+ health. After spawning, the male rests until 15 game days have passed.</p>${adults.map(f=>`<p>${f.sex==='M'?'Male':'Female'} · ${f.health}% health · ${f.ancSpawnAttempts||0} attempts <button class="btn small" onclick="returnFromBreederV103('${f.id}')">RETURN TO MAIN</button></p>`).join('')}<p>${fry.length} free-swimming fry / juveniles</p>${fry.length?'<button class="btn" onclick="moveAncFry40()">MOVE FRY TO FRY TANK</button>':''}</div><div class="v8panel"><b>AVAILABLE ADULTS</b>${breederCandidatesV103().filter(f=>f.species==='anc').map(f=>`<p>${f.sex==='M'?'Male':'Female'} · ${f.health}% <button class="btn" onclick="moveToBreederV103('${f.id}')">MOVE TO BREEDER</button></p>`).join('')}</div><button class="btn" onclick="nextDay();renderV103Breeder()">NEXT DAY</button>`+v8Nav('room');
+ document.getElementById('screen').innerHTML=v8Top()+`<div class="v8panel"><b>BRISTLENOSE BREEDING TANK</b><p>One healthy adult male + one female · male traps her in the cave for 1–2 days before she lays · 20–40 eggs per clutch · 4–6 days to hatch + 3–4 days absorbing the yolk sac</p><div>${ancClutchStatus40()}</div></div><div class="v8hero">${tank('BREEDER TANK',tankLitersV14('breeder'),st.breederTank,'breeder')}<div class="v8dock"><button onclick="care('feed','breeder')">FEED</button><button onclick="care('water','breeder')">WATER</button><button onclick="care('clean','breeder')">CLEAN</button><button onclick="startGeneralTreatment()">TREAT</button><button onclick="inspectAncCave40()">INSPECT CAVE</button></div></div><div class="v8panel"><button class="btn green" onclick="startAncBreeding40()">START COURTSHIP</button><p>Healthy adults: 80%+ health. After spawning, the male rests until 15 game days have passed.</p>${adults.map(f=>`<p>${f.sex==='M'?'Male':'Female'} · ${f.health}% health · ${f.ancSpawnAttempts||0} attempts <button class="btn small" onclick="returnFromBreederV103('${f.id}')">RETURN TO MAIN</button></p>`).join('')}<p>${fry.length} free-swimming fry / juveniles</p>${fry.length?'<button class="btn" onclick="moveAncFry40()">MOVE FRY TO FRY TANK</button>':''}</div><div class="v8panel"><b>AVAILABLE ADULTS</b>${breederCandidatesV103().filter(f=>f.species==='anc').map(f=>`<p>${f.sex==='M'?'Male':'Female'} · ${f.health}% <button class="btn" onclick="moveToBreederV103('${f.id}')">MOVE TO BREEDER</button></p>`).join('')}</div><button class="btn" onclick="nextDay();renderV103Breeder()">NEXT DAY</button>`+v8Nav('room');
 };
 function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&f.age<S.anc.adult);st.fry.push(...young);st.breederTank=st.breederTank.filter(f=>!young.includes(f));save();renderV103Breeder();}
 </script></body></html>
