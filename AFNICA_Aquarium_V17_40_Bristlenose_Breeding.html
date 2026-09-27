@@ -7613,18 +7613,20 @@ window.addEventListener('load',()=>setTimeout(()=>switchTankV8('main'),100),{onc
  else if(s.surface==='glass'&&s.steps%4===0){s.mode='detach';s.wait=6;s.transition={x:s.x,y:s.y,dx:clamp(s.x+8*s.face,lo,hi)-s.x,dy:base-s.y,angle:s.angle,endAngle:0};}
  else{
  s.tx=clamp(s.x+(s.surface==='glass'?rand(-12,12):rand(-32,32)),lo,hi);
- s.ty=s.surface==='substrate'?base:(s.steps%4===3?base-22*scale:clamp(s.y-rand(5,14),base-85,base-22*scale));
+ // Real bristlenose stay close to a surface (bottom-dwellers) rather than roaming
+ // to mid-water height, even while grazing the front glass.
+ s.ty=s.surface==='substrate'?base:(s.steps%4===3?base-22*scale:clamp(s.y-rand(5,14),base-55,base-22*scale));
  s.mode='move';
  }
  }
  if(s.mode==='graze'&&s.surface==='glass'){
  // Rasp and advance together; each fish chooses its own nearby patch.
- if(!s.patch||s.patch.until<s.time){s.patch={x:clamp(s.x+rand(-65,65),lo,hi),y:clamp(s.y+rand(-30,22),base-85,base-22*scale),until:s.time+rand(5,9)};}
+ if(!s.patch||s.patch.until<s.time){s.patch={x:clamp(s.x+rand(-65,65),lo,hi),y:clamp(s.y+rand(-30,22),base-55,base-22*scale),until:s.time+rand(5,9)};}
  const dx=s.patch.x-s.x,dy=s.patch.y-s.y,d=Math.hypot(dx,dy),speed=11*thrust;
  s.grazeSpeed=Math.min(speed,d*3);
  const step=Math.min(d,s.grazeSpeed*dt),nx=s.x+(d?dx/d*step:0),ny=s.y+(d?dy/d*step:0);
  const neighbor=[...states.values()].find(o=>o!==s&&o.tankId===tank.id&&o.surface==='glass'&&Math.hypot(nx-o.x,(ny-o.y)*.7)<48*scale);
- if(!neighbor){s.x=nx;s.y=ny;}else{s.patch={x:clamp(s.x+(s.x<neighbor.x?-38:38),lo,hi),y:clamp(s.y-16,base-85,base-22*scale),until:s.time+3};}
+ if(!neighbor){s.x=nx;s.y=ny;}else{s.patch={x:clamp(s.x+(s.x<neighbor.x?-38:38),lo,hi),y:clamp(s.y-16,base-55,base-22*scale),until:s.time+3};}
  const desired=-90*s.face+clamp(dx,-18,18)*s.face;s.angle+=clamp(((desired-s.angle+540)%360)-180,-18*dt,18*dt);
  }else{s.patch=null;s.grazeSpeed=0;}
  if(s.mode==='move'){
@@ -7645,6 +7647,10 @@ window.addEventListener('load',()=>setTimeout(()=>switchTankV8('main'),100),{onc
  if(s.surface==='substrate'&&!s.transition){s.y+=(base-s.y)*(1-Math.exp(-5*dt));s.ty=base;}
  let shadow=tank.querySelector('[data-anc-shadow="'+el.dataset.fishId+'"]');
  if(!shadow){shadow=document.createElement('div');shadow.dataset.ancShadow=el.dataset.fishId;shadow.className='ancContactShadow';tank.append(shadow);}
+ // Only a fish actually resting on the sand casts a shadow there; one pressed
+ // flat against the front glass is nowhere near the substrate and shouldn't.
+ // Use s.glass (not s.surface) so the shadow fades smoothly during the
+ // attach/detach transition instead of snapping instantly at the endpoints.
  shadow.style.cssText='position:absolute;pointer-events:none;z-index:40;width:'+88*scale+'px;height:'+7*scale+'px;left:'+(s.x-44*scale)+'px;top:'+(base+15*scale)+'px;border-radius:50%;background:radial-gradient(ellipse,rgba(28,22,12,.38),transparent 72%);opacity:'+(1-s.glass)+';';
  shadow.style.display=el.classList.contains('ancInCave')?'none':'';
  // Underbody art makes attachment to the front pane explicit; side art contacts sand.
