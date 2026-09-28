@@ -3911,9 +3911,18 @@ function realAssetV154(f){if(f.species==='cory'&&f.age<7)return coryFryAssetV171
  if(k==='anc'&&r<1)return set.juvenile;
  return f.sex==='F'?set.adult_f:set.adult_m;
 }
+// Key ('species|stage') of the raster asset realAssetV154 picks for this fish, so the
+// V17.42 fin-motion layer can find and animate it. Null = leave the static image
+// (Ancistrus has its own articulated sprite; cory larvae use a separate tiny asset).
+function realAssetKeyV154(f){
+ if(f.species==='anc'||(f.species==='cory'&&f.age<7))return null;
+ let k=assetSpeciesKeyV154(f),set=REAL_FISH_ASSETS_V154[k];if(!set)return null;
+ let r=f.age/S[f.species].adult,stage=r<.25?'fry':r<.75?'juvenile':k==='cory'?'adult_m':f.sex==='F'?'adult_f':'adult_m';
+ return set[stage]?k+'|'+stage:null;
+}
 function fishGraphicV154(f){if(f.species==='anc')return ancGraphicV1719(f);
- let src=realAssetV154(f);
- if(src)return `<span class="coryBodyShape ${f.species==='cory'&&f.sex==='F'&&f.age>=S.cory.adult?'coryFemaleBody':''}"><img class="realFishAsset realSpeciesV154" src="${src}" alt="${f.species==='cory'&&f.age<7?(f.age<=2?'Corydoras yolk-sac larva':'Young Corydoras fry'):''}" draggable="false"></span>`;
+ let src=realAssetV154(f),wk=realAssetKeyV154(f);
+ if(src)return `<span class="coryBodyShape ${f.species==='cory'&&f.sex==='F'&&f.age>=S.cory.adult?'coryFemaleBody':''}"><img class="realFishAsset realSpeciesV154" ${wk?`data-wk="${wk}" `:''}src="${src}" alt="${f.species==='cory'&&f.age<7?(f.age<=2?'Corydoras yolk-sac larva':'Young Corydoras fry'):''}" draggable="false"></span>`;
  return fishGraphicV152(f);
 }
 function fishAvatarV154(f){if(f.species==='anc')return ancGraphicV1719(f);
@@ -7948,6 +7957,165 @@ renderV103Breeder=function(){
  document.getElementById('screen').innerHTML=v8Top()+`<div class="v8panel"><b>BRISTLENOSE BREEDING TANK</b><p>One healthy adult male + one female · male traps her in the cave for 1–2 days before she lays · 20–40 eggs per clutch · 4–6 days to hatch + 3–4 days absorbing the yolk sac</p><div>${ancClutchStatus40()}</div></div><div class="v8hero">${tank('BREEDER TANK',tankLitersV14('breeder'),st.breederTank,'breeder')}<div class="v8dock"><button onclick="care('feed','breeder')">FEED</button><button onclick="care('water','breeder')">WATER</button><button onclick="care('clean','breeder')">CLEAN</button><button onclick="startGeneralTreatment()">TREAT</button><button onclick="inspectAncCave40()">INSPECT CAVE</button></div></div><div class="v8panel"><button class="btn green" onclick="startAncBreeding40()">START COURTSHIP</button><p>Healthy adults: 80%+ health. After spawning, the male rests until 15 game days have passed.</p>${adults.map(f=>`<p>${f.sex==='M'?'Male':'Female'} · ${f.health}% health · ${f.ancSpawnAttempts||0} attempts <button class="btn small" onclick="returnFromBreederV103('${f.id}')">RETURN TO MAIN</button></p>`).join('')}<p>${fry.length} free-swimming fry / juveniles</p>${fry.length?'<button class="btn" onclick="moveAncFry40()">MOVE FRY TO FRY TANK</button>':''}</div><div class="v8panel"><b>AVAILABLE ADULTS</b>${breederCandidatesV103().filter(f=>f.species==='anc').map(f=>`<p>${f.sex==='M'?'Male':'Female'} · ${f.health}% <button class="btn" onclick="moveToBreederV103('${f.id}')">MOVE TO BREEDER</button></p>`).join('')}</div><button class="btn" onclick="nextDay();renderV103Breeder()">NEXT DAY</button>`+v8Nav('room');
 };
 function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&f.age<S.anc.adult);st.fry.push(...young);st.breederTank=st.breederTank.filter(f=>!young.includes(f));save();renderV103Breeder();}
+</script><script>
+/* ================= V17.42 NATURAL FIN MOTION =================
+   The fish sprites are single raster images, so the whole fish used to move as a
+   rigid block. This layer swaps each in-tank sprite for a canvas that redraws the
+   SAME image every frame with a swimming wave: an undulation that is almost zero
+   at the head and grows toward the tail (carangiform swimming, the mode of small
+   aquarium fish), a caudal fin that flexes and lags the peduncle, and a dorsal
+   fin whose tip trails its base. Tail-beat rate follows the fish's real speed
+   (slow drift = gentle sway with more dorsal ripple, fast dart = quick beats and
+   a clamped dorsal). No new art: only the existing REAL_FISH_ASSETS_V154 images. */
+(()=>{
+ const MAXW=260,cache=new Map(),loading=new Set(),states=new WeakMap();
+ // per-species tuning: f = beat-rate multiplier, a = amplitude multiplier, v = speed (px/s) that counts as full speed
+ const CFG={guppy:{f:1.15,a:1,v:92},molly:{f:.9,a:.9,v:42},platy:{f:.95,a:.95,v:56},xipho:{f:1,a:.6,v:49},neon:{f:1.2,a:.9,v:72},cory:{f:1,a:.7,v:45}};
+ function analyse(img){
+  const iw=img.naturalWidth||img.width,ih=img.naturalHeight||img.height;   // works for <img> and for a cropped canvas
+  const sc=Math.min(1,MAXW/iw),W=Math.max(8,Math.round(iw*sc)),H=Math.max(8,Math.round(ih*sc));
+  const base=document.createElement('canvas');base.width=W;base.height=H;
+  const g=base.getContext('2d',{willReadFrequently:true});g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';g.drawImage(img,0,0,W,H);
+  const d=g.getImageData(0,0,W,H).data,top=new Array(W).fill(-1);
+  let x0=1e9,x1=-1,y0=1e9,y1=-1;
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(d[(y*W+x)*4+3]>40){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;if(top[x]<0)top[x]=y;}
+  if(x1<0)return false;
+  const BL=x1-x0,w=Math.max(4,Math.round(BL*.14)),dil=new Array(W).fill(H),ero=new Array(W).fill(H);
+  // back line with narrow fin peaks removed (closing on the top edge)
+  for(let x=0;x<W;x++){let m=-1;for(let k=Math.max(x0,x-w);k<=Math.min(x1,x+w);k++)if(top[k]>m)m=top[k];dil[x]=m<0?H:m;}
+  for(let x=0;x<W;x++){let m=1e9;for(let k=Math.max(x0,x-w);k<=Math.min(x1,x+w);k++)if(dil[k]<m)m=dil[k];ero[x]=m===1e9?H:m;}
+  let fx0=1e9,fx1=-1,B=1e9,tipTop=1e9;
+  for(let x=x0;x<=x1;x++){const u=(x1-x)/BL;if(u<.15||u>.82||top[x]<0)continue;const h=ero[x]-top[x];if(h>H*.02){if(x<fx0)fx0=x;if(x>fx1)fx1=x;if(ero[x]<B)B=ero[x];if(top[x]<tipTop)tipTop=top[x];}}
+  const has=fx1>=0&&B-tipTop>H*.04;
+  return {base,W,H,x0,x1,y0,y1,BL,B:has?Math.round(B):0,fx0,fx1,tipTop,has,pad:Math.ceil(BL*.07)+2};
+ }
+ function prepare(key){
+  if(loading.has(key))return;loading.add(key);
+  const parts=key.split('|'),src=(REAL_FISH_ASSETS_V154[parts[0]]||{})[parts[1]];
+  if(!src){cache.set(key,false);loading.delete(key);return;}
+  const img=new Image();
+  img.onload=()=>{try{cache.set(key,analyse(img));}catch(e){console.error('AFNICA fin motion',e);cache.set(key,false);}loading.delete(key);};
+  img.onerror=()=>{cache.set(key,false);loading.delete(key);};
+  img.src=src;
+ }
+ // one frame of the fish at swim phase ph. amp = tail amplitude (fraction of body length), slow = 0..1 dorsal ripple
+ function draw(c,r,ph,amp,slow,dors){
+  if(dors==null)dors=1;
+  const {base,W,H,x0,x1,BL,B,fx0,fx1,tipTop,has,pad}=r,g=c.getContext('2d');
+  g.clearRect(0,0,c.width,c.height);g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';
+  const lam=1.15,A=amp*BL,cy=(r.y0+r.y1)/2,sw=2,wp=u=>ph-2*Math.PI*u/lam;
+  const wave=u=>A*(.04+.96*Math.pow(u,2.3))*Math.sin(wp(u));
+  for(let x=0;x<W;x+=sw){
+   const u=Math.min(1,Math.max(0,(x1-x)/BL)),dy=wave(u);
+   let sy=1;if(u>.8){sy=1+.1*((u-.8)/.2)*Math.cos(wp(u)+.6);}          // caudal fin height breathes as it sweeps
+   const sTop=has&&x>=fx0-1&&x<=fx1+1?B:0;                             // fin columns: the tip above the back line is drawn below
+   g.save();g.translate(0,pad+dy+cy*(1-sy));
+   g.drawImage(base,x,sTop,sw,H-sTop,x,sTop*sy,sw,(H-sTop)*sy);
+   g.restore();
+  }
+  if(has){                                                              // dorsal fin: zero shear at the base, growing to the tip, trailing the body wave
+   const uM=(x1-(fx0+fx1)/2)/BL,dyb=wave(uM),sh=(.03+.035*slow)*BL*dors,tipH=Math.max(1,B-tipTop),ax=Math.max(0,fx0-1),aw=Math.min(W,fx1+2)-ax;
+   for(let y=Math.max(0,tipTop-1);y<B;y+=2){
+    const hh=Math.min(2,B-y),dx=sh*Math.pow(Math.min(1,(B-y)/tipH),1.6)*Math.sin(wp(uM)-.9);
+    g.drawImage(base,ax,y,aw,hh,ax+dx,pad+dyb+y,aw,hh);
+   }
+  }
+ }
+ function adopt(img,r){
+  const c=document.createElement('canvas');c.width=r.W;c.height=r.H+r.pad*2;
+  c.className=img.className;c.dataset.wk=img.dataset.wk;c.setAttribute('aria-hidden','true');
+  // keep the on-screen scale identical to the original image: the canvas is taller by 2*pad
+  // (room for the wave), so grow its box by the same ratio and lift it by pad
+  const k=(r.H+r.pad*2)/r.H;
+  c.style.cssText=img.style.cssText+';position:relative;';
+  c.style.setProperty('height',(k*100)+'%','important');c.style.setProperty('top',(-100*r.pad/r.H)+'%','important');
+  c.style.setProperty('object-fit','contain','important');
+  img.replaceWith(c);return c;
+ }
+ function speedOf(s,fe,dt){
+  let x,y;const m=/translate3d\(([-\d.]+)px,\s*([-\d.]+)px/.exec(fe.style.transform||'');
+  if(m){x=+m[1];y=+m[2];}else{x=parseFloat(fe.style.left)||0;y=parseFloat(fe.style.top)||0;}
+  if(s.px!=null&&dt>0){const v=Math.hypot(x-s.px,y-s.py)/dt;s.v+=(Math.min(v,400)-s.v)*Math.min(1,dt*6);}
+  s.px=x;s.py=y;return s.v;
+ }
+ /* --- Ancistrus: its side view is a window into a 240x240 CSS sprite sheet (male left,
+    female right). Crop that window at full resolution, analyse it like the other sprites
+    and draw the same wave into a canvas placed inside .ancSide. Rules differ from open-water
+    fish: a resting pleco is STILL (no idle sway); it undulates only while crawling, and beats
+    the tail harder while a male fans eggs. --- */
+ const st0=document.createElement('style');
+ st0.textContent='.ancSide.finWarp{background-image:none!important}.ancSide.finWarp .ancBodyPiece,.ancSide.finWarp .ancTailPiece{display:none!important}.ancSide.finWarp>canvas{position:absolute;left:0;display:block;pointer-events:none}';
+ document.head.appendChild(st0);
+ const ancSheet={img:null,loading:false};
+ function ancSheetImg(url){
+  if(ancSheet.img||ancSheet.loading)return ancSheet.img;
+  ancSheet.loading=true;const i=new Image();i.onload=()=>{ancSheet.img=i;ancSheet.loading=false;};i.onerror=()=>{ancSheet.loading=false;};i.src=url;return null;
+ }
+ function ancRec(key,sx,sy,sheetCss){
+  // cell window in sheet CSS px -> natural px
+  const im=ancSheet.img,f=im.naturalWidth/sheetCss,cw=Math.round(120*f),ch=Math.round(70*f);
+  const crop=document.createElement('canvas');crop.width=cw;crop.height=ch;
+  crop.getContext('2d').drawImage(im,sx*f,sy*f,cw,ch,0,0,cw,ch);
+  const r=analyse(crop);cache.set(key,r);return r;
+ }
+ function adoptAnc(side){
+  const art=side.closest('.ancArt'),cs=getComputedStyle(side);
+  const url=/url\(["']?(.*?)["']?\)\s*$/.exec(side.dataset.originalImage||'');
+  if(!url||!art){side.dataset.finSkip='1';return;}                     // no sprite to animate: stop retrying this element
+  const sheetCss=parseFloat(cs.backgroundSize)||240,pos=(cs.backgroundPosition||'').split(' ');
+  // after articulation the live position may be reset; fall back to the sex-based cell
+  const isF=art.classList.contains('ancFemale'),sx=isF?120:0,sy=38,key='anc|'+sx+'|'+sy;
+  if(!ancSheetImg(url[1]))return;
+  let r=cache.get(key);
+  if(r===undefined){try{r=ancRec(key,sx,sy,sheetCss);}catch(e){console.error('AFNICA fin motion (anc)',e);cache.set(key,false);r=false;}}
+  if(!r)return;
+  const c=document.createElement('canvas');c.width=r.W;c.height=r.H+r.pad*2;c.dataset.wk=key;c.setAttribute('aria-hidden','true');
+  const k=(r.H+r.pad*2)/r.H;
+  c.style.setProperty('height',(k*100)+'%');c.style.setProperty('width','100%');c.style.setProperty('top',(-100*r.pad/r.H)+'%');
+  side.classList.add('finWarp');side.appendChild(c);
+ }
+ let last=performance.now();
+ function tick(now){
+  const dt=Math.min(.05,(now-last)/1000);last=now;
+  if(!document.hidden){
+   try{
+    document.querySelectorAll('.tank .ancSide[data-articulated]:not(.finWarp):not([data-fin-skip])').forEach(adoptAnc);
+    document.querySelectorAll('.tank .ancSide.finWarp>canvas').forEach(c=>{
+     const r=cache.get(c.dataset.wk);if(!r)return;
+     let s=states.get(c);
+     if(!s){const fe=c.closest('.modelFish');if(!fe)return;s={ph:Math.random()*6.283,v:0,px:null,py:null,fe};states.set(c,s);}
+     if(s.bad||!s.fe.isConnected||s.fe.classList.contains('deadFish'))return;
+     try{
+     const sp=Math.min(1,speedOf(s,s.fe,dt)/26),fan=s.fe.classList.contains('ancFanning');
+     // still when resting, gentle undulation when crawling, vigorous tail while fanning eggs
+     const move=Math.min(1,Math.max(0,(sp-.08)/.5)),k=fan?1:move;
+     const freq=fan?2.4:.9+1.6*sp,amp=fan?.05:.032*move;
+     s.ph+=2*Math.PI*freq*dt;
+     draw(c,r,s.ph,amp,1-sp,fan?.8:move);
+     }catch(e){s.bad=true;console.error('AFNICA fin motion (anc fish)',e);}   // one bad fish must not stop the others
+    });
+    document.querySelectorAll('.tank img[data-wk]').forEach(img=>{
+     const key=img.dataset.wk,r=cache.get(key);
+     if(r)adopt(img,r);else if(r===undefined)prepare(key);
+    });
+    document.querySelectorAll('.tank canvas.realFishAsset[data-wk]').forEach(c=>{   // open-water fish + cory (Ancistrus canvases are handled above)
+     const r=cache.get(c.dataset.wk);if(!r)return;
+     let s=states.get(c);
+     if(!s){const fe=c.closest('.modelFish');if(!fe)return;s={ph:Math.random()*6.283,v:0,px:null,py:null,fe,cfg:CFG[fe.dataset.species]||CFG.guppy};states.set(c,s);}
+     if(s.bad||!s.fe.isConnected||s.fe.classList.contains('deadFish'))return;      // dead fish keep their last frame
+     try{
+      const sp=Math.min(1,speedOf(s,s.fe,dt)/s.cfg.v);              // 0 = drifting, 1 = full speed
+      const freq=(1.2+3.6*sp)*s.cfg.f;                               // tail beats per second
+      s.ph+=2*Math.PI*freq*dt;
+      draw(c,r,s.ph,(.02+.035*sp)*s.cfg.a,1-sp);
+     }catch(e){s.bad=true;console.error('AFNICA fin motion (fish)',e);}         // one bad fish must not stop the others
+    });
+   }catch(e){console.error('AFNICA fin motion',e);}
+  }
+  requestAnimationFrame(tick);
+ }
+ requestAnimationFrame(tick);
+})();
 </script></body></html>
 
 
