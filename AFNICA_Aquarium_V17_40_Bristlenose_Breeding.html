@@ -6741,7 +6741,7 @@ function v168UpdateNeon(el,state,now,dt){
  const bob=Math.sin(t*state.preset.bobSpeed+state.phase)*state.preset.bobAmp*(.28+.72*speedNorm);
  const tilt=v16Clamp(state.vy*.08,-state.preset.tilt,state.preset.tilt);
  const scale=state.scale;
- const sx=state.facing*scale;
+ const sx=v17TurnScale(state,dt,el)*scale;
 
  el.style.transform=
    `translate3d(${state.x.toFixed(2)}px,${(state.y+bob).toFixed(2)}px,0) `+
@@ -6750,6 +6750,23 @@ function v168UpdateNeon(el,state,now,dt){
  return true;
 }
 
+/* V17.42 natural turning. state.facing (logical direction) still flips the instant the fish commits to a new
+   heading, but what is DRAWN eases through the turn like a body yawing away from the viewer: the sprite narrows
+   (never below 28%), swaps sides at its narrowest point and widens again over ~0.5 s with ease-in-out. Real turns
+   are C-bends: the head leads and the tail lags, so the fin-motion layer reads el.dataset.turn (0..1, peaking
+   mid-turn) to beat the tail harder while the fish comes around. Reversing again mid-turn continues smoothly. */
+function v17TurnScale(state,dt,el){
+ const target=state.facing>=0?1:-1;
+ if(state.tTo==null){state.fv=target;state.tTo=target;state.tFrom=target;state.tp=1;}
+ if(target!==state.tTo){state.tFrom=state.fv;state.tTo=target;state.tp=0;}
+ if(state.tp<1){
+  const st=state.preset&&state.preset.style;
+  state.tp=Math.min(1,state.tp+dt/(st==='dart'?.36:st==='heavy'?.62:.5));
+  const u=state.tp,e=u*u*u*(u*(u*6-15)+10);state.fv=state.tFrom+(state.tTo-state.tFrom)*e;
+ }else state.fv=state.tTo;
+ if(el)el.dataset.turn=(state.tp<1?Math.sin(Math.PI*state.tp):0).toFixed(2);
+ return (state.fv<0?-1:1)*(.28+.72*Math.abs(state.fv));
+}
 function v16UpdateFish(el,state,now){
  const b=v16Bounds(el,state);
  if(!b)return;
@@ -6832,7 +6849,7 @@ function v16UpdateFish(el,state,now){
  // Pitch follows vertical velocity but stays subtle.
  const tilt=v16Clamp(state.vy*.10,-state.preset.tilt,state.preset.tilt);
  const scale=state.scale;
- const sx=state.facing*scale;
+ const sx=v17TurnScale(state,dt,el)*scale;
 
  el.style.transform=
    `translate3d(${state.x.toFixed(2)}px,${(state.y+bob).toFixed(2)}px,0) `+
@@ -7357,6 +7374,16 @@ body:has(.tank.waterChanging,.tank.persistentWaterActive) #v1712-test-dash{
   const tank=s.el.closest('.tank');if(!tank)return;
   const fx=document.createElement('div');fx.className='coryAirBubbles';fx.style.left=s.x+'px';fx.innerHTML='<i></i><i></i><i></i>';tank.append(fx);setTimeout(()=>fx.remove(),1400);
  }
+ const DASH={a:1.25,g:.4,d:2.3};   // seconds: ascent, gulp at the surface, descent
+ function dashPath(s,d,e){
+  const yTop=s.el.offsetHeight*s.scale/2+14,T=DASH.a+DASH.g+DASH.d;
+  const room=d.face>0?s.w-s.radius-d.x:d.x-s.radius,arc=clamp(s.w*.09,0,Math.max(0,room*.6));
+  let y;
+  if(e<DASH.a){const p=e/DASH.a;y=d.y+(yTop-d.y)*smooth(Math.pow(p,.75));}   // fast start (peak speed within ~0.2 s, not a one-frame jump), easing into the surface
+  else if(e<DASH.a+DASH.g)y=yTop+Math.sin((e-DASH.a)*14)*1.2;                  // gulp: small bob at the surface
+  else y=yTop+(d.y-yTop)*smooth((e-DASH.a-DASH.g)/DASH.d);                     // glide back down
+  return {x:d.x+d.face*arc*Math.sin(Math.PI*e/T),y};                           // net zero: ends where it started
+ }
  function dash(s,t){
   const tank=s.el.closest('.tank');
   if(s.age<7||!tank||water(tank)||s.el.classList.contains('coryBreeding')||groups.get(s.key)?.school||s.mode==='dash')return false;
@@ -7383,15 +7410,37 @@ body:has(.tank.waterChanging,.tank.persistentWaterActive) #v1712-test-dash{
   const velocity=Math.min(speed,d*1.5),blend=1-Math.exp(-3*dt);
   s.vx+=(d?dx/d*velocity-s.vx:-s.vx)*blend;s.vy+=(d?dy/d*velocity-s.vy:-s.vy)*blend;
   s.x+=s.vx*dt;s.y+=s.vy*dt;
-  if(Math.abs(s.vx)>2)s.face+=(Math.sign(s.vx)-s.face)*Math.min(1,dt*7);
+  if(Math.abs(s.vx)>2)s.face+=(Math.sign(s.vx)-s.face)*Math.min(1,dt*4.6);   // slower than before (7): a turn takes ~0.5 s
   s.angle+=(0-s.angle)*Math.min(1,dt*5);
  }
  function draw(s){
   const el=s.el;s.x=clamp(s.x,s.radius,s.w-s.radius);
   s.y=clamp(s.y,el.offsetHeight*s.scale/2+10,s.h-el.offsetHeight*s.scale/2-6);
-  const props={animation:'none',transition:'none',left:(s.x-el.offsetWidth/2)+'px',top:(s.y-el.offsetHeight/2)+'px',right:'auto',bottom:'auto','transform-origin':'center',translate:'none',rotate:'none',transform:`rotate(${s.angle}deg) scale(${s.scale}) scaleX(${s.face})`};
+  const props={animation:'none',transition:'none',left:(s.x-el.offsetWidth/2)+'px',top:(s.y-el.offsetHeight/2+(s.dip||0))+'px',right:'auto',bottom:'auto','transform-origin':'center',translate:'none',rotate:'none',transform:`rotate(${s.angle}deg) scale(${s.scale}) scaleX(${(s.face<0?-1:1)*(.28+.72*Math.abs(s.face))})`};   // the sprite narrows through a turn but never flattens to a card
   for(const [k,v]of Object.entries(props))el.style.setProperty(k,v,'important');
   el.dataset.coryMotion=s.mode;
+  el.dataset.coryJab=(s.jab||0).toFixed(3);      // dig-thrust strength 0..1, read by the V17.42 fin-motion layer
+  el.dataset.turn=(1-Math.min(1,Math.abs(s.face))).toFixed(2);   // 0 = facing, 1 = mid-turn (tail bends harder)
+ }
+ /* Foraging pose (adults/juveniles). While digging: nose pitched down about 22-32 degrees with the tail
+    lifting, rhythmic dig thrusts (~1.7 per second) that dip the snout into the sand; eases in and out over
+    half a second so the pose never snaps. While hopping between spots: a slight head-down carriage. */
+ function forageAngle(s,t,dt){
+  const sgn=Math.sign(s.face)||1;
+  let want=0,jab=0;
+  if(s.age>=7&&!s.target&&s.el.classList.contains('v1712DeepForage')&&s.fEnd){
+   // plowing, not pecking: a moderate head-down carriage that drifts slowly and irregularly
+   // (two incommensurate slow waves), never a fast rhythmic bob
+   const e=t-s.fStart,left=s.fEnd-t,env=smooth(e/.9)*smooth(left/.9);
+   const slow=Math.sin(2*Math.PI*.42*e+s.fPh),wander=Math.sin(2*Math.PI*.17*e+s.fPh*2.3);
+   jab=(.5+.5*slow)*env;
+   want=(15+3.2*slow+2.2*wander)*env;
+  }else if(s.age>=7&&s.target){
+   const sp=Math.hypot(s.vx,s.vy);want=Math.min(1,sp/20)*(6+3*Math.sin(t*6.6+s.index*1.7));
+  }
+  // steer() pulls the angle back toward 0 every frame (rate 5), so aim past the target to settle on it
+  s.angle+=(want*1.83*sgn-s.angle)*Math.min(1,dt*6);      // rate 6 vs steer()'s pull of 5 -> equilibrium 6/11 of the aim, so aim 11/6 higher
+  s.jab=jab;s.dip=1.1*jab;
  }
  let last=now();
  function frame(){
@@ -7410,8 +7459,19 @@ body:has(.tank.waterChanging,.tank.persistentWaterActive) #v1712-test-dash{
     if(s.mode==='dash'){
      const d=s.dash,e=t-d.start;
      if(water(tank)){s.mode='return';s.el.classList.remove('v1712Dash');s.target=null;}
-     else if(e>=4){s.x=d.x;s.y=d.y;s.face=d.face;s.angle=0;s.mode='forage';s.wait=t+random(1,2);s.dashAt=t+random(60,180);s.el.classList.remove('v1712Dash');}
-     else{const u=e<1.8?smooth(e/1.8):e<2.15?1:1-smooth((e-2.15)/1.85);s.x=d.x;s.y=d.y+(s.el.offsetHeight*s.scale/2+14-d.y)*u;s.face=d.face;s.angle=(e<1.8?-65:e<2.15?0:65)*d.face*Math.sin(Math.PI*u);if(e>=1.8&&!d.bubbles){d.bubbles=true;bubbles(s);}draw(s);return;}
+     else if(e>=DASH.a+DASH.g+DASH.d){s.x=d.x;s.y=d.y;s.face=d.face;s.angle=0;s.mode='forage';s.wait=t+random(1,2);s.dashAt=t+random(60,180);s.el.classList.remove('v1712Dash');}
+     else{
+      // Air-breathing dash, after real Hoplosternum/corydoras footage: a fast start (hard acceleration, coasting into the
+      // surface), a brief gulp, then a gliding head-down return. The body follows the path tangent; the path arcs forward
+      // and back instead of being a dead-vertical line.
+      const a=dashPath(s,d,e),b=dashPath(s,d,e+.03),vx=(b.x-a.x)/.03,vy=(b.y-a.y)/.03,sp=Math.hypot(vx,vy);
+      let tgt=-28*d.face;                                                   // gulping posture: nose up
+      if(sp>10){const ph=d.face>0?Math.atan2(vy,vx):Math.atan2(-vy,-vx);tgt=clamp(ph*180/Math.PI,-72,72);}
+      const endEase=1-smooth((e-(DASH.a+DASH.g+DASH.d-.45))/.45);           // level out before handing back to foraging
+      s.x=a.x;s.y=a.y;s.face=d.face;s.angle+=(tgt*endEase-s.angle)*Math.min(1,dt*9);
+      if(e>=DASH.a&&!d.bubbles){d.bubbles=true;bubbles(s);}
+      draw(s);return;
+     }
     }
     if(s.mode==='return'){steer(s,s.x,s.base,dt,100);if(Math.abs(s.y-s.base)<1){s.mode='forage';s.dashAt=t+random(60,180)}draw(s);return;}
     if(g.school&&g.school.ids.includes(s.id)){
@@ -7430,9 +7490,18 @@ body:has(.tank.waterChanging,.tank.persistentWaterActive) #v1712-test-dash{
      s.target={x:clamp(home+random(-lane*(s.age<7?.10:.35),lane*(s.age<7?.10:.35)),s.radius,s.w-s.radius),y:s.base};
      s.el.classList.remove('v1712Rest','v1712DeepForage');
     }
-    if(s.target){steer(s,s.target.x,s.target.y,dt,s.age<7?6:20);if(Math.hypot(s.x-s.target.x,s.y-s.target.y)<2){s.target=null;s.wait=t+random(2,5);s.el.classList.add('v1712DeepForage')}}
+    if(s.target){
+     // Real corydoras cross the bottom in short hops, not a constant glide: quick burst, near-stop, burst.
+     const hop=s.age<7?1:.2+.8*Math.pow(Math.max(0,Math.sin(t*6.6+s.index*1.7)),1.4);
+     steer(s,s.target.x,s.target.y,dt,(s.age<7?6:34)*hop);
+     if(Math.hypot(s.x-s.target.x,s.y-s.target.y)<2){s.target=null;s.wait=t+random(2,5);s.fStart=t;s.fEnd=s.wait;s.fPh=random(0,6.28);s.el.classList.add('v1712DeepForage')}
+    }
+    else if(s.age>=7&&s.el.classList.contains('v1712DeepForage')){
+     // digging cory inch forward through the sand, snout down, instead of standing on the spot
+     steer(s,s.x+(Math.sign(s.face)||1)*14,s.base,dt,4);
+    }
     else{steer(s,s.x,s.base,dt,15)}
-    s.mode='forage';draw(s);
+    s.mode='forage';forageAngle(s,t,dt);draw(s);
    });
   });
   requestAnimationFrame(frame);
@@ -7625,10 +7694,12 @@ window.addEventListener('load',()=>setTimeout(()=>switchTankV8('main'),100),{onc
  function turn(s,target,dt){
  target=target<0?-1:1;
  if(!s.turn&&target!==Math.sign(s.face)){s.turn={from:Math.sign(s.face)||1,to:target,t:0};}
- if(!s.turn){s.turnBend=0;s.turnWidth=1;return false;}
- const tr=s.turn;tr.t+=dt;const u=Math.min(1,tr.t/1.35),arc=Math.sin(Math.PI*u);
- s.turnWidth=1-.32*arc;s.turnBend=arc*tr.from*8;s.face=u<.5?tr.from:tr.to;
- if(u>=1){s.turn=null;s.turnWidth=1;s.turnBend=0;}
+ if(!s.turn){s.turnBend=0;s.turnWidth=1;s.fv=Math.sign(s.face)||1;return false;}
+ // Same turn as the open-water fish: the drawn width eases through the turn (never below 30%) and swaps sides at the
+ // narrowest point, over ~1 s (a pleco is slower than a tetra); s.face stays the logical heading for the rest of the code.
+ const tr=s.turn;tr.t+=dt;const u=Math.min(1,tr.t/1),e=u*u*u*(u*(u*6-15)+10);
+ s.fv=tr.from+(tr.to-tr.from)*e;s.turnWidth=1;s.turnBend=0;s.face=u<.5?tr.from:tr.to;
+ if(u>=1){s.turn=null;s.fv=tr.to;}
  return true;
  }
 
@@ -7666,6 +7737,9 @@ window.addEventListener('load',()=>setTimeout(()=>switchTankV8('main'),100),{onc
  const desiredThrust=.72+.28*Math.pow(Math.sin(s.time*5.2+i),2);
  s.glide=(s.glide||0)+(desiredThrust-(s.glide||0))*(1-Math.exp(-5*dt));
  const thrust=blocked?0:s.glide;
+ // Crawl on the glass in real steps: speed swells through each power stroke and is zero during the hold
+ // (the stroke/hold timing above was computed but never applied, so the fish used to glide at constant speed).
+ const strokeGate=blocked?0:(s.time>=(s.strokeStart||0)&&s.time-(s.strokeStart||0)<(s.strokeDuration||.5)?Math.sin(Math.PI*strokeU):0);
  const caveActive=ready&&s.time>8;
  if(!blocked&&caveActive){
  s.time+=dt;s.glass=Math.max(0,s.glass-dt*.5);const caveTurning=turn(s,1,dt);s.angle+=clamp(-s.angle,-45*dt,45*dt);
@@ -7683,8 +7757,14 @@ window.addEventListener('load',()=>setTimeout(()=>switchTankV8('main'),100),{onc
  const tr=s.transition,u=clamp(1-s.wait/6,0,1),ease=u*u*u*(u*(u*6-15)+10);
  // Approach/leave the pane with continuous position and a gradual body pitch.
  s.x=tr.x+tr.dx*ease;s.y=tr.y+tr.dy*ease;
- s.angle=tr.angle+(tr.endAngle-tr.angle)*ease;
- s.glass=s.mode==='attach'?ease:1-ease;
+ // A real pleco docking on the glass does three things in order: it lifts its head (pitch), then rolls along its
+ // long axis to show the viewer its belly (the side sprite narrows, the belly sprite widens - swapped at the
+ // narrowest point instead of cross-fading two sprites into a ghost), then settles onto the pane. Detach plays
+ // the same story backwards. k = progress toward "attached" (0 free .. 1 on the glass).
+ const sm=q=>{q=clamp(q,0,1);return q*q*(3-2*q)},k=s.mode==='attach'?u:1-u;
+ const angFree=s.mode==='attach'?tr.angle:tr.endAngle,angGlass=s.mode==='attach'?tr.endAngle:tr.angle;
+ s.angle=angFree+(angGlass-angFree)*sm(k/.62);
+ s.glass=sm((k-.28)/.55);
  if(s.wait<=0){s.surface=s.mode==='attach'?'glass':'substrate';s.glass=s.surface==='glass'?1:0;s.mode='graze';s.wait=(s.surface==='glass'?rand(15,25):rand(6,12))*ancActivityScaleV17();s.transition=null;}
  }else if(s.mode!=='move'&&s.wait<=0){
  s.steps++;
@@ -7701,7 +7781,7 @@ window.addEventListener('load',()=>setTimeout(()=>switchTankV8('main'),100),{onc
  if(s.mode==='graze'&&s.surface==='glass'){
  // Rasp and advance together; each fish chooses its own nearby patch.
  if(!s.patch||s.patch.until<s.time){s.patch={x:clamp(s.x+rand(-65,65),lo,hi),y:clamp(s.y+rand(-30,22),base-55,base-22*scale),until:s.time+rand(5,9)};}
- const dx=s.patch.x-s.x,dy=s.patch.y-s.y,d=Math.hypot(dx,dy),speed=11*thrust;
+ const dx=s.patch.x-s.x,dy=s.patch.y-s.y,d=Math.hypot(dx,dy),speed=11*thrust*3.4*strokeGate;
  s.grazeSpeed=Math.min(speed,d*3);
  const step=Math.min(d,s.grazeSpeed*dt),nx=s.x+(d?dx/d*step:0),ny=s.y+(d?dy/d*step:0);
  const neighbor=[...states.values()].find(o=>o!==s&&o.tankId===tank.id&&o.surface==='glass'&&Math.hypot(nx-o.x,(ny-o.y)*.7)<48*scale);
@@ -7712,7 +7792,7 @@ window.addEventListener('load',()=>setTimeout(()=>switchTankV8('main'),100),{onc
 
  const dx=s.tx-s.x,dy=s.ty-s.y,d=Math.hypot(dx,dy);
  // Small bouts of motion separated by bracing; ease into and out of each step.
- const speed=Math.min(s.surface==='glass'?11:24,d*3)*thrust;
+ const speed=Math.min(s.surface==='glass'?11:24,d*3)*thrust*(s.surface==='glass'?3.4*strokeGate:1);
  const turning=s.surface==='substrate'&&turn(s,Math.abs(dx)>1?Math.sign(dx):Math.sign(s.face),dt);
  const step=turning?0:Math.min(d,speed*dt);if(d>.35){s.x+=dx/d*step;s.y+=dy/d*step;
  if(s.surface==='glass'){
@@ -7750,7 +7830,7 @@ window.addEventListener('load',()=>setTimeout(()=>switchTankV8('main'),100),{onc
  side.querySelector('.ancBodyPiece').style.transformOrigin='76px 46px';
  // Keep the female silhouette intact rather than hinging a cut-out tail.
  if(fish&&fish.sex==='F'&&!side.dataset.femaleFixed){side.dataset.femaleFixed='1';side.style.backgroundImage=side.dataset.originalImage;side.querySelector('.ancTailPiece').style.display='none';side.querySelector('.ancBodyPiece').style.display='none';}
- el.dataset.ancThrust=thrust.toFixed(3);
+ el.dataset.ancThrust=thrust.toFixed(3);el.dataset.ancStroke=strokeGate.toFixed(3);
  el.style.setProperty('--anc-mouth',s.surface==='glass'&&s.mode==='graze'?(.85+.15*Math.sin(s.time*7+i)):1);
  el.style.setProperty('--anc-glass',s.glass);el.style.setProperty('--anc-side',1-s.glass);
  // Free fish pass in front of the decor. Entry is clipped at the inside edge of the opening.
@@ -7759,7 +7839,7 @@ window.addEventListener('load',()=>setTimeout(()=>switchTankV8('main'),100),{onc
  if(rim){rim.style.cssText='position:absolute;pointer-events:none;width:160px;height:77px;z-index:45;left:'+cave.style.left+';top:'+cave.style.top+';mask-image:radial-gradient(ellipse 22px 20px at 32px 46px,transparent 97%,black 100%);';}
  const insideEdge=w*.72-21;
  const entryClip='inset(0 '+clamp(120-(60+(insideEdge-s.x)/scale),0,120)+'px 0 0)';
- const props={'clip-path':s.mode==='cave-enter'?entryClip:s.mode==='fanning'?'ellipse(20px 20px at 24px 38px)':'none','z-index':s.mode==='cave-enter'||s.mode==='fanning'?'44':'46',position:'absolute','transform-origin':'center',animation:'none',transition:'none',width:'120px',height:'70px',left:(s.x-60)+'px',top:(s.y-35)+'px',right:'auto',bottom:'auto',translate:'none',rotate:'none',transform:`rotate(${s.angle}deg) scale(${scale}) scaleX(${s.face})`};for(const[k,v]of Object.entries(props))el.style.setProperty(k,v,'important');
+ const props={'clip-path':s.mode==='cave-enter'?entryClip:s.mode==='fanning'?'ellipse(20px 20px at 24px 38px)':'none','z-index':s.mode==='cave-enter'||s.mode==='fanning'?'44':'46',position:'absolute','transform-origin':'center',animation:'none',transition:'none',width:'120px',height:'70px',left:(s.x-60)+'px',top:(s.y-35)+'px',right:'auto',bottom:'auto',translate:'none',rotate:'none',transform:`rotate(${s.angle}deg) scale(${scale}) scaleX(${(s.face<0?-1:1)*(s.turn ? (.3+.7*Math.abs(s.fv==null?1:s.fv)) : 1)})`};for(const[k,v]of Object.entries(props))el.style.setProperty(k,v,'important');
  el.dataset.ancMode=blocked?'rest':s.mode;el.dataset.ancSurface=s.surface;el.dataset.ancX=s.x;el.dataset.ancY=s.y;
  el.title=s.mode==='fanning'?'Male bristlenose · occupying cave and fanning · breeding readiness':`Ancistrus · ${s.mode==='move'?'moving':s.mode==='rest'?'resting':'grazing'} · ${s.surface==='glass'?'front glass':'substrate'}`;
  });tank.querySelectorAll('[data-anc-shadow]').forEach(sh=>{if(!els.some(el=>el.dataset.fishId===sh.dataset.ancShadow))sh.remove()});});
@@ -7999,21 +8079,21 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
   img.src=src;
  }
  // one frame of the fish at swim phase ph. amp = tail amplitude (fraction of body length), slow = 0..1 dorsal ripple
- function draw(c,r,ph,amp,slow,dors){
-  if(dors==null)dors=1;
+ function draw(c,r,ph,amp,slow,dors,nose){
+  if(dors==null)dors=1;nose=nose||0;
   const {base,W,H,x0,x1,BL,B,fx0,fx1,tipTop,has,pad}=r,g=c.getContext('2d');
   g.clearRect(0,0,c.width,c.height);g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';
-  const lam=1.15,A=amp*BL,cy=(r.y0+r.y1)/2,sw=2,wp=u=>ph-2*Math.PI*u/lam;
+  const lam=1.15,A=amp*BL,cy=(r.y0+r.y1)/2,sw=2,wp=u=>ph-2*Math.PI*u/lam,n=Math.ceil(W/sw);
   const wave=u=>A*(.04+.96*Math.pow(u,2.3))*Math.sin(wp(u));
-  for(let x=0;x<W;x+=sw){
-   const u=Math.min(1,Math.max(0,(x1-x)/BL)),dy=wave(u);
+  for(let i=0;i<n;i++){
+   const x=i*sw,u=Math.min(1,Math.max(0,(x1-x)/BL)),dy=wave(u)+(nose&&u<.13?nose*BL*(.13-u)/.13:0);   // nose: snout/barbels dip on a dig thrust
    let sy=1;if(u>.8){sy=1+.1*((u-.8)/.2)*Math.cos(wp(u)+.6);}          // caudal fin height breathes as it sweeps
-   const sTop=has&&x>=fx0-1&&x<=fx1+1?B:0;                             // fin columns: the tip above the back line is drawn below
+   const sTop=has&&x>=fx0-1&&x<=fx1+1?B:0;                              // fin columns: the tip above the back line is drawn below
    g.save();g.translate(0,pad+dy+cy*(1-sy));
    g.drawImage(base,x,sTop,sw,H-sTop,x,sTop*sy,sw,(H-sTop)*sy);
    g.restore();
   }
-  if(has){                                                              // dorsal fin: zero shear at the base, growing to the tip, trailing the body wave
+  if(has){                                                                       // dorsal fin: zero shear at the base, growing to the tip, trailing the body wave
    const uM=(x1-(fx0+fx1)/2)/BL,dyb=wave(uM),sh=(.03+.035*slow)*BL*dors,tipH=Math.max(1,B-tipTop),ax=Math.max(0,fx0-1),aw=Math.min(W,fx1+2)-ax;
    for(let y=Math.max(0,tipTop-1);y<B;y+=2){
     const hh=Math.min(2,B-y),dx=sh*Math.pow(Math.min(1,(B-y)/tipH),1.6)*Math.sin(wp(uM)-.9);
@@ -8044,7 +8124,9 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
     fish: a resting pleco is STILL (no idle sway); it undulates only while crawling, and beats
     the tail harder while a male fans eggs. --- */
  const st0=document.createElement('style');
- st0.textContent='.ancSide.finWarp{background-image:none!important}.ancSide.finWarp .ancBodyPiece,.ancSide.finWarp .ancTailPiece{display:none!important}.ancSide.finWarp>canvas{position:absolute;left:0;display:block;pointer-events:none}';
+ // the old CSS wobble for cory foraging is replaced by the pitch/dig-thrust pose driven from the cory loop
+ // (Ancistrus docking: the sprites no longer cross-fade through --anc-side/--anc-glass opacity; the canvases swap at the narrowest point)
+ st0.textContent='.tank .modelFish[data-species="cory"].v1712Dash canvas.realFishAsset{animation:none!important}.ancSide.finWarp{opacity:1!important}.ancGlass.finWarpG{opacity:1!important}.tank .modelFish[data-species="cory"].v1712DeepForage canvas.realFishAsset{animation:none!important}'+'.ancSide.finWarp{background-image:none!important}.ancSide.finWarp .ancBodyPiece,.ancSide.finWarp .ancTailPiece{display:none!important}.ancSide.finWarp>canvas{position:absolute;left:0;display:block;pointer-events:none}';
  document.head.appendChild(st0);
  const ancSheet={img:null,loading:false};
  function ancSheetImg(url){
@@ -8073,6 +8155,36 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
   const k=(r.H+r.pad*2)/r.H;
   c.style.setProperty('height',(k*100)+'%');c.style.setProperty('width','100%');c.style.setProperty('top',(-100*r.pad/r.H)+'%');
   side.classList.add('finWarp');side.appendChild(c);
+  adoptAncGlass(art,url[1],sx,sheetCss);
+ }
+ // front-glass (belly) view: same sheet, cell one row lower. Its oral disc keeps its own CSS pulse (::after),
+ // so only the main image is replaced; the ::after gets the sheet back through one shared rule.
+ function adoptAncGlass(art,url,sx,sheetCss){
+  const gl=art.querySelector('.ancGlass');if(!gl||gl.classList.contains('finWarpG'))return;
+  const key='ancg|'+sx+'|138';let r=cache.get(key);
+  if(r===undefined){try{r=ancRec(key,sx,138,sheetCss);}catch(e){console.error('AFNICA fin motion (anc glass)',e);cache.set(key,false);r=false;}}
+  if(!r)return;
+  if(!ancSheet.gStyle){const s=document.createElement('style');s.textContent='.ancGlass.finWarpG{background-image:none!important}.ancGlass.finWarpG::after{background-image:url("'+url+'")!important;opacity:0}.ancGlass.finWarpG.gOn::after{opacity:1}.ancGlass.finWarpG>canvas{position:absolute;left:0;display:block;pointer-events:none;visibility:hidden}';document.head.appendChild(s);ancSheet.gStyle=s;}
+  const c=document.createElement('canvas');c.width=r.W;c.height=r.H+r.pad*2;c.dataset.wk=key;c.setAttribute('aria-hidden','true');
+  const k=(r.H+r.pad*2)/r.H;
+  c.style.setProperty('height',(k*100)+'%');c.style.setProperty('width','100%');c.style.setProperty('top',(-100*r.pad/r.H)+'%');
+  gl.classList.add('finWarpG');gl.appendChild(c);
+ }
+ /* Belly view on the glass. Lateral undulation shows as a left-right sway of the tail (the body is rotated head-up by the
+    glass logic), and the pectoral fins "walk": upper and lower halves about the body axis are scaled in opposite phase in
+    the fin zone, one step per crawl stroke. Held still between strokes, like a real pleco gripping with its mouth. */
+ function drawVentral(c,r,ph,amp,step,st){
+  const {base,W,H,x0,x1,BL,pad}=r,g=c.getContext('2d');
+  g.clearRect(0,0,c.width,c.height);g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';
+  const A=amp*BL,cy=(r.y0+r.y1)/2,sw=2;
+  for(let x=0;x<W;x+=sw){
+   const u=Math.min(1,Math.max(0,(x1-x)/BL)),dy=A*(.03+.97*Math.pow(u,2.6))*Math.sin(ph-2*Math.PI*u/1.4);
+   const bump=u>.14&&u<.5?Math.sin(Math.PI*(u-.14)/.36):0,sa=1+step*.08*bump*Math.sin(st),sb=1+step*.08*bump*Math.sin(st+Math.PI);
+   g.save();g.translate(0,pad+dy);
+   g.drawImage(base,x,0,sw,cy,x,cy-cy*sa,sw,cy*sa);
+   g.drawImage(base,x,cy,sw,H-cy,x,cy,sw,(H-cy)*sb);
+   g.restore();
+  }
  }
  let last=performance.now();
  function tick(now){
@@ -8086,13 +8198,32 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
      if(!s){const fe=c.closest('.modelFish');if(!fe)return;s={ph:Math.random()*6.283,v:0,px:null,py:null,fe};states.set(c,s);}
      if(s.bad||!s.fe.isConnected||s.fe.classList.contains('deadFish'))return;
      try{
+     // roll onto the glass: the side view narrows to a sliver, then the belly view takes over (see adoptAncGlass)
+     const gl=parseFloat(s.fe.style.getPropertyValue('--anc-glass'))||0;
+     c.style.visibility=gl<.5?'visible':'hidden';c.style.transform=gl>0&&gl<.5?'scaleY('+(1-1.4*gl).toFixed(3)+')':'';
      const sp=Math.min(1,speedOf(s,s.fe,dt)/26),fan=s.fe.classList.contains('ancFanning');
      // still when resting, gentle undulation when crawling, vigorous tail while fanning eggs
      const move=Math.min(1,Math.max(0,(sp-.08)/.5)),k=fan?1:move;
      const freq=fan?2.4:.9+1.6*sp,amp=fan?.05:.032*move;
      s.ph+=2*Math.PI*freq*dt;
-     draw(c,r,s.ph,amp,1-sp,fan?.8:move);
+     draw(c,r,s.ph,amp,1-sp,fan?.8:move,0);
      }catch(e){s.bad=true;console.error('AFNICA fin motion (anc fish)',e);}   // one bad fish must not stop the others
+    });
+    document.querySelectorAll('.tank .ancGlass.finWarpG>canvas').forEach(c=>{       // Ancistrus belly view (front glass)
+     const r=cache.get(c.dataset.wk);if(!r)return;
+     let s=states.get(c);
+     if(!s){const fe=c.closest('.modelFish');if(!fe)return;s={ph:Math.random()*6.283,st:0,g:0,fe};states.set(c,s);}
+     if(s.bad||!s.fe.isConnected||s.fe.classList.contains('deadFish'))return;
+     const gl=parseFloat(s.fe.style.getPropertyValue('--anc-glass'))||0;
+     c.style.visibility=gl>=.5?'visible':'hidden';c.style.transform=gl>=.5&&gl<1?'scaleY('+(.3+1.4*(gl-.5)).toFixed(3)+')':'';
+     c.parentElement.classList.toggle('gOn',gl>=.5);                                   // the oral-disc pulse (::after) only shows with the belly view
+     if(!(gl>.02))return;                                                            // only redraw while it is actually on the glass
+     try{
+      const gate=+s.fe.dataset.ancStroke||0;                                          // 0..1 through each crawl stroke, 0 while holding
+      s.g+=(gate-s.g)*Math.min(1,dt*6);s.st+=10.7*gate*dt;                            // ~one pectoral step per stroke
+      s.ph+=2*Math.PI*(.7+1.3*s.g)*dt;
+      drawVentral(c,r,s.ph,.032*s.g,s.g,s.st);
+     }catch(e){s.bad=true;console.error('AFNICA fin motion (anc glass)',e);}
     });
     document.querySelectorAll('.tank img[data-wk]').forEach(img=>{
      const key=img.dataset.wk,r=cache.get(key);
@@ -8105,9 +8236,14 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
      if(s.bad||!s.fe.isConnected||s.fe.classList.contains('deadFish'))return;      // dead fish keep their last frame
      try{
       const sp=Math.min(1,speedOf(s,s.fe,dt)/s.cfg.v);              // 0 = drifting, 1 = full speed
-      const freq=(1.2+3.6*sp)*s.cfg.f;                               // tail beats per second
+      const dig=s.fe.classList.contains('v1712DeepForage')&&!(+s.fe.dataset.coryJab<0);
+      const jab=dig?+s.fe.dataset.coryJab||0:0;
+      // digging cory: body planted, only a fin quiver in the tail, dorsal folded, snout dips with each thrust
+      const turn=+s.fe.dataset.turn||0;                              // 0..1, peaks mid-turn: the head leads, the tail bends and lags
+      const rush=s.fe.classList.contains('v1712Dash');                // cory air dash: hard, fast tail beats
+      const freq=(rush?6.5:dig?2.2:(1.2+3.6*sp)*s.cfg.f)*(1+.6*turn); // tail beats per second
       s.ph+=2*Math.PI*freq*dt;
-      draw(c,r,s.ph,(.02+.035*sp)*s.cfg.a,1-sp);
+      draw(c,r,s.ph,(rush?.07:dig?.012:(.02+.035*sp)*s.cfg.a)*(1+2.2*turn),dig?.2:rush?0:1-sp,dig?.3:rush?.2:1,dig?.010*jab+.004*Math.sin(s.ph*1.3):0);
      }catch(e){s.bad=true;console.error('AFNICA fin motion (fish)',e);}         // one bad fish must not stop the others
     });
    }catch(e){console.error('AFNICA fin motion',e);}
