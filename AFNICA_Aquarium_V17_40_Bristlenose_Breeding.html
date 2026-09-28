@@ -3417,11 +3417,11 @@ anc:{
 const S={
 guppy:{name:'Guppy',adult:12,rarity:'Common',price:55,icon:'🐠',lore:"Poecilia reticulata, first described from Trinidad in 1859 and named after collector Robert Guppy. Wild guppies live in streams across Venezuela, the Guyanas and Trinidad. Populations under heavy predation mature earlier and smaller than those in safer waters — one of the best-studied examples of evolution in the wild."},
 molly:{name:'Molly Black',adult:13,rarity:'Common',price:70,icon:'⚫',lore:"Poecilia sphenops, native to rivers, ponds and coastal lagoons from Mexico to Colombia. Mollies tolerate everything from fresh to brackish and even full seawater, and in the wild often graze algae from rocks alongside their livebearing relatives."},
-platy:{name:'Platy Yellow',adult:13,rarity:'Common',price:65,icon:'🟡',lore:"Xiphophorus maculatus, from slow streams and roadside ditches of southern Mexico, Guatemala and Honduras. Platies split from the swordtail branch of their genus long ago and never regrew the sword — an easygoing livebearer that breeds almost as readily in a home tank as in the wild."},
+platy:{name:'Platy Yellow',adult:13,rarity:'Common',price:60,icon:'🟡',lore:"Xiphophorus maculatus, from slow streams and roadside ditches of southern Mexico, Guatemala and Honduras. Platies split from the swordtail branch of their genus long ago and never regrew the sword — an easygoing livebearer that breeds almost as readily in a home tank as in the wild."},
 xipho:{name:'Xipho',adult:14,rarity:'Common',price:80,icon:'🗡️',lore:"Xiphophorus hellerii, the green swordtail, native to fast streams of Mexico and Central America. Named for the male's elongated lower tail lobe, used to signal size and health to rivals and mates rather than as a weapon."},
-neon:{name:'Neon Tetra',adult:12,rarity:'Uncommon',price:75,icon:'🔵',lore:"Paracheirodon innesi, from the soft, acidic blackwater tributaries of the Amazon basin in Peru, Colombia and Brazil. Neons are compulsive shoalers — a lone fish grows visibly stressed, and the species is rarely content in groups smaller than six."},
-cory:{name:'Corydoras',adult:14,rarity:'Uncommon',price:95,icon:'🐟',lore:"An armoured catfish of the genus Corydoras, native to shallow, slow-moving South American waters from the Amazon basin down to Argentina. Sensitive barbels sift sand for food, and most species shoal tightly and will dart to the surface to gulp air when oxygen runs low."},
-anc:{name:'Ancistrus',adult:16,rarity:'Rare',price:140,icon:'🖤',lore:"A bristlenose pleco of the genus Ancistrus, native to clear, fast-flowing rivers of South America and Panama. Nocturnal and herbivorous, it spends the day pressed flat against wood, rock or glass, grazing algae, and becomes far more active after dark. Males grow fleshy bristles on the snout and guard cave nests — sometimes several broods at once — fanning eggs for days without eating."}
+neon:{name:'Neon Tetra',adult:12,rarity:'Uncommon',price:50,icon:'🔵',lore:"Paracheirodon innesi, from the soft, acidic blackwater tributaries of the Amazon basin in Peru, Colombia and Brazil. Neons are compulsive shoalers — a lone fish grows visibly stressed, and the species is rarely content in groups smaller than six."},
+cory:{name:'Corydoras',adult:14,rarity:'Uncommon',price:150,icon:'🐟',lore:"An armoured catfish of the genus Corydoras, native to shallow, slow-moving South American waters from the Amazon basin down to Argentina. Sensitive barbels sift sand for food, and most species shoal tightly and will dart to the surface to gulp air when oxygen runs low."},
+anc:{name:'Ancistrus',adult:16,rarity:'Rare',price:240,icon:'🖤',lore:"A bristlenose pleco of the genus Ancistrus, native to clear, fast-flowing rivers of South America and Panama. Nocturnal and herbivorous, it spends the day pressed flat against wood, rock or glass, grazing algae, and becomes far more active after dark. Males grow fleshy bristles on the snout and guard cave nests — sometimes several broods at once — fanning eggs for days without eating."}
 };
 let st=JSON.parse(localStorage.getItem('afnicaFreshRestart1789317515442')||'null')||{started:true,day:1,coins:300,eggs:0,fish:Array.from({length:5},(_,i)=>({id:'natural-cory-'+i,species:'cory',sex:i%2?'F':'M',age:14,health:100,dead:false,disease:null})),fry:[],breed:null,firstBreed:false,sales:0,log:'',tankHealth:100,daily:{main:{feed:false,water:false,clean:false},fry:{feed:false,water:false,clean:false}},tankHealthMain:100,tankHealthFry:100,daysNoCleanMain:0,daysNoCleanFry:0,food:20,waterProcess:false,cleanProcess:false};
 /* V17.12 showcase migration: replace saved Neon Tetras with Corydoras so the
@@ -5714,7 +5714,9 @@ function rarityV9(k){
  return 'common';
 }
 function sellValueV9(f){
- let base={guppy:55,molly:70,platy:65,xipho:80,neon:90,cory:120,anc:180}[f.species]||50;
+ // Single source of truth: S[species].price is the market value of a healthy
+ // B-grade adult. Order rewards and the FishDex read the same number.
+ let base=(S[f.species]&&S[f.species].price)||50;
  let healthBonus=Math.round(base*Math.max(0,(f.health-70))/100*.35);
  let mutationBonus=ensureGenesV10(f).mutation?1.35:1;
  return Math.round((base+healthBonus)*geneticSellMultiplierV10(f)*mutationBonus);
@@ -5841,7 +5843,7 @@ function v8Nav(a){
 }
 function switchTankV8(k){v8Tank=k;renderV8('home')}
 function discoveredV8(){let x=new Set();st.fish.concat(st.fry,st.breederTank).forEach(f=>{if(knownSpecies(f))x.add(f.species)});return x}
-function showSpeciesLoreV17(k){const sp=S[k];if(!sp)return;pop(sp.icon+' '+sp.name.toUpperCase(),`<p style="text-align:left;line-height:1.5">${sp.lore||'No field notes yet for this species.'}</p>`,'CLOSE');}
+function showSpeciesLoreV17(k){const sp=S[k];if(!sp)return;pop(sp.icon+' '+sp.name.toUpperCase(),`<p style="text-align:left;line-height:1.5">${sp.lore||'No field notes yet for this species.'}</p><p style="text-align:left;opacity:.85;margin-top:10px">Market value · 🪙 ${sp.price} <small>(healthy B-grade adult)</small></p>`,'CLOSE');}
 // Shared by the dex grid and the growth-models preview: the "real" per-stage/sex
 // asset (same images already shown live in the tanks) boxed to a fixed size.
 // Ancistrus uses a fixed-size CSS sprite (.ancArt, 120x70) instead of a scalable
@@ -5921,7 +5923,8 @@ function generateOrdersV10(){
    let k=species[(today+i*2)%species.length];
    let minRank=1+((today+i)%4);
    let qty=1+((today+i)%3);
-   let reward=Math.round(({guppy:90,molly:110,platy:105,xipho:125,neon:145,cory:190,anc:280}[k])*qty*(.8+minRank*.45));
+   // Customer contracts pay about 1.6x the quick-sell value of the same fish.
+   let reward=Math.round(S[k].price*1.6*qty*(.8+minRank*.45));
    st.marketOrders.push({id:`${today}-${i}`,cycle:today,species:k,minRank,qty,reward});
  }
  save();
