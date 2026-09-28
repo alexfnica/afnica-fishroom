@@ -801,6 +801,7 @@ button.danger small{color:#fff!important}
 
 .soundToggle{border:1px solid #ffffff18;background:#0d2b38;color:#fff;border-radius:16px;padding:6px 8px;font-size:11px;font-weight:900}
 .soundToggle.off{opacity:.5}
+.saveExportBtn{border:1px solid #ffffff18;background:#0d2b38;color:#fff;border-radius:16px;padding:6px 8px;font-size:11px;font-weight:900;cursor:pointer}
 
 
 /* V15 SIX TANK FISHROOM */
@@ -5808,9 +5809,25 @@ function toggleSoundV141(){
 function soundButtonV141(){return `<button class="soundToggle ${st.soundOn?'':'off'}" onclick="toggleSoundV141()">${st.soundOn?'🔊':'🔇'}</button>`}
 document.addEventListener('pointerdown',()=>{if(st.soundOn){audioReadyV141();startAmbientV141()}},{once:true});
 
+// Download the current save as a JSON file so progress can be backed up or moved
+// to another browser/device. The wrapper records the localStorage key and game
+// version so a future import can validate what it is loading.
+function exportSaveV17(){
+ try{
+  const now=new Date(),p=n=>String(n).padStart(2,'0');
+  const stamp=now.getFullYear()+p(now.getMonth()+1)+p(now.getDate())+'-'+p(now.getHours())+p(now.getMinutes());
+  const payload={game:'AFNICA Aquarium',version:'V17.40',storageKey:'afnicaFreshRestart1789317515442',exportedAt:now.toISOString(),state:st};
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download='afnica-save-day'+st.day+'-'+stamp+'.json';
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  toast('Save exported · day '+st.day);
+ }catch(e){console.error('AFNICA save export',e);toast('Could not export save');}
+}
 function v8Top(){
  let need=xpNeededV9(st.playerLevel);
- return `<div class="v8top"><div class="v8brand"><span>AFNICA</span> AQUARIUM</div><div class="v8money"><div class="v8pill">⭐ L${st.playerLevel}</div><div class="v8pill">🪙 ${st.coins}</div><div class="v8pill">🍽️ ${st.food}</div><div class="v8pill">🧪 ${st.growthBoosters}</div>${soundButtonV141()}</div></div>`;
+ return `<div class="v8top"><div class="v8brand"><span>AFNICA</span> AQUARIUM</div><div class="v8money"><div class="v8pill">⭐ L${st.playerLevel}</div><div class="v8pill">🪙 ${st.coins}</div><div class="v8pill">🍽️ ${st.food}</div><div class="v8pill">🧪 ${st.growthBoosters}</div>${soundButtonV141()}<button class="saveExportBtn" title="Export save file" onclick="exportSaveV17()">💾</button></div></div>`;
 }
 function v8Nav(a){
  return `<div class="v8nav v9Nav" style="grid-template-columns:repeat(6,1fr)!important">
