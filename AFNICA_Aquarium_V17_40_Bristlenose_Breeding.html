@@ -8518,6 +8518,10 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
     ->  juveniles (2-9 cm)  ->  adults (9-12 cm). Game ages (days): fry <3, juvenile 3-16, adult >= S.anc.adult (16). */
  const ANC_FRY_END=3;                                                          // game days as free-swimming fry; adult = S.anc.adult (16)
  const ANC_SIZE=[[0,.085],[1,.11],[3,.17],[6,.3],[10,.55],[16,1]];              // age (game days) -> length relative to the adult sprite
+ // The four raw Ancistrus PNGs in REAL_FISH_ASSETS_V154 (dark, white-dotted) are NOT the model used in the tanks or the
+ // FishDex (that is the articulated brown sprite, ancGraphicV1719). Make sure nothing can pick them up by accident.
+ const _realAsset=realAssetV154;
+ realAssetV154=function(f){return f&&f.species==='anc'?null:_realAsset(f);};
  const _sizeFor=sizeFor;
  sizeFor=function(f){
   if(f&&f.species==='anc'&&f.age<S.anc.adult){
