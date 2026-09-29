@@ -14,7 +14,9 @@ rest = a[3:]
 for i in range(0, len(rest) - 3, 4):
     x0, y0, x1, y1 = map(int, rest[i:i + 4]); rgb[y0:y1, x0:x1] = 1.0
 lum = rgb @ np.array([.299, .587, .114], np.float32)
-light = lum > .42
+WHITE = LIGHTEN < 0                                        # pale / silvery fish: only near-white counts as background
+if WHITE: LIGHTEN = 0.0
+light = (lum > .88) & ((rgb.max(-1) - rgb.min(-1)) < .12) if WHITE else lum > .42
 bg = np.zeros_like(light)
 bg[0, :] = light[0, :]; bg[-1, :] = light[-1, :]; bg[:, 0] = light[:, 0]; bg[:, -1] = light[:, -1]
 for _ in range(4000):                                     # flood fill through light pixels
@@ -28,6 +30,8 @@ alpha = np.where(bg, np.clip((.78 - lum) / .36, 0, 1), 1.0).astype(np.float32)
 # the grey gradient under the image is not white: estimate the local background brightness per row and use it
 rowbg = np.array([np.percentile(lum[y][bg[y]], 60) if bg[y].any() else 1.0 for y in range(H)], np.float32)[:, None]
 alpha = np.where(bg, np.clip((rowbg - .06 - lum) / (rowbg * .55), 0, 1), alpha)
+if WHITE:                                                  # narrow soft band just below white: clear fins stay see-through, body opaque
+    alpha = np.where(bg, np.clip((rowbg - .015 - lum) / .10, 0, 1), 1.0).astype(np.float32)
 # un-mix the background from semi-transparent edge pixels (colour decontamination)
 bgc = np.repeat(rowbg[..., None], 3, -1) * np.ones_like(rgb)
 a3 = np.maximum(alpha, 1e-3)[..., None]
