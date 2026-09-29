@@ -43,9 +43,9 @@ if SEX == 'M':
     xa, xb2 = X(118), X(210)
     inD = (xx > xa) & (xx < xb2) & (yy < ytop(xx) + 1)
     h = np.clip((ytop(xx) - yy) / (48 * k), 0, 1.6)       # height above the back, 0..1 over the fin
-    grow = 1.08
+    grow = 1.42                                           # video: males carry a clearly larger, sail-like dorsal
     ys = ytop(xx) - (ytop(xx) - yy) / grow
-    xs = xx - (xx - xa) * .05 * h                          # rear rays swept back further -> pointed rear tip
+    xs = xx - (xx - xa) * .12 * h                          # rear rays swept back further -> pointed rear tip
     d = sample(base, xs, ys)
     wD = sm((xx - xa) / (6 * k)) * sm((xb2 - xx) / (6 * k))
     S = np.where((inD)[..., None], d * np.stack([np.ones_like(wD)] * 3 + [wD], -1) + base * (1 - wD)[..., None] * 0, S)
@@ -69,6 +69,18 @@ if SEX == 'M':
     g[..., 3] = np.clip(1.25 - np.abs(tt), 0, 1) * sm((1.02 - s) / .06) * sm((s + .04) / .08) * .96
     g[..., 3] *= inG
     S = over(S, g)
+
+# ---- 2b. molly build: a deep, stocky body with a high back and a thick caudal peduncle (the source photo is too
+#          slim, it read as a guppy). Stretch vertically about the body's centre line, most at mid-body. -----------
+DEEP = float(a[5]) if len(a) > 5 else .30
+src = S.copy()
+xf = (xx - PL) / k                                        # back to female-photo x
+cyl = Y(83.5 - (np.clip(xf, 105, 330) - 105) / 225 * 11)  # centre line rises slightly toward the head
+bodyU = np.clip((xf - 105) / 225, 0, 1)
+f = 1 + DEEP * np.clip(np.sin(np.pi * bodyU), 0, 1) ** 1.1 + .15 * np.exp(-((xf - 112) / 22) ** 2)   # mid-body hump + thick peduncle
+f = np.where(xf < 105, 1 + (f - 1) * sm((xf - 70) / 35), f)
+f = 1 + (f - 1) * sm((292 - xf) / 40)                        # the head (eye at x~290) keeps its shape                         # fade out into the tail
+S = sample(src, xx, cyl + (yy - cyl) / f)
 
 # ---- 3. lyretail caudal (moderate) ---------------------------------------------------------------------------
 xb, cy, half = X(105), Y(83.5), 53.5 * k                  # peduncle, centre line, fin half height
