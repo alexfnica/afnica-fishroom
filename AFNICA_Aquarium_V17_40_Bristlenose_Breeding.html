@@ -7491,7 +7491,8 @@ body:has(.tank.waterChanging,.tank.persistentWaterActive) #v1712-test-dash{
     if(!s.target&&t>=s.wait){
      const lane=s.w/all.length;
      const home=(s.index+.5)*lane;
-     s.target={x:clamp(home+random(-lane*(s.age<7?.10:.35),lane*(s.age<7?.10:.35)),s.radius,s.w-s.radius),y:s.base};
+     const wt=window.coryWaferTargetV1743?window.coryWaferTargetV1743(tank,s,t):null;   // a landed spirulina wafer beats wandering
+     s.target=wt?{x:clamp(wt.x,s.radius,s.w-s.radius),y:s.base}:{x:clamp(home+random(-lane*(s.age<7?.10:.35),lane*(s.age<7?.10:.35)),s.radius,s.w-s.radius),y:s.base};
      s.el.classList.remove('v1712Rest','v1712DeepForage');
     }
     if(s.target){
@@ -7775,6 +7776,8 @@ window.addEventListener('load',()=>setTimeout(()=>switchTankV8('main'),100),{onc
  el.classList.toggle('ancFanning',s.mode==='fanning'&&!blocked);el.classList.toggle('ancInCave',caveActive&&s.mode==='fanning');
  if(cave){cave.dataset.occupied=String(s.mode==='fanning');cave.title=ready?'Breeding readiness · day '+(cycleDay+1)+' of 3':'Driftwood breeding cave · next readiness in '+(15-cycleDay)+' game days';}
  if(!blocked&&!caveActive){s.time+=dt;s.wait-=dt;
+ // a spirulina wafer in the tank takes priority over ordinary wandering (see V17.43 wafer block)
+ const wafBusy=window.ancWaferStepV1743?window.ancWaferStepV1743(tank,el,s,dt,{lo,hi,base,scale,turn,thrust,clamp,rand}):false;
  /* V17.43 glass route. A pleco can't lift off the sand and appear flat on the front pane in mid-tank. It walks to a
     side wall, climbs it head-up (seen from the front that is its profile - the side sprite, belly against the wall),
     then works round the corner onto the front pane, which is the only place the roll to the belly view happens.
@@ -7782,7 +7785,7 @@ window.addEventListener('load',()=>setTimeout(()=>switchTankV8('main'),100),{onc
     toWall = walking to the wall, toEdgeG = crawling along the front pane to the corner. */
  const sm=q=>{q=clamp(q,0,1);return q*q*q*(q*(q*6-15)+10)};              // smootherstep: no velocity or acceleration jump at phase edges
  const inset=Math.max(0,lo-wallLo);                                 // how far the centre moves when the body stands up / rounds the corner
- if(s.mode==='toWall'){
+ if(wafBusy){/* feeding on a wafer */}else if(s.mode==='toWall'){
   const wall=s.wall,gx=wall<0?lo:hi,dx=gx-s.x;s.angle+=clamp(-s.angle,-40*dt,40*dt);
   const turning=turn(s,wall,dt),step=turning?0:Math.min(Math.abs(dx),Math.min(24,Math.abs(dx)*3+6)*thrust*dt);
   s.x+=Math.sign(dx)*step;
@@ -8162,7 +8165,7 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
 (()=>{
  const MAXW=260,cache=new Map(),loading=new Set(),states=new WeakMap();
  // per-species tuning: f = beat-rate multiplier, a = amplitude multiplier, v = speed (px/s) that counts as full speed
- const CFG={guppy:{f:1.15,a:1,v:70},molly:{f:.9,a:.9,v:36},platy:{f:.95,a:.95,v:44},xipho:{f:1,a:.6,v:40},neon:{f:1.2,a:.9,v:72},cory:{f:1,a:.7,v:45}};
+ const CFG={guppy:{f:1.15,a:1,v:70},molly:{f:.9,a:.9,v:36},platy:{f:.95,a:.95,v:44},xipho:{f:1,a:.6,v:40},neon:{f:.7,a:.4,v:72},cory:{f:1,a:.7,v:45}};
  function analyse(img){
   const iw=img.naturalWidth||img.width,ih=img.naturalHeight||img.height;   // works for <img> and for a cropped canvas
   const sc=Math.min(1,MAXW/iw),W=Math.max(8,Math.round(iw*sc)),H=Math.max(8,Math.round(ih*sc));
@@ -8455,11 +8458,16 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
  v16UpdateFish=function(el,state,now){
   try{
    if(state.preset&&state.preset.style!=='school'){
-    const t=foodTarget(el,state,now);
-    if(t){
+    let t=foodTarget(el,state,now);if(!t&&window.waferTargetV1743)t=window.waferTargetV1743(el,state,now);
+    if(t&&t.hover){                                                       // over the wafer: hold still and peck at it
+     state.mode='pause';state.pauseUntil=Math.max(state.pauseUntil||0,now+700);
+     const p0=state.preset;state.preset=Object.assign({},p0,{bobAmp:10,bobSpeed:9});try{_upd(el,state,now);}finally{state.preset=p0;}
+     return;
+    }
+    else if(t){
      state.mode='swim';state.tx=t.x;state.ty=t.y;
-     const p0=state.preset,m=(BURST[p0.style]||1.5);
-     state.preset=Object.assign({},p0,{cruise:p0.max*m,max:p0.max*m,accel:p0.accel*(p0.style==='heavy'?4:2.6)});
+     const p0=state.preset,m=t.slow?1.2:(BURST[p0.style]||1.5);
+     state.preset=Object.assign({},p0,{cruise:p0.max*m,max:p0.max*m,accel:p0.accel*(t.slow?1.6:(p0.style==='heavy'?4:2.6))});
      try{_upd(el,state,now);}finally{state.preset=p0;}
      return;
     }
@@ -8472,18 +8480,18 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
  const _neon=v168UpdateNeon;
  v168UpdateNeon=function(el,state,now,dt){
   try{
-   const t=foodTarget(el,state,now);
+   let t=foodTarget(el,state,now);if(!t&&window.waferTargetV1743){t=window.waferTargetV1743(el,state,now);}
    if(t){
     const b=v16Bounds(el,state);
     if(b){
-     const p=state.preset,mx=p.max*1.55,dx=t.x-state.x,dy=t.y-state.y,dist=Math.max(1,Math.hypot(dx,dy));
-     const sp=Math.min(mx,dist*5+28),blend=1-Math.exp(-p.accel*3*dt);
+     const p=state.preset,mx=p.max*(t.slow?.95:1.55),dx=t.x-state.x,dy=t.y-state.y,dist=Math.max(1,Math.hypot(dx,dy));
+     const sp=Math.min(mx,t.hover?dist*4:dist*5+28),blend=1-Math.exp(-p.accel*3*dt);
      state.vx=v16Lerp(state.vx,dx/dist*sp,blend);state.vy=v16Lerp(state.vy,dy/dist*sp*.9,blend);
      state.x=v16Clamp(state.x+state.vx*dt,b.minX,b.maxX);state.y=v16Clamp(state.y+state.vy*dt,b.minY,b.maxY);
      if(Math.abs(state.vx)>3)state.facing=state.vx>=0?1:-1;
      state.tx=t.x;state.ty=t.y;state.mode='feed';
      const t_=now/1000,speedNorm=v16Clamp(Math.hypot(state.vx,state.vy)/mx,0,1);
-     const bob=Math.sin(t_*p.bobSpeed+state.phase)*p.bobAmp*(.28+.72*speedNorm),tilt=v16Clamp(state.vy*.08,-p.tilt,p.tilt),sx=v17TurnScale(state,dt,el)*state.scale;
+     const bob=Math.sin(t_*(t.hover?9:p.bobSpeed)+state.phase)*p.bobAmp*(t.hover?10:1)*(.28+.72*speedNorm),tilt=v16Clamp(state.vy*.08,-p.tilt,p.tilt),sx=v17TurnScale(state,dt,el)*state.scale;
      el.style.transform=`translate3d(${state.x.toFixed(2)}px,${(state.y+bob).toFixed(2)}px,0) rotate(${tilt.toFixed(2)}deg) scaleX(${sx.toFixed(3)}) scaleY(${state.scale.toFixed(3)})`;
      el.classList.add('v16Bound');
      return true;
@@ -8492,6 +8500,149 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
   }catch(e){console.error('AFNICA neon feeding',e);}
   return _neon.apply(this,arguments);
  };
+})();
+</script><script>
+/* ================= V17.43 SPIRULINA WAFER =================
+   A sinking spirulina tablet for the bristlenose. The player buys wafers in the Shop and drops one with the WAFER button
+   on a tank. It sinks slowly, lands on the substrate and slowly softens. Ancistrus on the sand notice it, walk to it a
+   little faster than usual (no burst - they are slow, heavy fish), turn their mouth onto it and rasp until they are full.
+   Once it lies on the bottom the other fish drift down to nibble at it as well, some more keen than others. */
+(function(){
+ const WAFERS=window.WAFERS_V1743={};                                   // tank key -> [{id,x,y,vy,landed,eaten,el}]
+ const clamp=(v,a,b)=>v<a?a:v>b?b:v,rand=(a,b)=>a+Math.random()*(b-a);
+ const INTEREST={guppy:.9,molly:.9,platy:.9,xipho:.8,neon:.8,cory:1};              // almost every fish comes to pick at it
+ // Corydoras: walk to the wafer along the bottom and dig at it in short bouts (the cory system calls this when it picks a target).
+ window.coryWaferTargetV1743=function(tank,s,t){
+  const key=String(tank.id||'').replace(/^tank-/,''),list=(WAFERS[key]||[]).filter(w=>w.landed&&w.eaten<1);
+  if(!list.length||s.age<7)return null;
+  const w=list[0];
+  if(s.wafId!==w.id){s.wafId=w.id;s.wafBouts=0;s.wafAt=t+rand(.5,4);s.wafMax=Math.floor(rand(4,8));}
+  if(t<s.wafAt||s.wafBouts>=s.wafMax)return null;
+  s.wafBouts++;w.eaten=Math.min(1,w.eaten+.02);
+  return {x:w.x+rand(-14,14)};
+ };
+ let wid=0;
+ // ---- state + shop -------------------------------------------------------------------------------------------
+ const _vb=v16Bounds;
+ v16Bounds=function(el,state){const b=_vb.apply(this,arguments);if(b&&state&&state.wafLow)b.maxY+=state.wafLow;return b;};
+ const _ehs=ensureHealthState;
+ ensureHealthState=function(){const r=_ehs.apply(this,arguments);if(st.wafers==null)st.wafers=3;return r;};
+ window.buyWafersV1743=function(n){
+  n=n||5;const cost=80;if(st.coins<cost)return toast('Not enough coins');
+  st.coins-=cost;st.wafers=(st.wafers||0)+n;save();try{render('shop');}catch(e){}toast('🟢 Bought '+n+' Spirulina Wafers');
+ };
+ const _shop=shopHTML;
+ shopHTML=function(){
+  let h=_shop.apply(this,arguments);
+  const at=h.indexOf('<h3>GENERAL TREATMENT</h3>');if(at<0)return h;
+  const cut=h.lastIndexOf('<div class="card"',at);
+  const card='<div class="card" style="text-align:center"><div style="font-size:48px">🟢</div><h3>SPIRULINA WAFERS</h3><div class="meta">A sinking tablet for Bristlenose Plecos. It lands on the substrate; the pleco grazes it and the other fish come to nibble too.</div><h2 class="gold">🪙 80</h2><div class="meta" style="margin-bottom:8px">Current stock: '+(st.wafers||0)+'</div><button class="btn green wide" onclick="buyWafersV1743(5)">BUY 5 WAFERS</button></div>';
+  return cut<0?h:h.slice(0,cut)+card+h.slice(cut);
+ };
+ // ---- dropping a wafer ---------------------------------------------------------------------------------------
+ function tankOf(key){return document.getElementById('tank-'+key);}
+ function floorY(tank){const fl=tank.querySelector('.floor');return fl?fl.offsetTop+fl.offsetHeight*.56+4:tank.clientHeight-40;}
+ function mkEl(){
+  // A pressed spirulina/algae wafer seen from the front: a dull dark-green disc with an uneven edge, a paler top face,
+  // a darker rim/underside, and embedded flecks (the real ones look like compressed algae flakes, not a glossy candy).
+  const e=document.createElement('div');e.className='wafer43';
+  e.style.cssText='position:absolute;z-index:47;width:27px;height:13px;pointer-events:none;will-change:transform;'+
+   'border-radius:52% 48% 50% 50% / 58% 60% 42% 40%;border:1px solid rgba(28,36,14,.9);'+
+   'background:'+
+    'radial-gradient(circle at 22% 62%,#1e2810 0 1px,transparent 1.6px),radial-gradient(circle at 48% 30%,#7d8f45 0 1.1px,transparent 1.8px),'+
+    'radial-gradient(circle at 70% 58%,#1e2810 0 1.2px,transparent 1.8px),radial-gradient(circle at 36% 40%,#a3ad62 0 .9px,transparent 1.5px),'+
+    'radial-gradient(circle at 82% 34%,#7d8f45 0 1px,transparent 1.6px),radial-gradient(circle at 58% 70%,#2d3a17 0 1px,transparent 1.6px),'+
+    'linear-gradient(180deg,#65763a 0%,#4d5d2b 45%,#33401b 100%);'+
+   'box-shadow:inset 0 2px 1px rgba(150,168,88,.35),inset 0 -3px 2px rgba(18,24,8,.65),0 2px 3px rgba(0,0,0,.5)';
+  return e;
+ } window.dropWaferV1743=function(key){
+  if(!(st.wafers>0))return toast('No spirulina wafers left · buy some in the Shop');
+  const tank=tankOf(key);if(!tank)return;
+  st.wafers--;
+  const arr=(typeof tankArrayV14==='function'?tankArrayV14(key):null)||(key==='fry'?st.fry:key==='breeder'?st.breederTank:st.fish);
+  (arr||[]).forEach(f=>{if(!f.dead&&(f.species==='anc'||f.species==='cory'))f.hungerDays=0;});   // bottom feeders are fed by it
+  try{st.tankWaste[key]=Math.min(10,wasteForV13(key)+.5);}catch(e){}
+  save();
+  const w={id:++wid,key,x:tank.clientWidth*rand(.28,.72),y:-8,vy:rand(46,60),landed:false,landT:0,eaten:0,sway:rand(0,6.28),el:mkEl()};
+  tank.appendChild(w.el);(WAFERS[key]=WAFERS[key]||[]).push(w);
+  toast('🟢 Spirulina wafer dropped · '+st.wafers+' left');
+  updateButtons();
+ };
+ function updateButtons(){document.querySelectorAll('.waferBtn43').forEach(b=>{b.textContent='🟢 WAFER ×'+(st.wafers||0);});}
+ // ---- anc behaviour ------------------------------------------------------------------------------------------
+ window.ancWaferStepV1743=function(tank,el,s,dt,c){
+  const key=String(tank.id||'').replace(/^tank-/,''),list=(WAFERS[key]||[]).filter(w=>w.eaten<1&&s.wafDone!==w.id);
+  const busyMode=['toWall','toEdgeG','wallHold','attach','detach'].includes(s.mode);
+  if(!list.length||s.surface!=='substrate'||s.transition||busyMode){
+   if(s.mode==='wafer'){s.mode='graze';s.wait=c.rand(3,6);s.raspV=0;s.nudgeV=0;}
+   return false;
+  }
+  let w=list[0],bd=1e9;for(const q of list){const d=Math.abs(q.x-s.x);if(d<bd){bd=d;w=q;}}
+  if(s.wafId!==w.id){s.wafId=w.id;s.wafNotice=s.time+c.rand(.5,1.8);s.wafFeed=0;s.wafLimit=c.rand(20,40);}
+  if(s.time<s.wafNotice)return false;                                  // has not noticed it yet
+  const wantFace=w.x>=s.x?1:-1,mouth=Math.max(6,44*c.scale),gx=c.clamp(w.x-wantFace*mouth,c.lo,c.hi),dx=gx-s.x;
+  s.mode='wafer';s.patch=null;s.angle+=c.clamp(-s.angle,-40*dt,40*dt);
+  const turning=c.turn(s,Math.abs(dx)>3?wantFace:(s.face<0?-1:1),dt);
+  if(Math.abs(dx)>3){
+   if(!turning){const v=Math.min(Math.abs(dx)*3+8,40)*c.thrust;s.x+=Math.sign(dx)*Math.min(Math.abs(dx),v*dt);}   // a little quicker than usual, no burst
+   s.raspV=0;s.nudgeV=.5;
+  }else if(w.landed){
+   s.raspV=1;s.nudgeV=.25;s.wafFeed+=dt;w.eaten=Math.min(1,w.eaten+dt/36);
+   if(s.wafFeed>s.wafLimit){s.wafDone=w.id;s.mode='graze';s.wait=c.rand(4,8);s.raspV=0;s.nudgeV=0;return false;}
+  }else{s.raspV=0;s.nudgeV=0;}
+  return true;
+ };
+ // ---- other fish: drift down and nibble ----------------------------------------------------------------------
+ window.waferTargetV1743=function(el,state,now){
+  state.wafLow=0;const tank=el.closest('.tank');if(!tank||!state.preset)return null;
+  const key=String(tank.id||'').replace(/^tank-/,''),list=(WAFERS[key]||[]).filter(w=>w.landed&&w.eaten<1);
+  if(!list.length||el.classList.contains('v13Critical')||el.classList.contains('deadFish'))return null;
+  const w=list[0],sp=el.dataset.species;
+  if(state.wafId!==w.id){state.wafId=w.id;state.wafInt=Math.random()<(INTEREST[sp]||.4);state.wafAt=now+rand(1500,6500);state.wafUntil=state.wafAt+rand(3500,9000);}
+  if(!state.wafInt||now<state.wafAt||now>state.wafUntil)return null;
+  const fw=Math.max(48,95*(state.scale||1)),fh=Math.max(26,44*(state.scale||1)),hf=state.facing>0?.85:.15;
+  const tx=w.x-hf*fw+(((state.phase||0)%1)-.5)*22,ty=floorY(tank)-fh*.7;
+  const hx=state.x+hf*fw,hy=state.y+fh/2;
+  state.wafLow=80;   /* let it sink below the usual floor limit, down to the wafer */
+  if(Math.abs(hx-w.x)<16&&Math.abs(hy-floorY(tank))<fh*.5){w.eaten=Math.min(1,w.eaten+.0016);return {x:tx,y:ty,hover:true};}   // nibbling
+  return {x:tx,y:ty,slow:true};
+ };
+ // ---- DOM upkeep: buttons, wafer motion, dissolving ---------------------------------------------------------------
+ let last=performance.now();
+ function frame(now){
+  const dt=Math.min(.05,(now-last)/1000);last=now;
+  try{
+   if(!document.hidden){
+    document.querySelectorAll('.tank').forEach(tank=>{
+     const key=String(tank.id||'').replace(/^tank-/,'');if(!key)return;
+     if(!tank.querySelector('.waferBtn43')){
+      const b=document.createElement('button');b.className='waferBtn43';b.type='button';
+      b.style.cssText='position:absolute;left:8px;top:8px;z-index:60;padding:4px 9px;border-radius:14px;border:1px solid rgba(160,200,90,.55);background:rgba(20,44,30,.72);color:#dff0b8;font:700 11px sans-serif;cursor:pointer;backdrop-filter:blur(2px)';
+      b.textContent='🟢 WAFER ×'+(st.wafers||0);b.onclick=e=>{e.stopPropagation();dropWaferV1743(key);};tank.appendChild(b);
+     }
+    });
+    for(const key of Object.keys(WAFERS)){
+     const list=WAFERS[key],tank=tankOf(key);
+     for(let i=list.length-1;i>=0;i--){
+      const w=list[i];
+      if(!tank){continue;}
+      if(!w.el.isConnected)tank.appendChild(w.el);                        // tank was re-rendered: put the wafer back
+      const fy=floorY(tank);
+      if(!w.landed){w.sway+=dt*1.6;w.y+=w.vy*dt;w.x+=Math.sin(w.sway)*7*dt;if(w.y>=fy){w.y=fy;w.landed=true;w.landT=performance.now();
+        }}
+      else w.eaten=Math.min(1,w.eaten+dt/150);                              // it also softens and dissolves by itself
+      const k=1-.65*w.eaten,rot=Math.sin(w.sway*.6)*(w.landed?0:26);
+      w.el.style.transform='translate('+(w.x-13.5)+'px,'+(w.y-6.5)+'px) rotate('+rot.toFixed(1)+'deg) scale('+k.toFixed(3)+')';
+      w.el.style.opacity=String(w.eaten>.9?Math.max(0,(1-w.eaten)*10):1);
+      w.el.style.left='0';w.el.style.top='0';
+      if(w.eaten>=1){w.el.remove();list.splice(i,1);}
+     }
+    }
+   }
+  }catch(e){console.error('AFNICA wafer',e);}
+  requestAnimationFrame(frame);
+ }
+ requestAnimationFrame(frame);
 })();
 </script><script>
 /* ================= V17.43 BROOD IN THE CAVE =================
