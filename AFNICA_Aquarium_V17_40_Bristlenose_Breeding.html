@@ -5859,10 +5859,14 @@ function showSpeciesLoreV17(k){const sp=S[k];if(!sp)return;pop(sp.icon+' '+sp.na
 // <img>, so it needs an explicit scale-down to fit the same small tile.
 function dexAvatarHTML(f,w,h){
  const html=fishAvatarV154(f);
- const inner=f.species==='anc'?`<div style="transform:scale(${Math.min(w/120,h/70).toFixed(3)});transform-origin:center">${html}</div>`:html;
+ // Same look as in the tanks: young fish are smaller than adults (compressed so a fry is still readable) and young
+ // Ancistrus are paler (data-anc-stage drives the same CSS as in the tank).
+ let vis=1;try{vis=Math.min(1,.4+.6*sizeFor(f));}catch(e){}
+ const stg=f.species==='anc'&&window.ancStageV1743?window.ancStageV1743(f):'';
+ const inner=f.species==='anc'?`<div data-anc-stage="${stg}" style="transform:scale(${(Math.min(w/120,h/70)*vis).toFixed(3)});transform-origin:center">${html}</div>`:`<div style="transform:scale(${vis.toFixed(3)});transform-origin:center;display:flex;align-items:center;justify-content:center">${html}</div>`;
  return `<div style="position:relative;width:${w}px;height:${h}px;margin:0 auto;display:flex;align-items:center;justify-content:center;overflow:hidden">${inner}</div>`;
 }
-function fishDexV8(){let d=discoveredV8();return `${v8Top()}<div class="v8panel"><div class="v8head"><b>🐟 FISHDEX</b><span>${d.size}/${Object.keys(S).length} DISCOVERED</span></div><div class="dexgrid">${Object.keys(S).map(k=>`<div class="dex ${d.has(k)?'':'locked'}"${d.has(k)?` onclick="showSpeciesLoreV17('${k}')" style="cursor:pointer"`:''}><strong>${d.has(k)?dexAvatarHTML({species:k,sex:'M',age:S[k].adult,health:100,disease:null,dead:false},56,38):'?'}</strong><small>${d.has(k)?S[k].name:'UNKNOWN'}</small>${d.has(k)?`<small class="v9Rarity ${rarityV9(k)}">${rarityV9(k).toUpperCase()}</small>`:''}</div>`).join('')}</div></div><button class="btn green wide" style="margin-top:10px" onclick="modelsPreviewV81()">VIEW GROWTH MODELS</button>${v8Nav('dex')}`}
+function fishDexV8(){let d=discoveredV8();return `${v8Top()}<div class="v8panel"><div class="v8head"><b>🐟 FISHDEX</b><span>${d.size}/${Object.keys(S).length} DISCOVERED</span></div><div class="dexgrid">${Object.keys(S).map(k=>`<div class="dex ${d.has(k)?'':'locked'}"${d.has(k)?` onclick="showSpeciesLoreV17('${k}')" style="cursor:pointer"`:''}><strong>${d.has(k)?dexAvatarHTML({species:k,sex:'M',age:S[k].adult,health:100,disease:null,dead:false},116,68):'?'}</strong><small>${d.has(k)?S[k].name:'UNKNOWN'}</small>${d.has(k)?`<small class="v9Rarity ${rarityV9(k)}">${rarityV9(k).toUpperCase()}</small>`:''}</div>`).join('')}</div></div><button class="btn green wide" style="margin-top:10px" onclick="modelsPreviewV81()">VIEW GROWTH MODELS</button>${v8Nav('dex')}`}
 function modelsPreviewV81(){
  // Uses the same "real" per-stage/sex assets already rendered live in the tanks
  // (REAL_FISH_ASSETS_V154 via fishAvatarV154), so growth models stay in sync
@@ -8523,7 +8527,7 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
   return _sizeFor(f);
  };
  {const st43=document.createElement('style');   // young bristlenose are paler and greyer than adults (no drop-shadow: it read as a dark halo)
-  st43.textContent='.modelFish[data-species="anc"][data-anc-stage="fry"] .ancArt{filter:brightness(1.4) saturate(.62) contrast(.9)}.modelFish[data-species="anc"][data-anc-stage="juvenile"] .ancArt{filter:brightness(1.18) saturate(.8)}';
+  st43.textContent='[data-anc-stage="fry"] .ancArt{filter:brightness(1.4) saturate(.62) contrast(.9)}[data-anc-stage="juvenile"] .ancArt{filter:brightness(1.18) saturate(.8)}';
   document.head.appendChild(st43);}
  window.ancStageV1743=f=>!f||f.species!=='anc'?null:f.age<ANC_FRY_END?'fry':f.age<S.anc.adult?'juvenile':'adult';
  // ---- model gallery: every Ancistrus model in the game, on one screen -----------------------------------------------
@@ -8550,10 +8554,10 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
    card('Juvenile · 6 days','~3 cm',sprite(F('M',6),0,.3,'juvenile')),
    card('Fry · 1 day (real size)','~1.2 cm, paler',sprite(F('F',1),0,.11,'fry')),
    card('Fry · 1 day (x4)','same model, enlarged',sprite(F('F',1),0,.44,'fry')),
-   card('FishDex · fry',"FishDex growth image",img(A.fry)),
-   card('FishDex · juvenile','FishDex growth image',img(A.juvenile)),
-   card('FishDex · adult male','FishDex growth image',img(A.adult_m)),
-   card('FishDex · adult female','FishDex growth image',img(A.adult_f)),
+   card('Raw asset · fry','not used in the game',img(A.fry)),
+   card('Raw asset · juvenile','not used in the game',img(A.juvenile)),
+   card('Raw asset · adult male','not used in the game',img(A.adult_m)),
+   card('Raw asset · adult female','not used in the game',img(A.adult_f)),
    card('Eggs · fresh','bright orange, translucent',cv('eggsFresh')),
    card('Eggs · eyed','embryos visible, hatching soon',cv('eggsEyed')),
    card('Eggs · fungus','white cotton, male eats them',cv('eggsFungus')),
