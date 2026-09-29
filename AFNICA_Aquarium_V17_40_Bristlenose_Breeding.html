@@ -7854,7 +7854,7 @@ window.addEventListener('load',()=>setTimeout(()=>switchTankV8('main'),100),{onc
  if(!s.fg||s.fg.t>=s.fg.d){
   const prev=s.fg?s.fg.k:'mow';
   const k=prev==='rasp'?(Math.random()<.8?'mow':'shift'):'rasp';
-  s.fg={k,t:0,d:k==='rasp'?rand(2,4.5):k==='mow'?rand(2.5,5):rand(.9,1.3),v:k==='mow'?rand(1.5,3)*scale:k==='shift'?rand(8,15)*scale:0};
+  s.fg={k,t:0,d:k==='rasp'?rand(1.2,2.6):k==='mow'?rand(3,6):rand(1,1.5),v:k==='mow'?rand(5,9)*scale:k==='shift'?rand(14,26)*scale:0};
   if(k==='shift'&&Math.random()<.6)ancSandPuffV1743(tank,s.x+fc*50*scale,s.y+10*scale,scale);
  }
  const f=s.fg;f.t+=dt;const q=clamp(f.t/f.d,0,1),ramp=Math.min(1,f.t/.6,(f.d-f.t)/.6);
@@ -8166,8 +8166,8 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
  // tent/tt: male Ancistrus snout tentacles - the upper half of the snout columns drifts a pixel or so, each column
  // slightly out of phase, like soft tentacles moved by the water
  function tentDY(tent,tt,x,u){return u<.16?tent*((.16-u)/.16)*Math.sin(tt*2.3+x*.35)+tent*.4*Math.sin(tt*3.7-x*.6):0;}
- function draw(c,r,ph,amp,slow,dors,nose,tent,tt){
-  if(dors==null)dors=1;nose=nose||0;tent=tent||0;
+ function draw(c,r,ph,amp,slow,dors,nose,tent,tt,sway){
+  if(dors==null)dors=1;nose=nose||0;tent=tent||0;sway=sway||0;
   const {base,W,H,x0,x1,BL,B,fx0,fx1,tipTop,has,pad}=r,g=c.getContext('2d');
   g.clearRect(0,0,c.width,c.height);g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';
   const lam=1.15,A=amp*BL,cy=(r.y0+r.y1)/2,sw=2,wp=u=>ph-2*Math.PI*u/lam,n=Math.ceil(W/sw);
@@ -8178,8 +8178,11 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
    const sTop=has&&x>=fx0-1&&x<=fx1+1?B:0;                              // fin columns: the tip above the back line is drawn below
    g.save();g.translate(0,pad+dy+cy*(1-sy));
    const td=tent?tentDY(tent,tt,x,u):0;
-   if(td&&sTop<cy){g.drawImage(base,x,sTop,sw,cy-sTop,x,sTop+td,sw,cy-sTop-td);g.drawImage(base,x,cy,sw,H-cy,x,cy,sw,H-cy);}   // stretch only the top half: no gap at the seam
-   else g.drawImage(base,x,sTop,sw,H-sTop,x,sTop*sy,sw,(H-sTop)*sy);
+   // lateral tail sway seen in profile: the rear half swings toward/away from the camera, so it shortens and lengthens
+   // along the body axis (no vertical movement at all)
+   const dxs=sway&&u>.3?sway*BL*.05*Math.pow((u-.3)/.7,1.4)*Math.sin(ph):0,xd=x+dxs;
+   if(td&&sTop<cy){g.drawImage(base,x,sTop,sw,cy-sTop,xd,sTop+td,sw,cy-sTop-td);g.drawImage(base,x,cy,sw,H-cy,xd,cy,sw,H-cy);}   // stretch only the top half: no gap at the seam
+   else g.drawImage(base,x,sTop,sw,H-sTop,xd,sTop*sy,sw,(H-sTop)*sy);
    g.restore();
   }
   if(has){                                                                       // dorsal fin: zero shear at the base, growing to the tip, trailing the body wave
@@ -8328,12 +8331,13 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
      // vertical wave it made the whole fish bob)
      // a pleco glides flat on its paired fins with an almost rigid body; its tail beats sideways, which in profile is
      // only a faint flicker - so keep the (vertical) wave tiny
+     s.rs=(s.rs||0)+((+s.fe.dataset.ancRasp||0)+(fan?0:.5*move)-(s.rs||0))*Math.min(1,dt*3);
      const freq=fan?2.4:.9+1.6*sp,amp=fan?.03:.011*move;
-     s.ph+=2*Math.PI*freq*dt;
+     s.ph+=2*Math.PI*(fan?freq:1.1+.9*sp)*dt;
      // male tentacles are passive: they only sway while the body itself moves (crawl, fanning, forage shift)
      s.tm=(s.tm||0)+(Math.max(k,+s.fe.dataset.ancNudge||0)-(s.tm||0))*Math.min(1,dt*5);s.tt=(s.tt||0)+dt*s.tm;
      const tent=c.dataset.wk==='anc|0|38'?r.W/170*s.tm:0;                             // males only; up to ~0.7 screen px
-     if(rolling&&gl>.001&&gl<.999)drawRoll(c,r,rb,s.ph,amp,gl);else draw(c,r,s.ph,amp,1-sp,fan?.8:move,0,tent,s.tt);
+     if(rolling&&gl>.001&&gl<.999)drawRoll(c,r,rb,s.ph,amp,gl);else draw(c,r,s.ph,amp,1-sp,fan?.8:move,0,tent,s.tt,fan?0:Math.min(1,s.rs));
      }catch(e){s.bad=true;console.error('AFNICA fin motion (anc fish)',e);}   // one bad fish must not stop the others
     });
     document.querySelectorAll('.tank .ancGlass.finWarpG>canvas').forEach(c=>{       // Ancistrus belly view (front glass)
