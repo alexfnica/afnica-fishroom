@@ -3426,8 +3426,8 @@ anc:{name:'Ancistrus',adult:16,rarity:'Rare',price:240,icon:'🖤',lore:"A brist
 let st=JSON.parse(localStorage.getItem('afnicaFreshRestart1789317515442')||'null')||{started:true,day:1,coins:300,eggs:0,fish:Array.from({length:5},(_,i)=>({id:'natural-cory-'+i,species:'cory',sex:i%2?'F':'M',age:14,health:100,dead:false,disease:null})),fry:[],breed:null,firstBreed:false,sales:0,log:'',tankHealth:100,daily:{main:{feed:false,water:false,clean:false},fry:{feed:false,water:false,clean:false}},tankHealthMain:100,tankHealthFry:100,daysNoCleanMain:0,daysNoCleanFry:0,food:20,waterProcess:false,cleanProcess:false};
 /* V17.12 showcase migration: replace saved Neon Tetras with Corydoras so the
    dedicated bottom movement is visible immediately without resetting progress. */
-[...(st.fish||[]),...(st.fry||[])].forEach(f=>{if(f.species==='neon')f.species='cory'});
-if(st.breed&&st.breed.species==='neon')st.breed.species='cory';
+/* (removed in V17.43: the showcase migration that turned every Neon Tetra into a Corydoras on load) */
+
 function save(){localStorage.setItem('afnicaFreshRestart1789317515442',JSON.stringify(st));ui()}
 function ui(){document.getElementById('coins').textContent=st.coins;document.getElementById('eggs').textContent=st.eggs}
 function toast(t){let x=document.getElementById('toast');x.textContent=t;x.classList.add('show');clearTimeout(window.t);window.t=setTimeout(()=>x.classList.remove('show'),1700)}
@@ -4584,7 +4584,7 @@ document.addEventListener('pointerup',v177PointerUp,{passive:false});
 document.addEventListener('pointercancel',v177PointerUp,{passive:false});
 
 function tank(title,liters,arr,key){
-  arr.forEach(f=>{if(f.species==='neon')f.species='cory'});
+
   const sc=scapeForV171(key);
  return `<div class="legacyTankHeader title"><h2>${title}</h2><span class="sub">${liters}L · ${arr.length} fish</span></div><div class="tank v171Scape ground-${sc.ground} surface-${sc.surface} substrate-${sc.substrate} epiphyte-${sc.epiphyte} wood-${sc.wood} rock-${sc.rock}" data-tank="${key}" style="${environmentStyleV13(key)}" id="tank-${key}">
 <div class="v17BackGlow"></div>
@@ -7443,6 +7443,7 @@ body:has(.tank.waterChanging,.tank.persistentWaterActive) #v1712-test-dash{
    const sp=Math.hypot(s.vx,s.vy);want=Math.min(1,sp/20)*(6+3*Math.sin(t*6.6+s.index*1.7));
   }
   // steer() pulls the angle back toward 0 every frame (rate 5), so aim past the target to settle on it
+  if(window.coryWaferNearV1743&&window.coryWaferNearV1743(s))want=want>0?want*1.9+4:16;      // at the wafer: nose well down, like digging at it
   s.angle+=(want*1.83*sgn-s.angle)*Math.min(1,dt*6);      // rate 6 vs steer()'s pull of 5 -> equilibrium 6/11 of the aim, so aim 11/6 higher
   s.jab=jab;s.dip=1.1*jab;
  }
@@ -8454,26 +8455,39 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
   if(Math.hypot(px-(state.x+hf*fw),py-(state.y+fh/2))<16){p.dataset.eaten='1';p.style.transition='opacity .18s';p.style.opacity='0';state.feedTgt=null;return null;}
   return {x:px-hf*fw,y:py-fh/2};
  }
+ // Eased nose-down pitch (degrees, positive = nose down) added on top of the engine's own tilt. Rotation is applied in
+ // screen space, so a left-facing (mirrored) fish needs the opposite sign.
+ function applyPitch(el,state,now,goal){
+  const dt=Math.min(.05,Math.max(0,(now-(state.pkT||now))/1000));state.pkT=now;
+  state.pk=(state.pk||0)+(goal-(state.pk||0))*Math.min(1,dt*5);
+  if(Math.abs(state.pk)<.3)return;
+  const d=state.pk*((state.fv==null?state.facing:state.fv)<0?-1:1);          // sign of what is actually drawn (fv eases through a turn)
+  el.style.transform=el.style.transform.replace(/rotate\(([-\d.]+)deg\)/,(m,a)=>'rotate('+((+a)+d).toFixed(2)+'deg)');
+ }
  const _upd=v16UpdateFish;
  v16UpdateFish=function(el,state,now){
+  let goal=0;
   try{
    if(state.preset&&state.preset.style!=='school'){
     let t=foodTarget(el,state,now);if(!t&&window.waferTargetV1743)t=window.waferTargetV1743(el,state,now);
-    if(t&&t.hover){                                                       // over the wafer: hold still and peck at it
-     state.mode='pause';state.pauseUntil=Math.max(state.pauseUntil||0,now+700);
-     const p0=state.preset;state.preset=Object.assign({},p0,{bobAmp:10,bobSpeed:9});try{_upd(el,state,now);}finally{state.preset=p0;}
-     return;
-    }
-    else if(t){
-     state.mode='swim';state.tx=t.x;state.ty=t.y;
-     const p0=state.preset,m=t.slow?1.2:(BURST[p0.style]||1.5);
-     state.preset=Object.assign({},p0,{cruise:p0.max*m,max:p0.max*m,accel:p0.accel*(t.slow?1.6:(p0.style==='heavy'?4:2.6))});
+    if(t){
+     // nose-down pitch toward the food: grows with how far below the fish it is, and is deepest while nibbling
+     goal=t.hover?34:Math.max(0,Math.min(t.slow?22:20,(t.y-state.y)*.35));
+     const p0=state.preset;
+     if(t.hover){
+      state.mode='pause';state.pauseUntil=Math.max(state.pauseUntil||0,now+700);                 // over the wafer: hold still and peck at it
+      state.preset=Object.assign({},p0,{bobAmp:10,bobSpeed:9});
+     }else{
+      state.mode='swim';state.tx=t.x;state.ty=t.y;
+      const m=t.slow?1.2:(BURST[p0.style]||1.5);
+      state.preset=Object.assign({},p0,{cruise:p0.max*m,max:p0.max*m,accel:p0.accel*(t.slow?1.6:(p0.style==='heavy'?4:2.6))});
+     }
      try{_upd(el,state,now);}finally{state.preset=p0;}
-     return;
+     applyPitch(el,state,now,goal);return;
     }
    }
   }catch(e){console.error('AFNICA feeding burst',e);}
-  return _upd(el,state,now);
+  const r=_upd(el,state,now);applyPitch(el,state,now,0);return r;
  };
  // Neon tetras follow a school centre; while food is around each one leaves the formation, bursts to a flake, and the
  // normal schooling pulls it back afterwards.
@@ -8490,15 +8504,17 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
      state.x=v16Clamp(state.x+state.vx*dt,b.minX,b.maxX);state.y=v16Clamp(state.y+state.vy*dt,b.minY,b.maxY);
      if(Math.abs(state.vx)>3)state.facing=state.vx>=0?1:-1;
      state.tx=t.x;state.ty=t.y;state.mode='feed';
+     state.pk=(state.pk||0)+((t.hover?34:Math.max(0,Math.min(20,(t.y-state.y)*.35)))-(state.pk||0))*Math.min(1,dt*5);
+     const pkd=state.pk*((state.fv==null?state.facing:state.fv)<0?-1:1);
      const t_=now/1000,speedNorm=v16Clamp(Math.hypot(state.vx,state.vy)/mx,0,1);
      const bob=Math.sin(t_*(t.hover?9:p.bobSpeed)+state.phase)*p.bobAmp*(t.hover?10:1)*(.28+.72*speedNorm),tilt=v16Clamp(state.vy*.08,-p.tilt,p.tilt),sx=v17TurnScale(state,dt,el)*state.scale;
-     el.style.transform=`translate3d(${state.x.toFixed(2)}px,${(state.y+bob).toFixed(2)}px,0) rotate(${tilt.toFixed(2)}deg) scaleX(${sx.toFixed(3)}) scaleY(${state.scale.toFixed(3)})`;
+     el.style.transform=`translate3d(${state.x.toFixed(2)}px,${(state.y+bob).toFixed(2)}px,0) rotate(${(tilt+pkd).toFixed(2)}deg) scaleX(${sx.toFixed(3)}) scaleY(${state.scale.toFixed(3)})`;
      el.classList.add('v16Bound');
      return true;
     }
    }
   }catch(e){console.error('AFNICA neon feeding',e);}
-  return _neon.apply(this,arguments);
+  const r=_neon.apply(this,arguments);applyPitch(el,state,now,0);return r;
  };
 })();
 </script><script>
@@ -8512,6 +8528,7 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
  const clamp=(v,a,b)=>v<a?a:v>b?b:v,rand=(a,b)=>a+Math.random()*(b-a);
  const INTEREST={guppy:.9,molly:.9,platy:.9,xipho:.8,neon:.8,cory:1};              // almost every fish comes to pick at it
  // Corydoras: walk to the wafer along the bottom and dig at it in short bouts (the cory system calls this when it picks a target).
+ window.coryWaferNearV1743=function(s){const tank=s.el&&s.el.closest('.tank');if(!tank)return false;const list=WAFERS[String(tank.id||'').replace(/^tank-/,'')];return !!(list&&list.some(w=>w.landed&&w.eaten<1&&Math.abs(w.x-s.x)<36));};
  window.coryWaferTargetV1743=function(tank,s,t){
   const key=String(tank.id||'').replace(/^tank-/,''),list=(WAFERS[key]||[]).filter(w=>w.landed&&w.eaten<1);
   if(!list.length||s.age<7)return null;
