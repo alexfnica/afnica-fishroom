@@ -8142,7 +8142,7 @@ renderV103Breeder=function(){
  setAfnicaScreenV104('breeder');ensureHealthState();if(!st.unlockedTanks.tank3)return oldRenderAnc40();
  const d=dailyFor('breeder'),c=st.ancClutch;
  const adults=st.breederTank.filter(f=>f.age>=S[f.species].adult),fry=st.breederTank.filter(f=>f.age<S[f.species].adult);
- document.getElementById('screen').innerHTML=v8Top()+`<div class="v8panel"><b>BRISTLENOSE BREEDING TANK</b><p>One healthy adult male + one female · male traps her in the cave for 1–2 days before she lays · 20–40 eggs per clutch · 4–6 days to hatch + 4–6 days absorbing the yolk sac</p><div>${ancClutchStatus40()}</div></div><div class="v8hero">${tank('BREEDER TANK',tankLitersV14('breeder'),st.breederTank,'breeder')}<div class="v8dock"><button onclick="care('feed','breeder')">FEED</button><button onclick="care('water','breeder')">WATER</button><button onclick="care('clean','breeder')">CLEAN</button><button onclick="startGeneralTreatment()">TREAT</button><button onclick="inspectAncCave40()">INSPECT CAVE</button></div></div><div class="v8panel"><button class="btn green" onclick="startAncBreeding40()">START COURTSHIP</button><p>Healthy adults: 80%+ health. After spawning, the male rests until 15 game days have passed.</p>${adults.map(f=>`<p>${f.sex==='M'?'Male':'Female'} · ${f.health}% health · ${f.ancSpawnAttempts||0} attempts <button class="btn small" onclick="returnFromBreederV103('${f.id}')">RETURN TO MAIN</button></p>`).join('')}<p>${fry.length} free-swimming fry / juveniles</p>${fry.length?'<button class="btn" onclick="moveAncFry40()">MOVE FRY TO FRY TANK</button>':''}</div><div class="v8panel"><b>AVAILABLE ADULTS</b>${breederCandidatesV103().filter(f=>f.species==='anc').map(f=>`<p>${f.sex==='M'?'Male':'Female'} · ${f.health}% <button class="btn" onclick="moveToBreederV103('${f.id}')">MOVE TO BREEDER</button></p>`).join('')}</div><button class="btn" onclick="nextDay();renderV103Breeder()">NEXT DAY</button>`+v8Nav('room');
+ document.getElementById('screen').innerHTML=v8Top()+`<div class="v8panel"><b>BRISTLENOSE BREEDING TANK</b><p>One healthy adult male + one female · male traps her in the cave for 1–2 days before she lays · 20–40 eggs per clutch · 4–6 days to hatch + 4–6 days absorbing the yolk sac</p><div>${ancClutchStatus40()}</div></div><div class="v8hero">${tank('BREEDER TANK',tankLitersV14('breeder'),st.breederTank,'breeder')}<div class="v8dock"><button onclick="care('feed','breeder')">FEED</button><button onclick="care('water','breeder')">WATER</button><button onclick="care('clean','breeder')">CLEAN</button><button onclick="startGeneralTreatment()">TREAT</button><button onclick="inspectAncCave40()">INSPECT CAVE</button></div></div><div class="v8panel"><button class="btn green" onclick="startAncBreeding40()">START COURTSHIP</button> <button class="btn" onclick="showAncModelsV1743()">ANCISTRUS MODELS</button><p>Healthy adults: 80%+ health. After spawning, the male rests until 15 game days have passed.</p>${adults.map(f=>`<p>${f.sex==='M'?'Male':'Female'} · ${f.health}% health · ${f.ancSpawnAttempts||0} attempts <button class="btn small" onclick="returnFromBreederV103('${f.id}')">RETURN TO MAIN</button></p>`).join('')}<p>${fry.length} free-swimming fry / juveniles</p>${fry.length?'<button class="btn" onclick="moveAncFry40()">MOVE FRY TO FRY TANK</button>':''}</div><div class="v8panel"><b>AVAILABLE ADULTS</b>${breederCandidatesV103().filter(f=>f.species==='anc').map(f=>`<p>${f.sex==='M'?'Male':'Female'} · ${f.health}% <button class="btn" onclick="moveToBreederV103('${f.id}')">MOVE TO BREEDER</button></p>`).join('')}</div><button class="btn" onclick="nextDay();renderV103Breeder()">NEXT DAY</button>`+v8Nav('room');
 };
 function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&f.age<S.anc.adult);st.fry.push(...young);st.breederTank=st.breederTank.filter(f=>!young.includes(f));save();renderV103Breeder();}
 </script><script>
@@ -8488,12 +8488,12 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
  }
  // ---- INSPECT CAVE: a look inside, the brood drawn large and animated ------------------------------------------
  const IW=300,IH=190,IS=6.2;
- function drawInspect(cv,now){
+ function drawInspect(cv,now){drawScene(cv,now,broods());}
+ function drawScene(cv,now,list){
   const g=cv.getContext('2d');g.setTransform(DPR,0,0,DPR,0,0);g.clearRect(0,0,IW,IH);
   const bg=g.createRadialGradient(IW/2,IH*.55,10,IW/2,IH*.55,IW*.62);bg.addColorStop(0,'#3a2a1a');bg.addColorStop(.7,'#1c140c');bg.addColorStop(1,'#0d0905');
   g.fillStyle=bg;g.fillRect(0,0,IW,IH);
   g.fillStyle='rgba(120,92,58,.35)';g.fillRect(0,IH*.8,IW,IH*.2);                       // cave floor
-  const list=broods();
   g.save();g.scale(IS,IS);
   for(const b of list){const bb={c:b.c,dx:list.length>1?(b.dx<0?-13:13):0};if(b.c.stage==='eggs')drawEggs(g,bb,IW/2/IS,IH*.8/IS);else drawWigglers(g,bb,IW/2/IS,IH*.8/IS,now);}
   g.restore();
@@ -8526,6 +8526,42 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
   st43.textContent='.modelFish[data-species="anc"][data-anc-stage="fry"] .ancArt{filter:brightness(1.4) saturate(.62) contrast(.9)}.modelFish[data-species="anc"][data-anc-stage="juvenile"] .ancArt{filter:brightness(1.18) saturate(.8)}';
   document.head.appendChild(st43);}
  window.ancStageV1743=f=>!f||f.species!=='anc'?null:f.age<ANC_FRY_END?'fry':f.age<S.anc.adult?'juvenile':'adult';
+ // ---- model gallery: every Ancistrus model in the game, on one screen -----------------------------------------------
+ const GAL={
+  eggsFresh:()=>({id:'gal-a',stage:'eggs',count:32,laidDay:st.day-1,hatchDay:st.day+4,releaseDay:st.day+9,fungus:0}),
+  eggsEyed:()=>({id:'gal-b',stage:'eggs',count:32,laidDay:st.day-4,hatchDay:st.day+1,releaseDay:st.day+6,fungus:0}),
+  eggsFungus:()=>({id:'gal-c',stage:'eggs',count:26,laidDay:st.day-3,hatchDay:st.day+2,releaseDay:st.day+7,fungus:.35}),
+  wigNew:()=>({id:'gal-d',stage:'yolk',count:32,laidDay:st.day-5,hatchDay:st.day,releaseDay:st.day+5}),
+  wigLate:()=>({id:'gal-e',stage:'yolk',count:32,laidDay:st.day-9,hatchDay:st.day-4,releaseDay:st.day+1})
+ };
+ window.showAncModelsV1743=function(){
+  const A=(typeof REAL_FISH_ASSETS_V154!=='undefined'&&REAL_FISH_ASSETS_V154.anc)||{};
+  const card=(title,sub,inner)=>`<div style="background:#0d1c26;border:1px solid #244;border-radius:10px;padding:8px;text-align:center"><div style="min-height:96px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative">${inner}</div><b style="font-size:12px">${title}</b><div style="font-size:11px;opacity:.75">${sub}</div></div>`;
+  const sprite=(f,glass,k,stage)=>`<div class="modelFish guppyReal realSpeciesModel" data-species="anc" data-anc-stage="${stage}" style="position:relative;left:0;top:0;right:auto;bottom:auto;width:120px;height:70px;flex:none;animation:none;transform:scale(${k});transform-origin:center;--anc-glass:${glass};--anc-side:${1-glass}">${fishGraphicV154(f)}</div>`;
+  const F=(sx,age)=>({id:'gal',species:'anc',sex:sx,age,health:100});
+  const img=src=>src?`<img src="${src}" style="max-width:130px;max-height:90px;object-fit:contain">`:'<i style="opacity:.5">no image</i>';
+  const cv=k=>`<canvas class="ancGal43" data-k="${k}" width="${IW*DPR}" height="${IH*DPR}" style="width:150px;height:95px;border-radius:50% / 42%"></canvas>`;
+  const cards=[
+   card('Adult male · side','in the tank, on the sand',sprite(F('M',40),0,1,'adult')),
+   card('Adult female · side','in the tank, on the sand',sprite(F('F',40),0,1,'adult')),
+   card('Adult male · on the glass','belly view, head up',sprite(F('M',40),1,.85,'adult')),
+   card('Adult female · on the glass','belly view, head up',sprite(F('F',40),1,.85,'adult')),
+   card('Juvenile · 10 days','~6 cm, paler',sprite(F('F',10),0,.55,'juvenile')),
+   card('Juvenile · 6 days','~3 cm',sprite(F('M',6),0,.3,'juvenile')),
+   card('Fry · 1 day (real size)','~1.2 cm, paler',sprite(F('F',1),0,.11,'fry')),
+   card('Fry · 1 day (x4)','same model, enlarged',sprite(F('F',1),0,.44,'fry')),
+   card('FishDex · fry',"FishDex growth image",img(A.fry)),
+   card('FishDex · juvenile','FishDex growth image',img(A.juvenile)),
+   card('FishDex · adult male','FishDex growth image',img(A.adult_m)),
+   card('FishDex · adult female','FishDex growth image',img(A.adult_f)),
+   card('Eggs · fresh','bright orange, translucent',cv('eggsFresh')),
+   card('Eggs · eyed','embryos visible, hatching soon',cv('eggsEyed')),
+   card('Eggs · fungus','white cotton, male eats them',cv('eggsFungus')),
+   card('Hatched eggs · day 1','big yolk sac, in the cave',cv('wigNew')),
+   card('Hatched eggs · day 4','yolk sac nearly used up',cv('wigLate'))
+  ];
+  pop('ANCISTRUS MODELS',`<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;max-width:340px;margin:auto;text-align:left;max-height:58vh;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:#3a6a86 #0d1c26;padding-right:4px">${cards.join('')}</div>`);
+ };
  window.inspectAncCave40=function(){
   const list=broods();
   pop('INSIDE THE DRIFTWOOD CAVE',`<div style="max-width:320px;margin:auto">${inspectHTML()}</div>`
@@ -8567,6 +8603,7 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
    if(!document.hidden){
     // the brood is NOT drawn in the tank (eggs and larvae sit hidden inside the cave); it is shown by INSPECT CAVE only
     const insp=document.getElementById('ancInspect43');if(insp)drawInspect(insp,now);
+    document.querySelectorAll('canvas.ancGal43').forEach(cv=>{const mk=GAL[cv.dataset.k];if(mk)drawScene(cv,now,[{c:mk(),dx:0}]);});
     // fry leaving the cave: once, when a clutch turns 'released'
     for(const cl of [st&&st.ancClutch,st&&st.ancClutch2]){
      if(cl&&cl.stage==='released'&&!cl.emerged43&&Number.isFinite(cl.releaseDay)&&st.day-cl.releaseDay<=1){
