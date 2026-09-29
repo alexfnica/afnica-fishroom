@@ -7964,7 +7964,7 @@ function ancClutchStatus40(){
   if(c.phase==='trapped')s='Male has trapped the female in the cave · she lays her eggs in '+Math.max(0,(c.trapDay+c.trapDays)-st.day)+' game days';
   else s='Courtship · '+c.phase.replaceAll('-',' ');
  }
- else if(c.stage==='eggs')s=c.count+' eggs · male fanning · hatch in '+Math.max(0,c.hatchDay-st.day)+' game days';
+ else if(c.stage==='eggs')s=c.count+' eggs · male fanning'+(c.fungus>.05?' · fungus on some eggs, improve the water':'')+' · hatch in '+Math.max(0,c.hatchDay-st.day)+' game days';
  else if(c.stage==='yolk')s=c.count+' yolk-sac fry · male guarding · free-swimming in '+Math.max(0,c.releaseDay-st.day)+' game days';
  else s=c.stage==='lost'?'Clutch lost · the male ate the eggs':c.count+' fry emerged into the breeding tank';
  // Real bristlenose males routinely guard several broods at different stages at
@@ -7987,8 +7987,25 @@ function startAncBreeding40(){
 function advanceAncClutchSlot40(c,label){
  if(!c||c.stage==='spawning'||c.lastDay===st.day)return;c.lastDay=st.day;
  if(c.stage==='eggs'){
-  const dad=st.breederTank.find(f=>f.id===c.dad&&!f.dead);const risk=[.35,.25,.15,.08][c.attempt-1]||0;
-  if(!c.riskChecked&&st.day>c.laidDay){c.riskChecked=true;if(dad&&c.lossRoll<risk){c.stage='lost';toast('The inexperienced male ate '+label+'. His next attempt has a lower risk.');return;}}
+  const dad=st.breederTank.find(f=>f.id===c.dad&&!f.dead);
+  // Very rarely a male eats his whole clutch, most often a young male on his first spawnings (real bristlenose fathers
+  // are very reliable once they have a few broods behind them).
+  const risk=([.10,.05,.03][c.attempt-1]??.015)+(dad&&dad.age<S.anc.adult+8?.05:0);
+  if(!c.riskChecked&&st.day>c.laidDay){c.riskChecked=true;if(dad&&c.lossRoll<risk){c.stage='lost';toast('The male ate '+label+'. Rare, and most likely with a young male. Later broods are safer.');return;}}
+  // Poor water: fungus (white cotton) grows on the eggs. The male fans it away and eats the infected ones; a bad
+  // outbreak or no male loses the clutch. Good water lets the fungus die back.
+  if(st.day>c.laidDay){
+   const h=tankHealthFor('breeder');c.fungus=c.fungus||0;
+   if(h<70){
+    c.fungus=Math.min(1,c.fungus+(70-h)/100*(.5+Math.random()*.7));
+    if(c.fungus>.18){
+     const eaten=Math.max(1,Math.ceil(c.count*c.fungus*(dad?.5:.25)));c.count=Math.max(0,c.count-eaten);c.eatenFungus=(c.eatenFungus||0)+eaten;
+     c.fungus=dad?c.fungus*.4:Math.min(1,c.fungus+.15);                       // without the male the infection just spreads
+     toast(dad?'Fungus on the eggs '+(label?'('+label+') ':'')+'· the male ate '+eaten+' infected ones. Improve the water quality.':'Fungus is spreading through the eggs '+(label?'('+label+') ':'')+'· no male to remove it.');
+    }
+    if(c.count<=0){c.stage='lost';toast('The clutch '+(label?'('+label+') ':'')+'was lost to fungus. Keep the Breeder Tank clean.');return;}
+   }else c.fungus=Math.max(0,c.fungus-.2);
+  }
   if(st.day>=c.hatchDay){c.stage='yolk';toast('Bristlenose eggs hatched'+(label?' ('+label+')':'')+' · fry remain inside with yolk sacs');}
  }
  if(c.stage==='yolk'&&st.day>=c.releaseDay){
@@ -8405,7 +8422,7 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
   const R=rng(hash(c.id||'anc')),n=clamp(c.count||24,8,44);u={eggs:[],wig:[]};
   for(let i=0;i<n;i++){
    const x=(R()*2-1)*19,ym=9*(1-Math.pow(x/21,2)),y=-R()*ym-1;
-   u.eggs.push({x,y,eye:R()<.7,r:2.1+R()*.5});
+   u.eggs.push({x,y,eye:R()<.7,r:2.1+R()*.5,idx:i,f:R()});
    u.wig.push({x:x*1.05,y:y*.55-1,a:(R()-.5)*1.5+(R()<.5?0:Math.PI),off:R()*9,per:4+R()*6,sz:.9+R()*.25});
   }
   u.eggs.sort((a,b)=>a.y-b.y);u.wig.sort((a,b)=>a.y-b.y);cacheU.set(c.id,u);return u;
@@ -8419,7 +8436,9 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
  }
  function drawEggs(g,b,ox,oy){
   const c=b.c,laid=Number.isFinite(c.laidDay)?c.laidDay:c.hatchDay-5,q=clamp((st.day-laid)/Math.max(1,c.hatchDay-laid),0,1);
+  const fung=c.fungus||0,shown=Math.min(44,c.count);                       // eggs the male has eaten are gone from the heap
   for(const e of unitsOf(c).eggs){
+   if(e.idx>=shown)continue;
    const x=ox+b.dx+e.x,y=oy+e.y;
    // translucent glossy orange spheres (the photos show them like a bunch of grapes), darker once the embryo has formed
    const gr=g.createRadialGradient(x-e.r*.3,y-e.r*.35,.2,x,y,e.r);
@@ -8427,6 +8446,12 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
    g.fillStyle=gr;g.strokeStyle='rgba(150,80,20,.6)';g.lineWidth=.4;
    g.beginPath();g.arc(x,y,e.r,0,7);g.fill();g.stroke();
    g.fillStyle='rgba(255,240,200,.85)';g.beginPath();g.arc(x-e.r*.35,y-e.r*.4,e.r*.26,0,7);g.fill();
+   if(e.f<fung*1.4){                                                          // fungus: white cotton growing over the egg
+    g.fillStyle='rgba(238,238,230,.82)';g.beginPath();g.arc(x,y,e.r*.95,0,7);g.fill();
+    g.strokeStyle='rgba(250,250,245,.7)';g.lineWidth=.3;g.beginPath();
+    for(let k=0;k<7;k++){const a=k*.9+e.f*6;g.moveTo(x+Math.cos(a)*e.r*.6,y+Math.sin(a)*e.r*.6);g.lineTo(x+Math.cos(a)*e.r*1.7,y+Math.sin(a)*e.r*1.7);}g.stroke();
+    continue;
+   }
    if(q>.55&&e.eye){g.fillStyle='#231509';g.beginPath();g.arc(x+.5,y+.3,.55,0,7);g.arc(x+1.6,y+.3,.55,0,7);g.fill();}   // eye spots show through the shell
   }
  }
@@ -8475,7 +8500,7 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
  }
  function stageLine(c){
   if(c.stage==='eggs'){const laid=Number.isFinite(c.laidDay)?c.laidDay:c.hatchDay-5,q=clamp((st.day-laid)/Math.max(1,c.hatchDay-laid),0,1);
-   return c.count+' eggs · '+(q>.55?'eyes are showing through the shells':'freshly laid, bright orange')+' · hatching in '+Math.max(0,c.hatchDay-st.day)+' days';}
+   return c.count+' eggs · '+(q>.55?'eyes are showing through the shells':'freshly laid, bright orange')+(c.fungus>.05?' · white fungus on some of them, the water is too poor':'')+(c.eatenFungus?' · the male has eaten '+c.eatenFungus+' infected eggs':'')+' · hatching in '+Math.max(0,c.hatchDay-st.day)+' days';}
   const p=clamp((st.day-c.hatchDay)/Math.max(1,c.releaseDay-c.hatchDay),0,1);
   return c.count+' wrigglers · they lie in a heap, twitching now and then · yolk sac '+Math.round((1-p)*100)+'% left · leaving the cave in '+Math.max(0,c.releaseDay-st.day)+' days';
  }
