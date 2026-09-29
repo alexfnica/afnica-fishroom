@@ -8162,7 +8162,7 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
 (()=>{
  const MAXW=260,cache=new Map(),loading=new Set(),states=new WeakMap();
  // per-species tuning: f = beat-rate multiplier, a = amplitude multiplier, v = speed (px/s) that counts as full speed
- const CFG={guppy:{f:1.15,a:1,v:92},molly:{f:.9,a:.9,v:42},platy:{f:.95,a:.95,v:56},xipho:{f:1,a:.6,v:49},neon:{f:1.2,a:.9,v:72},cory:{f:1,a:.7,v:45}};
+ const CFG={guppy:{f:1.15,a:1,v:70},molly:{f:.9,a:.9,v:36},platy:{f:.95,a:.95,v:44},xipho:{f:1,a:.6,v:40},neon:{f:1.2,a:.9,v:72},cory:{f:1,a:.7,v:45}};
  function analyse(img){
   const iw=img.naturalWidth||img.width,ih=img.naturalHeight||img.height;   // works for <img> and for a cropped canvas
   const sc=Math.min(1,MAXW/iw),W=Math.max(8,Math.round(iw*sc)),H=Math.max(8,Math.round(ih*sc));
@@ -8411,6 +8411,60 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
   requestAnimationFrame(tick);
  }
  requestAnimationFrame(tick);
+})();
+</script><script>
+/* ================= V17.43 CALMER SWIMMING + FEEDING BURST =================
+   Guppy, molly, platy and swordtail used to dart about constantly (short targets, tiny pauses, hard acceleration). Their
+   everyday swimming is now slower and calmer, with longer pauses. When the player feeds, every fish in that tank notices
+   the food after its own short reaction time (0.15-1 s), then bursts toward the nearest flake at a much higher speed,
+   nips it (the flake disappears), goes for the next one, and settles back to calm swimming when the food is gone. */
+(function(){
+ try{
+  Object.assign(V16_MOTION_PRESETS.guppy,{cruise:38,max:58,accel:3.4,pauseMin:.30,pauseMax:1.0});
+  Object.assign(V16_MOTION_PRESETS.molly,{cruise:20,max:30,accel:1.5,pauseMin:.5,pauseMax:1.5});
+  Object.assign(V16_MOTION_PRESETS.platy,{cruise:24,max:36,accel:2.0,pauseMin:.35,pauseMax:1.2});
+  Object.assign(V16_MOTION_PRESETS.xipho,{cruise:22,max:32,accel:1.6,pauseMin:.35,pauseMax:1.1});
+ }catch(e){console.error('AFNICA calmer swimming',e);}
+ const FEED={};                                                          // tank key -> {t0, until}
+ const BURST={dart:1.75,calm:1.7,heavy:2.1,cruise:1.7};                // speed multiplier over the species' max (molly is heavy, so it needs more)
+ const _feedAnim=animateFeedV13;
+ animateFeedV13=function(key){const n=performance.now();FEED[key]={t0:n,until:n+7500};return _feedAnim.apply(this,arguments);};
+ const _upd=v16UpdateFish;
+ v16UpdateFish=function(el,state,now){
+  try{
+   const tank=el.closest('.tank'),key=tank&&String(tank.id||'').replace(/^tank-/,''),F=key&&FEED[key];
+   if(F&&now<=F.until&&state.preset&&state.preset.style!=='school'&&!el.classList.contains('v13Critical')&&!el.classList.contains('deadFish')){
+    if(state.feedT0!==F.t0){state.feedT0=F.t0;state.feedAt=F.t0+150+Math.random()*(850+(state.preset.style==='heavy'?350:0));state.feedTgt=null;}
+    if(now>=state.feedAt){
+     const tr=tank.getBoundingClientRect();
+     if(!state.feedTgt||now-state.feedScan>140||state.feedTgt.dataset.eaten){
+      state.feedScan=now;let best=null,bd=1e9;
+      const cx=state.x+(state.facing>0?.8:.2)*Math.max(48,95*(state.scale||1)),cy=state.y+Math.max(26,44*(state.scale||1))/2;
+      tank.querySelectorAll('.foodParticle:not([data-eaten])').forEach(p=>{
+       const r=p.getBoundingClientRect(),px=r.left-tr.left+r.width/2,py=r.top-tr.top+r.height/2;
+       if(py<6||py>tr.height-60||r.width===0)return;
+       const d=Math.hypot(px-cx,py-cy)+Math.random()*25;if(d<bd){bd=d;best=p;}
+      });
+      state.feedTgt=best;
+     }
+     const p=state.feedTgt;
+     if(p){
+      const r=p.getBoundingClientRect(),px=r.left-tr.left+r.width/2,py=r.top-tr.top+r.height/2,fw=Math.max(48,95*(state.scale||1)),fh=Math.max(26,44*(state.scale||1));
+      const hx=state.x+(state.facing>0?.85:.15)*fw,hy=state.y+fh/2;
+      if(Math.hypot(px-hx,py-hy)<16){p.dataset.eaten='1';p.style.transition='opacity .18s';p.style.opacity='0';state.feedTgt=null;state.mode='swim';}
+      else{
+       state.mode='swim';state.tx=px-(state.facing>0?.85:.15)*fw;state.ty=py-fh/2;
+       const p0=state.preset,m=(BURST[p0.style]||1.5);
+       state.preset=Object.assign({},p0,{cruise:p0.max*m,max:p0.max*m,accel:p0.accel*(p0.style==='heavy'?4:2.6)});
+       try{_upd(el,state,now);}finally{state.preset=p0;}
+       return;
+      }
+     }
+    }
+   }
+  }catch(e){console.error('AFNICA feeding burst',e);}
+  return _upd(el,state,now);
+ };
 })();
 </script><script>
 /* ================= V17.43 BROOD IN THE CAVE =================
