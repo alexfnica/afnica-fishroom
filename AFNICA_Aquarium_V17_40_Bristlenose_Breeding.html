@@ -8429,41 +8429,68 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
  const BURST={dart:1.75,calm:1.7,heavy:2.1,cruise:1.7};                // speed multiplier over the species' max (molly is heavy, so it needs more)
  const _feedAnim=animateFeedV13;
  animateFeedV13=function(key){const n=performance.now();FEED[key]={t0:n,until:n+7500};return _feedAnim.apply(this,arguments);};
+ // Shared by every species: returns where this fish should burst to right now (or null), eating flakes on the way.
+ function foodTarget(el,state,now){
+  const tank=el.closest('.tank'),key=tank&&String(tank.id||'').replace(/^tank-/,''),F=key&&FEED[key];
+  if(!F||now>F.until||!state.preset||el.classList.contains('v13Critical')||el.classList.contains('deadFish'))return null;
+  if(state.feedT0!==F.t0){state.feedT0=F.t0;state.feedAt=F.t0+150+Math.random()*(850+(state.preset.style==='heavy'?350:0));state.feedTgt=null;}
+  if(now<state.feedAt)return null;
+  const tr=tank.getBoundingClientRect(),fw=Math.max(48,95*(state.scale||1)),fh=Math.max(26,44*(state.scale||1)),hf=state.facing>0?.85:.15;
+  if(!state.feedTgt||now-state.feedScan>140||state.feedTgt.dataset.eaten){
+   state.feedScan=now;let best=null,bd=1e9;
+   const cx=state.x+(state.facing>0?.8:.2)*fw,cy=state.y+fh/2;
+   tank.querySelectorAll('.foodParticle:not([data-eaten])').forEach(p=>{
+    const r=p.getBoundingClientRect(),px=r.left-tr.left+r.width/2,py=r.top-tr.top+r.height/2;
+    if(py<6||py>tr.height-60||r.width===0)return;
+    const d=Math.hypot(px-cx,py-cy)+Math.random()*25;if(d<bd){bd=d;best=p;}
+   });
+   state.feedTgt=best;
+  }
+  const p=state.feedTgt;if(!p)return null;
+  const r=p.getBoundingClientRect(),px=r.left-tr.left+r.width/2,py=r.top-tr.top+r.height/2;
+  if(Math.hypot(px-(state.x+hf*fw),py-(state.y+fh/2))<16){p.dataset.eaten='1';p.style.transition='opacity .18s';p.style.opacity='0';state.feedTgt=null;return null;}
+  return {x:px-hf*fw,y:py-fh/2};
+ }
  const _upd=v16UpdateFish;
  v16UpdateFish=function(el,state,now){
   try{
-   const tank=el.closest('.tank'),key=tank&&String(tank.id||'').replace(/^tank-/,''),F=key&&FEED[key];
-   if(F&&now<=F.until&&state.preset&&state.preset.style!=='school'&&!el.classList.contains('v13Critical')&&!el.classList.contains('deadFish')){
-    if(state.feedT0!==F.t0){state.feedT0=F.t0;state.feedAt=F.t0+150+Math.random()*(850+(state.preset.style==='heavy'?350:0));state.feedTgt=null;}
-    if(now>=state.feedAt){
-     const tr=tank.getBoundingClientRect();
-     if(!state.feedTgt||now-state.feedScan>140||state.feedTgt.dataset.eaten){
-      state.feedScan=now;let best=null,bd=1e9;
-      const cx=state.x+(state.facing>0?.8:.2)*Math.max(48,95*(state.scale||1)),cy=state.y+Math.max(26,44*(state.scale||1))/2;
-      tank.querySelectorAll('.foodParticle:not([data-eaten])').forEach(p=>{
-       const r=p.getBoundingClientRect(),px=r.left-tr.left+r.width/2,py=r.top-tr.top+r.height/2;
-       if(py<6||py>tr.height-60||r.width===0)return;
-       const d=Math.hypot(px-cx,py-cy)+Math.random()*25;if(d<bd){bd=d;best=p;}
-      });
-      state.feedTgt=best;
-     }
-     const p=state.feedTgt;
-     if(p){
-      const r=p.getBoundingClientRect(),px=r.left-tr.left+r.width/2,py=r.top-tr.top+r.height/2,fw=Math.max(48,95*(state.scale||1)),fh=Math.max(26,44*(state.scale||1));
-      const hx=state.x+(state.facing>0?.85:.15)*fw,hy=state.y+fh/2;
-      if(Math.hypot(px-hx,py-hy)<16){p.dataset.eaten='1';p.style.transition='opacity .18s';p.style.opacity='0';state.feedTgt=null;state.mode='swim';}
-      else{
-       state.mode='swim';state.tx=px-(state.facing>0?.85:.15)*fw;state.ty=py-fh/2;
-       const p0=state.preset,m=(BURST[p0.style]||1.5);
-       state.preset=Object.assign({},p0,{cruise:p0.max*m,max:p0.max*m,accel:p0.accel*(p0.style==='heavy'?4:2.6)});
-       try{_upd(el,state,now);}finally{state.preset=p0;}
-       return;
-      }
-     }
+   if(state.preset&&state.preset.style!=='school'){
+    const t=foodTarget(el,state,now);
+    if(t){
+     state.mode='swim';state.tx=t.x;state.ty=t.y;
+     const p0=state.preset,m=(BURST[p0.style]||1.5);
+     state.preset=Object.assign({},p0,{cruise:p0.max*m,max:p0.max*m,accel:p0.accel*(p0.style==='heavy'?4:2.6)});
+     try{_upd(el,state,now);}finally{state.preset=p0;}
+     return;
     }
    }
   }catch(e){console.error('AFNICA feeding burst',e);}
   return _upd(el,state,now);
+ };
+ // Neon tetras follow a school centre; while food is around each one leaves the formation, bursts to a flake, and the
+ // normal schooling pulls it back afterwards.
+ const _neon=v168UpdateNeon;
+ v168UpdateNeon=function(el,state,now,dt){
+  try{
+   const t=foodTarget(el,state,now);
+   if(t){
+    const b=v16Bounds(el,state);
+    if(b){
+     const p=state.preset,mx=p.max*1.55,dx=t.x-state.x,dy=t.y-state.y,dist=Math.max(1,Math.hypot(dx,dy));
+     const sp=Math.min(mx,dist*5+28),blend=1-Math.exp(-p.accel*3*dt);
+     state.vx=v16Lerp(state.vx,dx/dist*sp,blend);state.vy=v16Lerp(state.vy,dy/dist*sp*.9,blend);
+     state.x=v16Clamp(state.x+state.vx*dt,b.minX,b.maxX);state.y=v16Clamp(state.y+state.vy*dt,b.minY,b.maxY);
+     if(Math.abs(state.vx)>3)state.facing=state.vx>=0?1:-1;
+     state.tx=t.x;state.ty=t.y;state.mode='feed';
+     const t_=now/1000,speedNorm=v16Clamp(Math.hypot(state.vx,state.vy)/mx,0,1);
+     const bob=Math.sin(t_*p.bobSpeed+state.phase)*p.bobAmp*(.28+.72*speedNorm),tilt=v16Clamp(state.vy*.08,-p.tilt,p.tilt),sx=v17TurnScale(state,dt,el)*state.scale;
+     el.style.transform=`translate3d(${state.x.toFixed(2)}px,${(state.y+bob).toFixed(2)}px,0) rotate(${tilt.toFixed(2)}deg) scaleX(${sx.toFixed(3)}) scaleY(${state.scale.toFixed(3)})`;
+     el.classList.add('v16Bound');
+     return true;
+    }
+   }
+  }catch(e){console.error('AFNICA neon feeding',e);}
+  return _neon.apply(this,arguments);
  };
 })();
 </script><script>
