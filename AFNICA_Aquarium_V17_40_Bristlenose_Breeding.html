@@ -8201,8 +8201,8 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
  // tent/tt: male Ancistrus snout tentacles - the upper half of the snout columns drifts a pixel or so, each column
  // slightly out of phase, like soft tentacles moved by the water
  function tentDY(tent,tt,x,u){return u<.16?tent*((.16-u)/.16)*Math.sin(tt*2.3+x*.35)+tent*.4*Math.sin(tt*3.7-x*.6):0;}
- function draw(c,r,ph,amp,slow,dors,nose,tent,tt,sway){
-  if(dors==null)dors=1;nose=nose||0;tent=tent||0;sway=sway||0;
+ function draw(c,r,ph,amp,slow,dors,nose,tent,tt,sway,belly){
+  if(dors==null)dors=1;nose=nose||0;tent=tent||0;sway=sway||0;belly=belly||0;
   const {base,W,H,x0,x1,BL,B,fx0,fx1,tipTop,has,pad}=r,g=c.getContext('2d');
   g.clearRect(0,0,c.width,c.height);g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';
   const lam=1.15,A=amp*BL,cy=(r.y0+r.y1)/2,sw=2,wp=u=>ph-2*Math.PI*u/lam,n=Math.ceil(W/sw);
@@ -8216,7 +8216,11 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
    // lateral tail sway seen in profile: the rear half swings toward/away from the camera, so it shortens and lengthens
    // along the body axis (no vertical movement at all)
    const dxs=sway&&u>.3?sway*BL*.05*Math.pow((u-.3)/.7,1.4)*Math.sin(ph):0,xd=x+dxs;
+   // female condition (V17.43): the belly (lower half, mid-body) swells while carrying young/eggs, is drawn in after
+   // giving birth, then fills out again. Positive = fuller, negative = thinner.
+   const bb=belly&&u>.18&&u<.78?belly*Math.pow(Math.sin(Math.PI*(u-.18)/.6),1.2):0;
    if(td&&sTop<cy){g.drawImage(base,x,sTop,sw,cy-sTop,xd,sTop+td,sw,cy-sTop-td);g.drawImage(base,x,cy,sw,H-cy,xd,cy,sw,H-cy);}   // stretch only the top half: no gap at the seam
+   else if(bb&&sTop<cy){g.drawImage(base,x,sTop,sw,cy-sTop,xd,sTop*sy,sw,(cy-sTop)*sy);g.drawImage(base,x,cy,sw,H-cy,xd,sTop*sy+(cy-sTop)*sy,sw,(H-cy)*sy*(1+bb));}
    else g.drawImage(base,x,sTop,sw,H-sTop,xd,sTop*sy,sw,(H-sTop)*sy);
    g.restore();
   }
@@ -8372,7 +8376,7 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
      // male tentacles are passive: they only sway while the body itself moves (crawl, fanning, forage shift)
      s.tm=(s.tm||0)+(Math.max(k,+s.fe.dataset.ancNudge||0)-(s.tm||0))*Math.min(1,dt*5);s.tt=(s.tt||0)+dt*s.tm;
      const tent=c.dataset.wk==='anc|0|38'?r.W/170*s.tm:0;                             // males only; up to ~0.7 screen px
-     if(rolling&&gl>.001&&gl<.999)drawRoll(c,r,rb,s.ph,amp,gl);else draw(c,r,s.ph,amp,1-sp,fan?.8:move,0,tent,s.tt,fan?0:Math.min(1,s.rs));
+     if(rolling&&gl>.001&&gl<.999)drawRoll(c,r,rb,s.ph,amp,gl);else draw(c,r,s.ph,amp,1-sp,fan?.8:move,0,tent,s.tt,fan?0:Math.min(1,s.rs),+s.fe.dataset.belly||0);
      }catch(e){s.bad=true;console.error('AFNICA fin motion (anc fish)',e);}   // one bad fish must not stop the others
     });
     document.querySelectorAll('.tank .ancGlass.finWarpG>canvas').forEach(c=>{       // Ancistrus belly view (front glass)
@@ -8410,7 +8414,7 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
       const rush=s.fe.classList.contains('v1712Dash');                // cory air dash: hard, fast tail beats
       const freq=(rush?6.5:dig?2.2:(1.2+3.6*sp)*s.cfg.f)*(1+.6*turn); // tail beats per second
       s.ph+=2*Math.PI*freq*dt;
-      draw(c,r,s.ph,(rush?.07:dig?.012:(.02+.035*sp)*s.cfg.a)*(1+2.2*turn),dig?.2:rush?0:1-sp,dig?.3:rush?.2:1,dig?.010*jab+.004*Math.sin(s.ph*1.3):0);
+      draw(c,r,s.ph,(rush?.07:dig?.012:(.02+.035*sp)*s.cfg.a)*(1+2.2*turn),dig?.2:rush?0:1-sp,dig?.3:rush?.2:1,dig?.010*jab+.004*Math.sin(s.ph*1.3):0,0,0,0,+s.fe.dataset.belly||0);
      }catch(e){s.bad=true;console.error('AFNICA fin motion (fish)',e);}         // one bad fish must not stop the others
     });
    }catch(e){console.error('AFNICA fin motion',e);}
@@ -8521,6 +8525,78 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
   // neons swim slightly tilted: the nose follows the up/down travel, gently
   applyPitch(el,state,now,Math.max(-14,Math.min(14,(state.vy||0)*.3)));return r;   // the whole school tilts together with its up/down travel
  };
+})();
+</script><script>
+/* ================= V17.43 FEMALE CONDITION =================
+   Females of every species look fuller while they carry young (livebearers) or ripen a batch of eggs (corydoras,
+   bristlenose), are visibly drawn in right after giving birth / spawning, and then fill out again over a few days until
+   they are back in breeding condition. Saved per fish as f.condBirthDay (game day of the last birth/spawn; optional,
+   older saves simply have none). The look is drawn by the fin-motion layer from .modelFish[data-belly]. */
+(function(){
+ const LIVE={guppy:1,molly:1,platy:1,xipho:1,sword:1,swordtail:1};
+ const RECOVER={guppy:4,molly:5,platy:4,xipho:4,neon:3,cory:3,anc:5};   // game days to be back in breeding condition
+ const FULL=.15,THIN=-.08;
+ const smooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);};
+ function allFish(){const a=[].concat(st.fish||[],st.fry||[],st.breederTank||[]);const x=st.extraTanks||{};for(const k in x)if(x[k]&&Array.isArray(x[k].fish))a.push(...x[k].fish);return a;}
+ function adult(f){return S[f.species]&&f.age>=S[f.species].adult;}
+ window.femaleBellyV1743=function(f){
+  if(!f||f.sex!=='F'||f.dead||!adult(f))return 0;
+  let carry=0;
+  const bb=st.breederBreed;
+  if(bb&&bb.species===f.species&&(st.breederTank||[]).includes(f)){
+   if(f.species==='cory'){if(!st.coryBreederEggs)carry=.55+.45*smooth((Date.now()-((bb.courtship&&bb.courtship.start)||Date.now()))/20000);}
+   else carry=smooth((st.day-bb.startDay+.35)/Math.max(1,bb.days));                           // young growing inside
+  }
+  if(st.breed&&st.breed.species===f.species&&(st.fish||[]).includes(f)&&LIVE[f.species])carry=Math.max(carry,smooth(1-(st.breed.end-Date.now())/10000));
+  const c=st.ancClutch;
+  if(f.species==='anc'&&c&&c.stage==='spawning'&&c.mom===f.id)carry=c.phase==='trapped'?1:.7;   // eggs ripening, full while trapped in the cave
+  if(carry>0)return FULL*carry;
+  if(Number.isFinite(f.condBirthDay)){
+   const d=st.day-f.condBirthDay,R=RECOVER[f.species]||4;
+   if(d<R)return THIN*(1-smooth(d/R));                                                         // drawn in, filling out again
+  }
+  return 0;
+ };
+ function markBirth(f){if(f)f.condBirthDay=st.day;}
+ // livebearers born in the breeder tank
+ const _fbb=finishBreederBreedV103;
+ finishBreederBreedV103=function(){
+  const bb=st.breederBreed,mom=bb&&(st.breederTank||[]).find(f=>f.sex==='F'&&f.species===bb.species);
+  const r=_fbb.apply(this,arguments);
+  if(bb&&!st.breederBreed&&mom&&bb.species!=='cory'){markBirth(mom);save();}
+  return r;
+ };
+ // the old main-tank livebearer breeding
+ const _fb=finishBreed;
+ finishBreed=function(){
+  const b=st.breed,mom=b&&(st.fish||[]).find(f=>f.sex==='F'&&f.species===b.species&&adult(f));
+  const r=_fb.apply(this,arguments);
+  if(b&&!st.breed&&mom){markBirth(mom);save();}
+  return r;
+ };
+ // corydoras: the female is drawn in once her eggs are on the glass
+ const _cory=showCoryBreederEggsV172;
+ showCoryBreederEggsV172=function(){
+  const mom=(st.breederTank||[]).find(f=>f.species==='cory'&&f.sex==='F');markBirth(mom);
+  return _cory.apply(this,arguments);
+ };
+ // bristlenose: the day she lays in the cave
+ function ancLaid(){
+  for(const c of [st.ancClutch,st.ancClutch2]){
+   if(c&&Number.isFinite(c.laidDay)&&!c.condMarked43){const mom=allFish().find(f=>f.id===c.mom);if(mom&&mom.condBirthDay!==c.laidDay){mom.condBirthDay=c.laidDay;}c.condMarked43=true;}
+  }
+ }
+ setInterval(()=>{
+  try{
+   if(document.hidden)return;
+   ancLaid();
+   const byId=new Map(allFish().map(f=>[String(f.id),f]));
+   document.querySelectorAll('.tank .modelFish[data-fish-id]').forEach(el=>{
+    const f=byId.get(el.dataset.fishId),b=f?window.femaleBellyV1743(f):0,v=b.toFixed(3);
+    if(el.dataset.belly!==v)el.dataset.belly=v;
+   });
+  }catch(e){console.error('AFNICA female condition',e);}
+ },700);
 })();
 </script><script>
 /* ================= V17.43 SPIRULINA WAFER =================
