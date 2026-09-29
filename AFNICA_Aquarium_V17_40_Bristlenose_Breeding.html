@@ -8005,6 +8005,11 @@ function advanceAncClutchSlot40(c,label){
     }
     if(c.count<=0){c.stage='lost';toast('The clutch '+(label?'('+label+') ':'')+'was lost to fungus. Keep the Breeder Tank clean.');return;}
    }else c.fungus=Math.max(0,c.fungus-.2);
+   // A young, inexperienced male sometimes nibbles a few healthy eggs, even in perfect water (never the whole clutch).
+   if(dad&&dad.age<S.anc.adult+8&&c.count>4&&Math.random()<((c.attempt||1)<=2?.3:.12)){
+    const bit=1+Math.floor(Math.random()*3);c.count-=bit;c.eatenYoung=(c.eatenYoung||0)+bit;
+    if(!c.nibbleToast){c.nibbleToast=true;toast('The young male nibbled a few eggs '+(label?'('+label+') ':'')+'· normal for a first-timer.');}
+   }
   }
   if(st.day>=c.hatchDay){c.stage='yolk';toast('Bristlenose eggs hatched'+(label?' ('+label+')':'')+' · fry remain inside with yolk sacs');}
  }
@@ -8500,7 +8505,7 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
  }
  function stageLine(c){
   if(c.stage==='eggs'){const laid=Number.isFinite(c.laidDay)?c.laidDay:c.hatchDay-5,q=clamp((st.day-laid)/Math.max(1,c.hatchDay-laid),0,1);
-   return c.count+' eggs · '+(q>.55?'eyes are showing through the shells':'freshly laid, bright orange')+(c.fungus>.05?' · white fungus on some of them, the water is too poor':'')+(c.eatenFungus?' · the male has eaten '+c.eatenFungus+' infected eggs':'')+' · hatching in '+Math.max(0,c.hatchDay-st.day)+' days';}
+   return c.count+' eggs · '+(q>.55?'eyes are showing through the shells':'freshly laid, bright orange')+(c.fungus>.05?' · white fungus on some of them, the water is too poor':'')+(c.eatenFungus?' · the male has eaten '+c.eatenFungus+' infected eggs':'')+(c.eatenYoung?' · the young male has nibbled '+c.eatenYoung+' of them':'')+' · hatching in '+Math.max(0,c.hatchDay-st.day)+' days';}
   const p=clamp((st.day-c.hatchDay)/Math.max(1,c.releaseDay-c.hatchDay),0,1);
   return c.count+' wrigglers · they lie in a heap, twitching now and then · yolk sac '+Math.round((1-p)*100)+'% left · leaving the cave in '+Math.max(0,c.releaseDay-st.day)+' days';
  }
