@@ -8183,7 +8183,9 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
   for(let x=0;x<W;x++){let m=1e9;for(let k=Math.max(x0,x-w);k<=Math.min(x1,x+w);k++)if(dil[k]<m)m=dil[k];ero[x]=m===1e9?H:m;}
   let fx0=1e9,fx1=-1,B=1e9,tipTop=1e9;
   for(let x=x0;x<=x1;x++){const u=(x1-x)/BL;if(u<.15||u>.82||top[x]<0)continue;const h=ero[x]-top[x];if(h>H*.02){if(x<fx0)fx0=x;if(x>fx1)fx1=x;if(ero[x]<B)B=ero[x];if(top[x]<tipTop)tipTop=top[x];}}
-  const has=fx1>=0&&B-tipTop>H*.04;
+  // a very long dorsal (sailfin / lyretail molly male) is not a narrow peak: shearing only its upper rows leaves a seam
+  // and a clipped leading edge, so leave such fins unsheared (they still ride the body wave)
+  const has=fx1>=0&&B-tipTop>H*.04&&(fx1-fx0)<BL*.3;
   return {base,W,H,x0,x1,y0,y1,BL,B:has?Math.round(B):0,fx0,fx1,tipTop,has,pad:Math.ceil(BL*.07)+2};
  }
  function prepare(key){
