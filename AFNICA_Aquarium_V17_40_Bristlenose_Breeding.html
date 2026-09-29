@@ -8220,7 +8220,10 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
    // giving birth, then fills out again. Positive = fuller, negative = thinner.
    const bb=belly&&u>.18&&u<.78?belly*Math.pow(Math.sin(Math.PI*(u-.18)/.6),1.2):0;
    if(td&&sTop<cy){g.drawImage(base,x,sTop,sw,cy-sTop,xd,sTop+td,sw,cy-sTop-td);g.drawImage(base,x,cy,sw,H-cy,xd,cy,sw,H-cy);}   // stretch only the top half: no gap at the seam
-   else if(bb&&sTop<cy){g.drawImage(base,x,sTop,sw,cy-sTop,xd,sTop*sy,sw,(cy-sTop)*sy);g.drawImage(base,x,cy,sw,H-cy,xd,sTop*sy+(cy-sTop)*sy,sw,(H-cy)*sy*(1+bb));}
+   else if(bb>0&&sTop<cy){g.drawImage(base,x,sTop,sw,cy-sTop,xd,sTop*sy,sw,(cy-sTop)*sy);g.drawImage(base,x,cy,sw,H-cy,xd,sTop*sy+(cy-sTop)*sy,sw,(H-cy)*sy*(1+bb));}
+   else if(bb<0&&sTop<cy){                                                   // thinner: take a strip out of the belly, fins below keep their shape
+    const k=Math.min(H-cy-1,-bb*(r.y1-cy));
+    g.drawImage(base,x,sTop,sw,cy-sTop,xd,sTop*sy,sw,(cy-sTop)*sy);g.drawImage(base,x,cy+k,sw,H-cy-k,xd,sTop*sy+(cy-sTop)*sy,sw,(H-cy-k)*sy);}
    else g.drawImage(base,x,sTop,sw,H-sTop,xd,sTop*sy,sw,(H-sTop)*sy);
    g.restore();
   }
@@ -8535,7 +8538,7 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
 (function(){
  const LIVE={guppy:1,molly:1,platy:1,xipho:1,sword:1,swordtail:1};
  const RECOVER={guppy:4,molly:5,platy:4,xipho:4,neon:3,cory:3,anc:5};   // game days to be back in breeding condition
- const FULL=.15,THIN=-.08;
+ const FULL=.15,THIN=-.08,THIN_LIVE=-.36;   // a livebearer that has just dropped her brood is nearly as slim as the male
  const smooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);};
  function allFish(){const a=[].concat(st.fish||[],st.fry||[],st.breederTank||[]);const x=st.extraTanks||{};for(const k in x)if(x[k]&&Array.isArray(x[k].fish))a.push(...x[k].fish);return a;}
  function adult(f){return S[f.species]&&f.age>=S[f.species].adult;}
@@ -8553,7 +8556,7 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
   if(carry>0)return FULL*carry;
   if(Number.isFinite(f.condBirthDay)){
    const d=st.day-f.condBirthDay,R=RECOVER[f.species]||4;
-   if(d<R)return THIN*(1-smooth(d/R));                                                         // drawn in, filling out again
+   if(d<R)return (LIVE[f.species]?THIN_LIVE:THIN)*(1-smooth(d/R));                                                         // drawn in, filling out again
   }
   return 0;
  };
