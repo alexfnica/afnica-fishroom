@@ -51,11 +51,11 @@ if SEX == 'M':
     S = np.where((inD)[..., None], d * np.stack([np.ones_like(wD)] * 3 + [wD], -1) + base * (1 - wD)[..., None] * 0, S)
     S[..., 3] = np.where(inD, np.maximum(d[..., 3] * wD, base[..., 3] * (1 - wD)), S[..., 3])
     # ---- 2. gonopodium: the anal fin of a male is a slim pointed rod angled back along the belly ----
-    ybot = lambda x: Y(100 + (x - X(140)) / k * .06)      # belly line over the anal fin
+    ybot = lambda x: Y(100 + np.clip((x - X(125)) / k, 0, None) * .11)   # real belly line: 100 at x125 -> 108 at x196      # belly line over the anal fin
     erase = (xx > X(118)) & (xx < X(196)) & (yy > ybot(xx) + 1.2 * k)
     wx = sm((xx - X(118)) / (5 * k)) * sm((X(196) - xx) / (8 * k))           # fade the cut out at both ends: no step in the belly
     S[..., 3] = np.where(erase, S[..., 3] * (1 - wx * sm((yy - ybot(xx) - 2.2 * k) / (2.5 * k))), S[..., 3])
-    B = np.array([X(186), Y(103.5)]); T = np.array([X(128), Y(121)])  # base (just behind the pelvic fins) -> tip
+    B = np.array([X(184), Y(106.5)]); T = np.array([X(128), Y(121)])  # base (just behind the pelvic fins) -> tip
     ax = T - B; Lg = np.hypot(*ax); ux, uy = ax / Lg; nx, ny = -uy, ux
     s = ((xx - B[0]) * ux + (yy - B[1]) * uy) / Lg
     t = (xx - B[0]) * nx + (yy - B[1]) * ny
