@@ -7703,6 +7703,13 @@ window.addEventListener('load',()=>setTimeout(()=>switchTankV8('main'),100),{onc
  return true;
  }
 
+ // a few sand grains stirred up when a foraging pleco lets go of the substrate
+ function ancSandPuffV1743(tank,x,y,scale){try{
+  if(!document.getElementById('ancPuffCss')){const c=document.createElement('style');c.id='ancPuffCss';c.textContent='.ancPuff{position:absolute;pointer-events:none;z-index:47;border-radius:50%;background:rgba(214,196,158,.75);animation:ancPuff 1.3s ease-out forwards}@keyframes ancPuff{0%{transform:translate(0,0);opacity:.85}100%{transform:translate(var(--dx),var(--dy));opacity:0}}';document.head.appendChild(c);}
+  for(let n=0;n<4;n++){const p=document.createElement('div');p.className='ancPuff';const sz=(1.2+Math.random()*1.6)*scale;
+   p.style.cssText='left:'+(x+rand(-4,4)*scale)+'px;top:'+y+'px;width:'+sz+'px;height:'+sz+'px;--dx:'+rand(-7,7)*scale+'px;--dy:'+(-rand(4,11)*scale)+'px';
+   tank.append(p);setTimeout(()=>p.remove(),1350);}
+ }catch(e){console.error('AFNICA anc sand puff',e);}}
  function frame(t){const dt=Math.min(.04,(t-last)/1000);last=t;
  try{
  document.querySelectorAll('.tank').forEach(tank=>{
@@ -7717,10 +7724,18 @@ window.addEventListener('load',()=>setTimeout(()=>switchTankV8('main'),100),{onc
  if(s.w&&s.w!==w){s.x*=w/s.w;s.tx*=w/s.w}if(s.h&&s.h!==h){s.y*=h/s.h;s.ty*=h/s.h}s.w=w;s.h=h;s.tankId=tank.id;
  // Upper bound unchanged (85 above base); lower bound raised to base+10 to match
  // the substrate rest position below, so this clamp doesn't fight that offset.
- s.x=clamp(s.x,lo,hi);s.tx=clamp(s.tx,lo,hi);s.y=clamp(s.y,base-85,base+10);s.ty=clamp(s.ty,base-85,base+10);
+ // at the side wall the fish stands head-up, so it may come much closer to the edge than when lying flat
+ const wallLo=26*scale+2,wallHi=Math.max(wallLo,w-26*scale-2);
+ if(s.atWall){s.x=clamp(s.x,wallLo,wallHi);}else{s.x=clamp(s.x,lo,hi);}s.tx=clamp(s.tx,s.atWall?wallLo:lo,s.atWall?wallHi:hi);
+ // head-up on a wall or the front pane it can go right up to just under the surface (head ~60*scale above centre)
+ const topY=Math.max(h*.08,8)+64*scale,upY=(s.atWall||s.surface==='glass'||s.mode==='attach'||s.mode==='detach')?topY:base-85;
+ s.y=clamp(s.y,Math.min(upY,base-85),base+10);s.ty=clamp(s.ty,Math.min(upY,base-85),base+10);
  const residents=tankArrayV14(tank.dataset.tank||'main');
  const fish=residents.find(f=>String(f.id)===el.dataset.fishId);
- if(window.ancBreedingMotion40&&fish&&window.ancBreedingMotion40(tank,el,s,fish,dt,w,base,scale))return;
+ if(window.ancBreedingMotion40&&fish&&window.ancBreedingMotion40(tank,el,s,fish,dt,w,base,scale)){
+  // breeding choreography owns the fish now: drop any half-finished wall/glass route so it can't resume from stale state
+  if(s.atWall||['toWall','toEdgeG','wallHold','attach','detach'].includes(s.mode)){s.atWall=false;s.transition=null;s.turn=null;s.mode='rest';s.wait=1;}
+  return;}
  const readyMales=residents.filter(f=>f.species==='anc'&&f.sex==='M'&&f.age>=S.anc.adult&&!f.dead&&!f.disease&&f.health>=80);
  const eligible=fish&&readyMales[0]?.id===fish.id&&residents.some(f=>f.species==='anc'&&f.sex==='F'&&f.age>=S.anc.adult&&!f.dead&&!f.disease)&&tankHealthFor(tank.dataset.tank||'main')>=70;
  // Persist each male's calendar anchor with the fish, including transfers and reloads.
@@ -7745,33 +7760,75 @@ window.addEventListener('load',()=>setTimeout(()=>switchTankV8('main'),100),{onc
  s.time+=dt;s.glass=Math.max(0,s.glass-dt*.5);const caveTurning=turn(s,1,dt);s.angle+=clamp(-s.angle,-45*dt,45*dt);
  const doorway=clamp(w*.72-105,75,w-75);
  if(!s.cavePhase)s.cavePhase='approach';
- const cx=s.cavePhase==='approach'?doorway:clamp(w*.72-5,75,w-75),dx=cx-s.x,dy=base-s.y,d=Math.hypot(dx,dy),step=caveTurning?0:Math.min(d,24*thrust*dt);
+ // target height = the grounded rest line (base+10); aiming at base while the grounding pulls to base+10 left the male
+ // stuck ~10 px from the doorway forever, jittering in front of the cave
+ const cx=s.cavePhase==='approach'?doorway:clamp(w*.72-5,75,w-75),dx=cx-s.x,dy=base+10-s.y,d=Math.hypot(dx,dy),step=caveTurning?0:Math.min(d,24*thrust*dt);
  if(d>1){s.x+=dx/d*step;s.y+=dy/d*step;s.mode=s.cavePhase==='approach'?'cave-approach':'cave-enter';}else if(s.cavePhase==='approach'){s.cavePhase='enter';s.mode='cave-enter';}else{s.mode='fanning';}
- s.surface='substrate';s.patch=null;s.transition=null;
+ s.surface='substrate';s.patch=null;s.transition=null;if(s.x>=lo&&s.x<=hi)s.atWall=false;   // release the wall clamp only once it has walked clear (no 30 px jump)
  if(cave)cave.title=s.mode==='fanning'?'Male ready for breeding · fanning in driftwood cave':'Male approaching breeding cave';
  }else if(!ready&&(s.mode==='fanning'||s.mode==='cave-approach'||s.mode==='cave-enter')){s.cavePhase=null;s.mode='rest';s.wait=2;s.tx=s.x;s.ty=s.y;s.surface='substrate';s.transition=null;}
  el.classList.toggle('ancFanning',s.mode==='fanning'&&!blocked);el.classList.toggle('ancInCave',caveActive&&s.mode==='fanning');
  if(cave){cave.dataset.occupied=String(s.mode==='fanning');cave.title=ready?'Breeding readiness · day '+(cycleDay+1)+' of 3':'Driftwood breeding cave · next readiness in '+(15-cycleDay)+' game days';}
  if(!blocked&&!caveActive){s.time+=dt;s.wait-=dt;
- if(s.mode==='attach'||s.mode==='detach'){
- const tr=s.transition,u=clamp(1-s.wait/6,0,1),ease=u*u*u*(u*(u*6-15)+10);
- // Approach/leave the pane with continuous position and a gradual body pitch.
- s.x=tr.x+tr.dx*ease;s.y=tr.y+tr.dy*ease;
- // A real pleco docking on the glass does three things in order: it lifts its head (pitch), then rolls along its
- // long axis to show the viewer its belly (the side sprite narrows, the belly sprite widens - swapped at the
- // narrowest point instead of cross-fading two sprites into a ghost), then settles onto the pane. Detach plays
- // the same story backwards. k = progress toward "attached" (0 free .. 1 on the glass).
- const sm=q=>{q=clamp(q,0,1);return q*q*(3-2*q)},k=s.mode==='attach'?u:1-u;
- const angFree=s.mode==='attach'?tr.angle:tr.endAngle,angGlass=s.mode==='attach'?tr.endAngle:tr.angle;
- s.angle=angFree+(angGlass-angFree)*sm(k/.62);
- s.glass=sm((k-.28)/.55);
- if(s.wait<=0){s.surface=s.mode==='attach'?'glass':'substrate';s.glass=s.surface==='glass'?1:0;s.mode='graze';s.wait=(s.surface==='glass'?rand(15,25):rand(6,12))*ancActivityScaleV17();s.transition=null;}
+ /* V17.43 glass route. A pleco can't lift off the sand and appear flat on the front pane in mid-tank. It walks to a
+    side wall, climbs it head-up (seen from the front that is its profile - the side sprite, belly against the wall),
+    then works round the corner onto the front pane, which is the only place the roll to the belly view happens.
+    Leaving the glass is the same route backwards: crawl to the corner, round it, climb down, lie flat.
+    toWall = walking to the wall, toEdgeG = crawling along the front pane to the corner. */
+ const sm=q=>{q=clamp(q,0,1);return q*q*q*(q*(q*6-15)+10)};              // smootherstep: no velocity or acceleration jump at phase edges
+ const inset=Math.max(0,lo-wallLo);                                 // how far the centre moves when the body stands up / rounds the corner
+ if(s.mode==='toWall'){
+  const wall=s.wall,gx=wall<0?lo:hi,dx=gx-s.x;s.angle+=clamp(-s.angle,-40*dt,40*dt);
+  const turning=turn(s,wall,dt),step=turning?0:Math.min(Math.abs(dx),Math.min(24,Math.abs(dx)*3+6)*thrust*dt);
+  s.x+=Math.sign(dx)*step;
+  if(!turning&&Math.abs(dx)<.6){s.x=gx;s.face=wall;s.turn=null;s.fv=wall;s.atWall=true;s.mode='attach';s.wait=7;
+   // sometimes it only climbs the side wall (anywhere up to just under the surface) and later climbs back down;
+   // otherwise it rounds the corner onto the front pane at a random height
+   const sideOnly=Math.random()<.4,yEnd=sideOnly?rand(topY,base-40*scale):rand(Math.max(topY,base-95),base-30*scale);
+   s.transition={x:s.x,y:s.y,wall,sideOnly,yEnd:Math.min(yEnd,base-22*scale)};}
+ }else if(s.mode==='wallHold'){
+  // clinging to the side wall in profile: short upward or downward crawls with holds in between
+  const tr=s.transition;s.angle=-90*tr.wall;s.glass=0;
+  if(tr.cy==null||Math.abs(tr.cy-s.y)<.5){tr.cy=clamp(s.y+rand(-26,18)*scale,topY,base-35*scale);tr.hold=s.time+rand(.8,2.2);}
+  if(s.time>tr.hold){const dy=tr.cy-s.y;s.y+=Math.sign(dy)*Math.min(Math.abs(dy),9*scale*thrust*3*strokeGate*dt+.001);}
+  if(s.wait<=0){s.mode='detach';s.wait=7;s.transition={x:s.x,y:s.y,wall:tr.wall,sideOnly:true};}
+ }else if(s.mode==='toEdgeG'){
+  const wall=s.wall,gx=wall<0?lo:hi,dx=gx-s.x,dy=s.transition.yEdge-s.y,d=Math.hypot(dx,dy);
+  const step=Math.min(d,11*thrust*3.4*strokeGate*dt);if(d>.001){s.x+=dx/d*step;s.y+=dy/d*step;}
+  s.angle+=clamp(((-90*wall-s.angle+540)%360)-180,-40*dt,40*dt);            // face was set to the wall side when this began
+  if(d<.6){s.x=gx;s.face=wall;s.turn=null;s.fv=wall;s.angle=-90*wall;s.atWall=true;s.mode='detach';s.wait=7;s.transition={x:s.x,y:s.y,wall};}
+ }else if(s.mode==='attach'||s.mode==='detach'){
+ const tr=s.transition,u=clamp(1-s.wait/7,0,1),wall=tr.wall;
+ if(s.mode==='attach'){
+  const p=sm(u/.4),climb=sm((u-.08)/.62),roll=tr.sideOnly?0:sm((u-.48)/.52);   // overlapping phases: it keeps climbing while it starts round the corner
+  s.angle=-90*wall*p;                                                       // head comes up against the wall
+  s.x=tr.x+wall*inset*p-wall*inset*roll;                                    // stands up into the corner, then rounds it onto the front pane
+  s.y=tr.y+(tr.yEnd-tr.y)*climb;
+  s.glass=roll;
+ }else{
+  const so=tr.sideOnly,roll=so?0:1-sm(u/.5),down=sm(((so?u+.2:u)-.25)/.55),p=1-sm((u-.55)/.45);
+  s.glass=roll;
+  s.x=tr.x+(so?0:wall*inset*(1-roll))-wall*inset*(1-p);                            // back round the corner, then lie down away from the wall
+  s.y=tr.y+(base+10-tr.y)*down;
+  s.angle=-90*wall*p;
+ }
+ if(s.wait<=0&&s.mode==='attach'&&tr.sideOnly){s.mode='wallHold';s.wait=rand(6,14)*ancActivityScaleV17();s.glass=0;s.angle=-90*wall;}
+ else if(s.wait<=0){const on=s.mode==='attach';s.surface=on?'glass':'substrate';s.glass=on?1:0;s.angle=on?-90*wall:0;s.x=wall<0?lo:hi;s.atWall=false;s.mode='graze';s.wait=(on?rand(15,25):rand(6,12))*ancActivityScaleV17();s.transition=null;
+  // first patch on the pane leads away from the corner, so it doesn't sit wedged in it
+  if(on)s.patch={x:clamp(s.x-wall*rand(45,110),lo,hi),y:clamp(s.y+rand(-18,10),base-55,base-22*scale),until:s.time+rand(6,10)};}
  }else if(s.mode!=='move'&&s.wait<=0){
  s.steps++;
- if(s.surface==='substrate'&&s.steps%3===0){s.mode='attach';s.wait=6;s.face=s.face<0?-1:1;s.transition={x:s.x,y:s.y,dx:clamp(s.x+8*s.face,lo,hi)-s.x,dy:-22*scale,angle:s.angle,endAngle:-90*s.face};}
- else if(s.surface==='glass'&&s.steps%4===0){s.mode='detach';s.wait=6;s.transition={x:s.x,y:s.y,dx:clamp(s.x+8*s.face,lo,hi)-s.x,dy:base-s.y,angle:s.angle,endAngle:0};}
+ if(s.surface==='substrate'&&s.steps%3===0){s.mode='toWall';s.wall=s.x<w/2?-1:1;s.transition=null;}
+ else if(s.surface==='glass'&&s.steps%4===0){s.mode='toEdgeG';s.wall=s.x<w/2?-1:1;
+  // belly view is left-right symmetric, so taking the wall side as heading now is invisible; the head-up angle for the
+  // new heading is the mirror of the old one, set together so the fish stays head-up
+  if((s.face<0?-1:1)!==s.wall){s.face=s.wall;s.fv=s.wall;s.turn=null;s.angle=-s.angle;}s.transition={yEdge:clamp(s.y,base-55,base-22*scale)};}
  else{
- s.tx=clamp(s.x+(s.surface==='glass'?rand(-12,12):rand(-32,32)),lo,hi);
+ // On the sand a pleco mostly keeps going the way it faces and only now and then turns round for a longer run;
+ // turning 180 deg to shuffle a few pixels backwards looked mechanical.
+ const fcs=s.face<0?-1:1,nearWall=(fcs<0&&s.x-lo<20)||(fcs>0&&hi-s.x<20);   // nose against the wall: turn away
+ const fwd=nearWall?-fcs:(Math.random()<.72?fcs:-fcs);
+ s.tx=clamp(s.x+(s.surface==='glass'?rand(-12,12):fwd*rand(18,48)),lo,hi);
  // Real bristlenose stay close to a surface (bottom-dwellers) rather than roaming
  // to mid-water height, even while grazing the front glass.
  s.ty=s.surface==='substrate'?base+10:(s.steps%4===3?base-22*scale:clamp(s.y-rand(5,14),base-55,base-22*scale));
@@ -7787,13 +7844,36 @@ window.addEventListener('load',()=>setTimeout(()=>switchTankV8('main'),100),{onc
  const neighbor=[...states.values()].find(o=>o!==s&&o.tankId===tank.id&&o.surface==='glass'&&Math.hypot(nx-o.x,(ny-o.y)*.7)<48*scale);
  if(!neighbor){s.x=nx;s.y=ny;}else{s.patch={x:clamp(s.x+(s.x<neighbor.x?-38:38),lo,hi),y:clamp(s.y-16,base-55,base-22*scale),until:s.time+3};}
  const desired=-90*s.face+clamp(dx,-18,18)*s.face;s.angle+=clamp(((desired-s.angle+540)%360)-180,-18*dt,18*dt);
+ }else if(s.mode==='graze'&&s.surface==='substrate'&&!s.transition){
+ /* Substrate foraging. A bristlenose is flat-bellied: while feeding it stays pressed to the sand with the oral disc
+    clamped on and does NOT bob its head. What moves is the tail - a slow side-to-side wag while the jaws rasp - and
+    the fish as a whole, which creeps forward a few px at a time without letting go ("mowing" a strip of biofilm).
+    Now and then it lets go and glides a little further forward to fresh ground, stirring a few sand grains.
+    rasp = clamped, tail wag; mow = clamped, slow creep; shift = short forward glide (rare). */
+ s.patch=null;s.grazeSpeed=0;const fc=s.face<0?-1:1;
+ if(!s.fg||s.fg.t>=s.fg.d){
+  const prev=s.fg?s.fg.k:'mow';
+  const k=prev==='rasp'?(Math.random()<.8?'mow':'shift'):'rasp';
+  s.fg={k,t:0,d:k==='rasp'?rand(2,4.5):k==='mow'?rand(2.5,5):rand(.9,1.3),v:k==='mow'?rand(1.5,3)*scale:k==='shift'?rand(8,15)*scale:0};
+  if(k==='shift'&&Math.random()<.6)ancSandPuffV1743(tank,s.x+fc*50*scale,s.y+10*scale,scale);
+ }
+ const f=s.fg;f.t+=dt;const q=clamp(f.t/f.d,0,1),ramp=Math.min(1,f.t/.6,(f.d-f.t)/.6);
+ let nv=0,rasp=0;
+ if(f.k==='rasp'){rasp=ramp;}
+ else if(f.k==='mow'){s.x=clamp(s.x+fc*f.v*Math.max(0,ramp)*dt,lo,hi);rasp=.5*ramp;nv=.25*ramp;}
+ else{const env=Math.sin(Math.PI*q);s.x=clamp(s.x+fc*f.v*(Math.PI/2)*env*dt/f.d,lo,hi);nv=env;}
+ s.nudgeV=nv;s.raspV=Math.max(0,rasp);
+ s.angle+=clamp(-s.angle,-10*dt,10*dt);                                     // lies flat
  }else{s.patch=null;s.grazeSpeed=0;}
+ if(!(s.mode==='graze'&&s.surface==='substrate')){s.nudgeV=0;s.raspV=0;}
  if(s.mode==='move'){
 
  const dx=s.tx-s.x,dy=s.ty-s.y,d=Math.hypot(dx,dy);
  // Small bouts of motion separated by bracing; ease into and out of each step.
  const speed=Math.min(s.surface==='glass'?11:24,d*3)*thrust*(s.surface==='glass'?3.4*strokeGate:1);
- const turning=s.surface==='substrate'&&turn(s,Math.abs(dx)>1?Math.sign(dx):Math.sign(s.face),dt);
+ // a target only a few px behind (e.g. clamped at the tank wall) is reached by backing up, not by turning round
+ const behindShort=!s.turn&&Math.abs(dx)<14&&Math.sign(dx)!==Math.sign(s.face);
+ const turning=s.surface==='substrate'&&turn(s,Math.abs(dx)>1&&!behindShort?Math.sign(dx):Math.sign(s.face),dt);
  const step=turning?0:Math.min(d,speed*dt);if(d>.35){s.x+=dx/d*step;s.y+=dy/d*step;
  if(s.surface==='glass'){
  // Small grazing adjustments keep the attached, head-up posture seen in the clips.
@@ -7830,7 +7910,7 @@ window.addEventListener('load',()=>setTimeout(()=>switchTankV8('main'),100),{onc
  side.querySelector('.ancBodyPiece').style.transformOrigin='76px 46px';
  // Keep the female silhouette intact rather than hinging a cut-out tail.
  if(fish&&fish.sex==='F'&&!side.dataset.femaleFixed){side.dataset.femaleFixed='1';side.style.backgroundImage=side.dataset.originalImage;side.querySelector('.ancTailPiece').style.display='none';side.querySelector('.ancBodyPiece').style.display='none';}
- el.dataset.ancThrust=thrust.toFixed(3);el.dataset.ancStroke=strokeGate.toFixed(3);
+ el.dataset.ancThrust=thrust.toFixed(3);el.dataset.ancStroke=strokeGate.toFixed(3);el.dataset.ancNudge=(s.nudgeV||0).toFixed(3);el.dataset.ancRasp=(s.raspV||0).toFixed(3);
  el.style.setProperty('--anc-mouth',s.surface==='glass'&&s.mode==='graze'?(.85+.15*Math.sin(s.time*7+i)):1);
  el.style.setProperty('--anc-glass',s.glass);el.style.setProperty('--anc-side',1-s.glass);
  // Free fish pass in front of the decor. Entry is clipped at the inside edge of the opening.
@@ -7838,8 +7918,12 @@ window.addEventListener('load',()=>setTimeout(()=>switchTankV8('main'),100),{onc
  if(cave&&!rim){rim=document.createElement('div');rim.className='ancCaveRim';rim.innerHTML=ancCaveMarkupV1728();tank.append(rim);}
  if(rim){rim.style.cssText='position:absolute;pointer-events:none;width:160px;height:77px;z-index:45;left:'+cave.style.left+';top:'+cave.style.top+';mask-image:radial-gradient(ellipse 22px 20px at 32px 46px,transparent 97%,black 100%);';}
  const insideEdge=w*.72-21;
+ // fanning male: show him only through the cave mouth (the rim's mask hole is an ellipse 22x20 at 32,46 of the cave),
+ // mapped into the fish's local box (transform-origin centre, uniform scale, facing +1 while in the cave)
+ const cL=cave?parseFloat(cave.style.left)||0:0,cT=cave?parseFloat(cave.style.top)||0:0;
+ const fanClip='ellipse('+(21/scale).toFixed(1)+'px '+(19/scale).toFixed(1)+'px at '+(60+(cL+32-s.x)/scale).toFixed(1)+'px '+(35+(cT+46-s.y)/scale).toFixed(1)+'px)';
  const entryClip='inset(0 '+clamp(120-(60+(insideEdge-s.x)/scale),0,120)+'px 0 0)';
- const props={'clip-path':s.mode==='cave-enter'?entryClip:s.mode==='fanning'?'ellipse(20px 20px at 24px 38px)':'none','z-index':s.mode==='cave-enter'||s.mode==='fanning'?'44':'46',position:'absolute','transform-origin':'center',animation:'none',transition:'none',width:'120px',height:'70px',left:(s.x-60)+'px',top:(s.y-35)+'px',right:'auto',bottom:'auto',translate:'none',rotate:'none',transform:`rotate(${s.angle}deg) scale(${scale}) scaleX(${(s.face<0?-1:1)*(s.turn ? (.3+.7*Math.abs(s.fv==null?1:s.fv)) : 1)})`};for(const[k,v]of Object.entries(props))el.style.setProperty(k,v,'important');
+ const props={'clip-path':s.mode==='cave-enter'?entryClip:s.mode==='fanning'?fanClip:'none','z-index':s.mode==='cave-enter'||s.mode==='fanning'?'44':'46',position:'absolute','transform-origin':'center',animation:'none',transition:'none',width:'120px',height:'70px',left:(s.x-60)+'px',top:(s.y-35)+'px',right:'auto',bottom:'auto',translate:'none',rotate:'none',transform:`rotate(${s.angle}deg) scale(${scale}) scaleX(${(s.face<0?-1:1)*(s.turn ? (.3+.7*Math.abs(s.fv==null?1:s.fv)) : 1)})`};for(const[k,v]of Object.entries(props))el.style.setProperty(k,v,'important');
  el.dataset.ancMode=blocked?'rest':s.mode;el.dataset.ancSurface=s.surface;el.dataset.ancX=s.x;el.dataset.ancY=s.y;
  el.title=s.mode==='fanning'?'Male bristlenose · occupying cave and fanning · breeding readiness':`Ancistrus · ${s.mode==='move'?'moving':s.mode==='rest'?'resting':'grazing'} · ${s.surface==='glass'?'front glass':'substrate'}`;
  });tank.querySelectorAll('[data-anc-shadow]').forEach(sh=>{if(!els.some(el=>el.dataset.fishId===sh.dataset.ancShadow))sh.remove()});});
@@ -8079,8 +8163,11 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
   img.src=src;
  }
  // one frame of the fish at swim phase ph. amp = tail amplitude (fraction of body length), slow = 0..1 dorsal ripple
- function draw(c,r,ph,amp,slow,dors,nose){
-  if(dors==null)dors=1;nose=nose||0;
+ // tent/tt: male Ancistrus snout tentacles - the upper half of the snout columns drifts a pixel or so, each column
+ // slightly out of phase, like soft tentacles moved by the water
+ function tentDY(tent,tt,x,u){return u<.16?tent*((.16-u)/.16)*Math.sin(tt*2.3+x*.35)+tent*.4*Math.sin(tt*3.7-x*.6):0;}
+ function draw(c,r,ph,amp,slow,dors,nose,tent,tt){
+  if(dors==null)dors=1;nose=nose||0;tent=tent||0;
   const {base,W,H,x0,x1,BL,B,fx0,fx1,tipTop,has,pad}=r,g=c.getContext('2d');
   g.clearRect(0,0,c.width,c.height);g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';
   const lam=1.15,A=amp*BL,cy=(r.y0+r.y1)/2,sw=2,wp=u=>ph-2*Math.PI*u/lam,n=Math.ceil(W/sw);
@@ -8090,7 +8177,9 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
    let sy=1;if(u>.8){sy=1+.1*((u-.8)/.2)*Math.cos(wp(u)+.6);}          // caudal fin height breathes as it sweeps
    const sTop=has&&x>=fx0-1&&x<=fx1+1?B:0;                              // fin columns: the tip above the back line is drawn below
    g.save();g.translate(0,pad+dy+cy*(1-sy));
-   g.drawImage(base,x,sTop,sw,H-sTop,x,sTop*sy,sw,(H-sTop)*sy);
+   const td=tent?tentDY(tent,tt,x,u):0;
+   if(td&&sTop<cy){g.drawImage(base,x,sTop,sw,cy-sTop,x,sTop+td,sw,cy-sTop-td);g.drawImage(base,x,cy,sw,H-cy,x,cy,sw,H-cy);}   // stretch only the top half: no gap at the seam
+   else g.drawImage(base,x,sTop,sw,H-sTop,x,sTop*sy,sw,(H-sTop)*sy);
    g.restore();
   }
   if(has){                                                                       // dorsal fin: zero shear at the base, growing to the tip, trailing the body wave
@@ -8173,16 +8262,41 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
  /* Belly view on the glass. Lateral undulation shows as a left-right sway of the tail (the body is rotated head-up by the
     glass logic), and the pectoral fins "walk": upper and lower halves about the body axis are scaled in opposite phase in
     the fin zone, one step per crawl stroke. Held still between strokes, like a real pleco gripping with its mouth. */
- function drawVentral(c,r,ph,amp,step,st){
+ function drawVentral(c,r,ph,amp,step,st,tent,tt){
   const {base,W,H,x0,x1,BL,pad}=r,g=c.getContext('2d');
   g.clearRect(0,0,c.width,c.height);g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';
-  const A=amp*BL,cy=(r.y0+r.y1)/2,sw=2;
+  const A=amp*BL,cy=(r.y0+r.y1)/2,sw=2;tent=tent||0;
   for(let x=0;x<W;x+=sw){
    const u=Math.min(1,Math.max(0,(x1-x)/BL)),dy=A*(.03+.97*Math.pow(u,2.6))*Math.sin(ph-2*Math.PI*u/1.4);
-   const bump=u>.14&&u<.5?Math.sin(Math.PI*(u-.14)/.36):0,sa=1+step*.08*bump*Math.sin(st),sb=1+step*.08*bump*Math.sin(st+Math.PI);
+   const bump=u>.14&&u<.5?Math.sin(Math.PI*(u-.14)/.36):0;
+   // snout tentacles ring the head in the belly view: both sides drift a little, out of phase
+   const ta=tent?tentDY(tent,tt,x,u)/cy:0,tb=tent?tentDY(tent,tt+1.9,x+7,u)/(H-cy):0;
+   const sa=1+step*.08*bump*Math.sin(st)+ta,sb=1+step*.08*bump*Math.sin(st+Math.PI)+tb;
    g.save();g.translate(0,pad+dy);
    g.drawImage(base,x,0,sw,cy,x,cy-cy*sa,sw,cy*sa);
    g.drawImage(base,x,cy,sw,H-cy,x,cy,sw,(H-cy)*sb);
+   g.restore();
+  }
+ }
+ /* Docking roll, drawn into the side canvas. Every slice along the body has its own roll angle: the head rolls first and the
+    tail follows (a wave travelling head to tail, like a fish actually turning over its long axis). A slice at angle th shows
+    the flank squashed by cos(th) about the body axis; once past ~45 deg it is the belly view squashed by sin(th). The two
+    views are cross-faded over a short angle band, so nothing pops. At gl=1 every slice is the belly view at full height,
+    which is exactly the resting belly canvas that takes over. */
+ function drawRoll(c,r,rb,ph,amp,gl){
+  const g=c.getContext('2d');g.clearRect(0,0,c.width,c.height);g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';
+  const sw=2,A=amp*r.BL,cy=(r.y0+r.y1)/2,cyb=(rb.y0+rb.y1)/2,n=Math.ceil(r.W/sw),LAG=.7;
+  const sm=q=>{q=q<0?0:q>1?1:q;return q*q*(3-2*q);};
+  for(let i=0;i<n;i++){
+   const x=i*sw,u=Math.min(1,Math.max(0,(r.x1-x)/r.BL)),th=(Math.PI/2)*sm(gl*(1+LAG)-LAG*u);
+   const dy=A*(.04+.96*Math.pow(u,2.3))*Math.sin(ph-2*Math.PI*u/1.15);
+   // views swap around 45 deg, where cos = sin and both are drawn at the same height; the flank stays opaque underneath so
+   // the short blend never turns see-through
+   const mix=Math.min(1,Math.max(0,(th-.72)/.13));                                  // 0 = side view, 1 = belly view
+   const hs=Math.max(.06,Math.cos(th)),hb=Math.max(.06,Math.sin(th));
+   g.save();g.translate(0,r.pad+dy);
+   if(mix<1)g.drawImage(r.base,x,0,sw,r.H,x,cy-cy*hs,sw,r.H*hs);
+   if(mix>0){g.globalAlpha=mix;g.drawImage(rb.base,x,0,sw,rb.H,x,cyb-cyb*hb,sw,rb.H*hb);}   // same cell grid as the belly canvas: at full roll it is pixel-identical
    g.restore();
   }
  }
@@ -8200,13 +8314,26 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
      try{
      // roll onto the glass: the side view narrows to a sliver, then the belly view takes over (see adoptAncGlass)
      const gl=parseFloat(s.fe.style.getPropertyValue('--anc-glass'))||0;
-     c.style.visibility=gl<.5?'visible':'hidden';c.style.transform=gl>0&&gl<.5?'scaleY('+(1-1.4*gl).toFixed(3)+')':'';
+     const bc=c.closest('.ancArt')?.querySelector('.ancGlass.finWarpG>canvas'),rb=bc&&cache.get(bc.dataset.wk);
+     const rolling=!!rb;                                                            // belly record missing: fall back to the plain narrow-and-swap
+     c.style.visibility=rolling?(gl<.999?'visible':'hidden'):(gl<.5?'visible':'hidden');
+     // the side element is squashed by CSS (scaleY ~.91) and the belly element is not: undo that gradually during the roll
+     if(rolling&&s.sy==null){const m=/matrix\(([^)]+)\)/.exec(getComputedStyle(c.parentElement).transform||'');s.sy=m?(+m[1].split(',')[3]||1):1;
+      const oy=parseFloat((getComputedStyle(c.parentElement).transformOrigin||'').split(' ')[1]);if(!isNaN(oy))c.style.transformOrigin='center '+(oy-c.offsetTop)+'px';}
+     c.style.transform=rolling?(gl>0?'scaleY('+(1+(1/s.sy-1)*gl).toFixed(4)+')':''):(gl>0&&gl<.5?'scaleY('+(1-1.4*gl).toFixed(3)+')':'');
      const sp=Math.min(1,speedOf(s,s.fe,dt)/26),fan=s.fe.classList.contains('ancFanning');
      // still when resting, gentle undulation when crawling, vigorous tail while fanning eggs
      const move=Math.min(1,Math.max(0,(sp-.08)/.5)),k=fan?1:move;
-     const freq=fan?2.4:.9+1.6*sp,amp=fan?.05:.032*move;
+     // rasping on the sand: the body stays still (a pleco's side-to-side tail wag is invisible in profile; drawn as a
+     // vertical wave it made the whole fish bob)
+     // a pleco glides flat on its paired fins with an almost rigid body; its tail beats sideways, which in profile is
+     // only a faint flicker - so keep the (vertical) wave tiny
+     const freq=fan?2.4:.9+1.6*sp,amp=fan?.03:.011*move;
      s.ph+=2*Math.PI*freq*dt;
-     draw(c,r,s.ph,amp,1-sp,fan?.8:move,0);
+     // male tentacles are passive: they only sway while the body itself moves (crawl, fanning, forage shift)
+     s.tm=(s.tm||0)+(Math.max(k,+s.fe.dataset.ancNudge||0)-(s.tm||0))*Math.min(1,dt*5);s.tt=(s.tt||0)+dt*s.tm;
+     const tent=c.dataset.wk==='anc|0|38'?r.W/170*s.tm:0;                             // males only; up to ~0.7 screen px
+     if(rolling&&gl>.001&&gl<.999)drawRoll(c,r,rb,s.ph,amp,gl);else draw(c,r,s.ph,amp,1-sp,fan?.8:move,0,tent,s.tt);
      }catch(e){s.bad=true;console.error('AFNICA fin motion (anc fish)',e);}   // one bad fish must not stop the others
     });
     document.querySelectorAll('.tank .ancGlass.finWarpG>canvas').forEach(c=>{       // Ancistrus belly view (front glass)
@@ -8215,14 +8342,15 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
      if(!s){const fe=c.closest('.modelFish');if(!fe)return;s={ph:Math.random()*6.283,st:0,g:0,fe};states.set(c,s);}
      if(s.bad||!s.fe.isConnected||s.fe.classList.contains('deadFish'))return;
      const gl=parseFloat(s.fe.style.getPropertyValue('--anc-glass'))||0;
-     c.style.visibility=gl>=.5?'visible':'hidden';c.style.transform=gl>=.5&&gl<1?'scaleY('+(.3+1.4*(gl-.5)).toFixed(3)+')':'';
-     c.parentElement.classList.toggle('gOn',gl>=.5);                                   // the oral-disc pulse (::after) only shows with the belly view
+     c.style.visibility=gl>=.999?'visible':'hidden';c.style.transform='';
+     c.parentElement.classList.toggle('gOn',gl>=.999);                                  // the oral-disc pulse (::after) only shows with the belly view
      if(!(gl>.02))return;                                                            // only redraw while it is actually on the glass
      try{
       const gate=+s.fe.dataset.ancStroke||0;                                          // 0..1 through each crawl stroke, 0 while holding
       s.g+=(gate-s.g)*Math.min(1,dt*6);s.st+=10.7*gate*dt;                            // ~one pectoral step per stroke
       s.ph+=2*Math.PI*(.7+1.3*s.g)*dt;
-      drawVentral(c,r,s.ph,.032*s.g,s.g,s.st);
+      s.tt=(s.tt||0)+dt*s.g;                                                            // tentacles sway only with each crawl step
+      drawVentral(c,r,s.ph,.032*s.g,s.g,s.st,c.dataset.wk==='ancg|0|138'?r.W/170*s.g:0,s.tt);
      }catch(e){s.bad=true;console.error('AFNICA fin motion (anc glass)',e);}
     });
     document.querySelectorAll('.tank img[data-wk]').forEach(img=>{
