@@ -8651,13 +8651,13 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
    const dir=fS.facing>0?1:-1;
    if(now-c.t0>c.danceAt){                         // swordtail courtship (video): side by side, bodies tilted nose-up, circling each other
     const a=(now-c.t0-c.danceAt)/1000*1.5;
-    return {x:fS.x+Math.cos(a)*58,y:fS.y+Math.sin(a)*34,mul:1.15,chase:true,pitch:-26+10*Math.sin(a*1.3)};
+    const dd=fS.facing>0?1:-1;return {x:fS.x-dd*16,y:fS.y+30+Math.sin(a)*8,mul:1.05,chase:true,pitch:-24+8*Math.sin(a*1.3)};
    }
    return {x:fS.x-dir*fwOf(mS)*.5,y:fS.y+16,mul:stl.mul,chase:true};
   }
   if(id===c.fId){                                   // female: run from him, zig-zagging, while he is near
    if(Math.hypot(mS.x-fS.x,mS.y-fS.y)>170)return null;
-   if(now-c.t0>c.danceAt)return {x:fS.x+(fS.facing>0?14:-14),y:fS.y,mul:.5,chase:true,pitch:-20};   // she lets him court her: slows, tilts too
+   if(now-c.t0>c.danceAt){const tt=(now-c.t0-c.danceAt)/1000,dd=fS.facing>0?1:-1;return {x:fS.x+dd*120,y:fS.y-18*Math.sin(tt*.9),mul:.42,chase:true,pitch:-12+5*Math.sin(tt*1.1)};}
    const dir=fS.x>=mS.x?1:-1;
    return {x:fS.x+dir*160,y:fS.y+Math.sin(now/520+(fS.phase||0))*46,mul:stl.flee,chase:true};
   }
