@@ -82,7 +82,7 @@ save(J, a[1])
 Fr = warp(base, 1.5, 24, .78, 1.0, 0)                               # same long body as the adult, slimmer, bigger eye
 lum = Fr[..., :3] @ np.array([.299, .587, .114], np.float32)
 pale = np.stack([1.0 * np.ones_like(lum), .58 + .25 * lum, .40 + .25 * lum], -1)
-Fr[..., :3] = Fr[..., :3] * .68 + pale * .32                           # pale orange, the red still shows through
+Fr[..., :3] = (Fr[..., :3] * .88 + pale * .12) * .9                          # pale orange, the red still shows through
 fin = Fr[..., 3] < .97                                               # soft edges = fin rays: make them see-through
 Fr[..., 3] = np.where(fin, Fr[..., 3] * .8, Fr[..., 3])
 Fr = dark_eye(Fr, .78, 1.5)
