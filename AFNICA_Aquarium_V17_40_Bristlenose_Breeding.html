@@ -8615,7 +8615,7 @@ let BEND=0; let WEXP=2.3;                                               // set p
    video, guppy/molly in between. Stage 2 adds the gonopodium thrust, stage 3 the pregnancy and the birth. */
 (function(){
  const LIVE=['guppy','molly','platy','xipho'];
- const STYLE={guppy:{mul:1.5,dur:[10,16],flee:1.35},molly:{mul:1.4,dur:[12,18],flee:1.3},platy:{mul:1.6,dur:[9,14],flee:1.4},xipho:{mul:1.25,dur:[14,20],flee:1.12,dance:false}};
+ const STYLE={guppy:{mul:1.5,dur:[10,16],flee:1.35},molly:{mul:1.4,dur:[12,18],flee:1.3},platy:{mul:1.6,dur:[9,14],flee:1.4},xipho:{mul:1.25,dur:[14,20],flee:1.12,dance:true}};
  const CH=window.courtshipV1744={};const rand=(a,b)=>a+Math.random()*(b-a);
  const adult=f=>S[f.species]&&f.age>=S[f.species].adult&&!f.dead&&!f.disease;
  function tick(){
@@ -8654,7 +8654,7 @@ let BEND=0; let WEXP=2.3;                                               // set p
    if(now-c.t0>c.danceAt){                         // swordtail courtship (video): side by side, bodies tilted nose-up, circling each other
     const a=(now-c.t0-c.danceAt)/1000*1.5;
     if(c.ffT!==c.t0){c.ffT=c.t0;c.ff=fS.facing;}
-    const dd=c.ff<0?1:-1,T=(now-c.t0-c.danceAt)/1000,fx=fS.x+dd*fwOf(fS)*.8;
+    const dd=c.ff<0?1:-1,T=(now-c.t0-c.danceAt)/1000,fx=fS.x+dd*fwOf(fS)*1.3;
     if(T<.7){el.dataset.bend='0';return {x:fx,y:fS.y-4,mul:3.2,chase:true,pitch:0,face:dd>0?1:-1};}              // quick dart to the front of her
     el.dataset.bend='1.6';return {x:fx,y:fS.y-2+Math.sin(T*3)*3,mul:.6,chase:true,pitch:0,face:-c.ff};   // arc display: nose up, tail bent
    }
