@@ -43,7 +43,7 @@ for n, deg in enumerate(ANGLES, 1):
             u, v = i / NX, j / NZ
             x = u * PW; z = (v - .5) * PH
             s = xh - x
-            if s > 0 and k > 1e-6:                    # tail side: follow the arc, toward the camera (-Y)
+            if s > 0 and abs(k) > 1e-6:                    # tail side: follow the arc, toward the camera (-Y)
                 phi = k * s
                 X = xh - math.sin(phi) / k; Y = -(1 - math.cos(phi)) / k
             else:
