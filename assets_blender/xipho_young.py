@@ -87,3 +87,14 @@ fin = Fr[..., 3] < .97                                               # soft edge
 Fr[..., 3] = np.where(fin, Fr[..., 3] * .8, Fr[..., 3])
 Fr = dark_eye(Fr, .78, 1.5)
 save(Fr, a[2])
+
+# newborn (first 3 days): even slimmer, the biggest eye, pale and a little see-through, fins almost clear
+if len(a) > 3:
+    N = warp(base, 1.75, 26, .7, 1.0, 0)
+    lum = N[..., :3] @ np.array([.299, .587, .114], np.float32)
+    pale = np.stack([1.0 * np.ones_like(lum), .66 + .2 * lum, .5 + .2 * lum], -1)
+    N[..., :3] = N[..., :3] * .5 + pale * .5
+    fin = N[..., 3] < .97
+    N[..., 3] = np.where(fin, N[..., 3] * .5, N[..., 3] * .9)
+    N = dark_eye(N, .7, 1.75)
+    save(N, a[3])
