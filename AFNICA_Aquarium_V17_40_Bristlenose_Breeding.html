@@ -8168,7 +8168,7 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
  const MAXW=260,cache=new Map(),loading=new Set(),states=new WeakMap();
  // per-species tuning: f = beat-rate multiplier, a = amplitude multiplier, v = speed (px/s) that counts as full speed
  // e = how late along the body the wave builds up (higher = stiffer body, motion kept in the tail)
- const CFG={guppy:{f:1.1,a:.62,v:70,e:3.8},molly:{f:.9,a:.9,v:36},platy:{f:.95,a:.95,v:44},xipho:{f:1,a:.6,v:40},neon:{f:.7,a:.4,v:72},cory:{f:1,a:.7,v:45}};
+ const CFG={guppy:{f:1.1,a:.62,v:70,e:3.8},molly:{f:.7,a:.55,v:36,e:3.4},platy:{f:.62,a:.42,v:44,e:3.8},xipho:{f:.75,a:.4,v:40,e:3.6},neon:{f:.7,a:.4,v:72},cory:{f:1,a:.7,v:45}};
  function analyse(img){
   const iw=img.naturalWidth||img.width,ih=img.naturalHeight||img.height;   // works for <img> and for a cropped canvas
   const sc=Math.min(1,MAXW/iw),W=Math.max(8,Math.round(iw*sc)),H=Math.max(8,Math.round(ih*sc));
