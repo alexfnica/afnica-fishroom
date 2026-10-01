@@ -8685,10 +8685,10 @@ REAL_FISH_ASSETS_V154.xipho.adult_m_p_6='data:image/png;base64,iVBORw0KGgoAAAANS
    if(now-c.t0>c.danceAt){                         // swordtail courtship (video): side by side, bodies tilted nose-up, circling each other
     const a=(now-c.t0-c.danceAt)/1000*1.5;
     ensureFF(c,fS,tank);
-    const dd=c.ff>0?1:-1,T=(now-c.t0-c.danceAt)/1000,fx=fS.x+dd*fwOf(fS)*(T<1?2.1:1.35);
+    const dd=c.ff>0?1:-1,T=(now-c.t0-c.danceAt)/1000,fx=fS.x+dd*fwOf(fS)*(T<1?1.7:.85);
     if(c.dfT!==c.t0){c.dfT=c.t0;c.df=fx>=mS.x?1:-1;}
     if(T<1){el.dataset.bend=rb(c,now,el);return {x:fx,y:fS.y-4,mul:2,dash:240,chase:true,pitch:0,face:c.df};}              // quick dart to the front of her
-    el.dataset.bend=rb(c,now,el);return {x:fx,y:fS.y-2+Math.sin(T*2.4)*13,mul:.9,chase:true,pitch:0,face:-c.ff};   // arc display: nose up, tail bent
+    el.dataset.bend=rb(c,now,el);return {x:fx,y:fS.y-2+Math.sin(T*2.4)*13,mul:.9,chase:true,pitch:0,face:c.ff};   // arc display: nose up, tail bent
    }
    el.dataset.bend="0";el.style.zIndex="";return {x:fS.x-dir*fwOf(mS)*.95,y:fS.y+20,mul:stl.mul,chase:true,face:Math.hypot(mS.x-fS.x,mS.y-fS.y)<150?fS.facing:0};   // trail behind her, heading locked to hers
   }
