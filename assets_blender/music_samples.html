@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ro"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Muzică de fundal</title>
+<style>
+:root{--bg:#06141c;--card:#0f2a38;--line:#2f6f8a66;--txt:#e6f6ff;--mut:#9fc6d8;--acc:#4ab0ff}
+body{margin:0;background:radial-gradient(circle at 30% 0%,#123848,var(--bg) 70%);color:var(--txt);font:15px/1.45 system-ui,Segoe UI,sans-serif;min-height:100vh}
+main{max-width:680px;margin:0 auto;padding:22px 16px 40px}
+h1{font-size:22px;margin:0 0 4px}p.sub{color:var(--mut);margin:0 0 18px}
+.card{display:flex;align-items:center;gap:14px;background:linear-gradient(165deg,#173a4d,#0c2230);border:1px solid var(--line);border-radius:18px;padding:14px;margin:10px 0;box-shadow:0 8px 18px #0006}
+.card.on{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc),0 8px 18px #0006}
+.ic{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;font-size:24px;background:radial-gradient(circle at 35% 30%,#6fd0f0,#1d5f7a 75%);flex:none}
+.t{flex:1}.t b{display:block;font-size:16px}.t small{color:var(--mut)}
+button{border:0;border-radius:12px;padding:10px 16px;font-weight:800;cursor:pointer;color:#06240f;background:linear-gradient(180deg,#8cf08c,#3fbf5a);min-width:84px}
+.card.on button{background:linear-gradient(180deg,#ffb4b4,#e05a5a);color:#2a0606}
+.vol{display:flex;align-items:center;gap:10px;margin-top:16px;color:var(--mut)}input[type=range]{flex:1}
+</style></head><body><main>
+<h1>🎵 Muzică de fundal: alege una</h1>
+<p class="sub">Toate sunt generate live (fără fișiere audio), liniștite, la volum mic. Apasă PLAY, ascultă 20-30 de secunde, apoi spune-mi numărul preferat.</p>
+<div id="list"></div>
+<div class="vol">🔉 Volum <input id="vol" type="range" min="0" max="1" step="0.01" value="0.6"></div>
+</main>
+<script>
+const hz=m=>440*Math.pow(2,(m-69)/12),R=(a,b)=>a+Math.random()*(b-a),pick=a=>a[Math.floor(Math.random()*a.length)];
+let ctx,master,current=null,timer=null,st={};
+function ensure(){if(ctx)return;ctx=new (window.AudioContext||window.webkitAudioContext)();master=ctx.createGain();master.gain.value=+vol.value;
+ const len=Math.floor(ctx.sampleRate*3.4),ir=ctx.createBuffer(2,len,ctx.sampleRate);for(let c=0;c<2;c++){const d=ir.getChannelData(c);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,2.5);}
+ const rv=ctx.createConvolver();rv.buffer=ir;const wet=ctx.createGain();wet.gain.value=.7;const dry=ctx.createGain();dry.gain.value=.6;
+ master.connect(dry);dry.connect(ctx.destination);master.connect(rv);rv.connect(wet);wet.connect(ctx.destination);}
+vol.oninput=()=>{if(master)master.gain.value=+vol.value};
+let bus;
+function newBus(){bus=ctx.createGain();bus.gain.setValueAtTime(0,ctx.currentTime);bus.gain.linearRampToValueAtTime(1,ctx.currentTime+2);bus.connect(master);}
+function env(g,t,a,peak,hold,rel){g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(peak,t+a);g.gain.setValueAtTime(peak,t+a+hold);g.gain.exponentialRampToValueAtTime(.0001,t+a+hold+rel);}
+function osc(t,f,type,dur,dest,det=0){const o=ctx.createOscillator();o.type=type;o.frequency.value=f;o.detune.value=det;o.connect(dest);o.start(t);o.stop(t+dur);return o;}
+function pad(t,notes,dur,cut=1100,vol=.05,types=['sine','triangle']){
+ const f=ctx.createBiquadFilter();f.type='lowpass';f.frequency.setValueAtTime(cut*.6,t);f.frequency.linearRampToValueAtTime(cut,t+dur/2);f.frequency.linearRampToValueAtTime(cut*.7,t+dur);
+ const g=ctx.createGain();g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(vol,t+2.5);g.gain.setValueAtTime(vol,t+dur-2);g.gain.linearRampToValueAtTime(.0001,t+dur+1.5);f.connect(g);g.connect(bus);
+ notes.forEach((m,i)=>[-7,7].forEach(d=>{const og=ctx.createGain();og.gain.value=(i<2?.5:.22)/notes.length;og.connect(f);osc(t,hz(m),types[i<2?0:1],dur+2,og,d+R(-2,2));}));}
+function pluck(t,m,v,dec=1.8,harm=4.02,hv=.12,type='sine'){const g=ctx.createGain();env(g,t,.006,v,0,dec);g.connect(bus);osc(t,hz(m),type,dec+.1,g);const g2=ctx.createGain();g2.gain.value=hv;g2.connect(g);osc(t,hz(m)*harm,'sine',dec+.1,g2);}
+function bubble(t,v=.012){const g=ctx.createGain(),f0=R(500,1200);env(g,t,.01,v,0,.08);g.connect(bus);const o=osc(t,f0,'sine',.12,g);o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(f0*2.4,t+.07);}
+function noise(t,dur,v,ftype,f0,f1,q=1){const len=Math.floor(ctx.sampleRate*dur),b=ctx.createBuffer(1,len,ctx.sampleRate),d=b.getChannelData(0);for(let i=0;i<len;i++)d[i]=Math.random()*2-1;
+ const s=ctx.createBufferSource();s.buffer=b;const f=ctx.createBiquadFilter();f.type=ftype;f.Q.value=q;f.frequency.setValueAtTime(f0,t);f.frequency.exponentialRampToValueAtTime(f1,t+dur);
+ const g=ctx.createGain();g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(v,t+dur*.4);g.gain.linearRampToValueAtTime(.0001,t+dur);s.connect(f);f.connect(g);g.connect(bus);s.start(t);}
+const PENTA_D=[62,64,66,69,71,74,76,78,81,83];
+const STYLES=[
+ {ic:'🎐',name:'1 · Kalimba calm',d:'Pad moale, note rare de kalimba, bule fine. Senin și discret.',
+  init:t=>({c:t,n:t+1.5,b:t+4,i:0}),step:(s,a)=>{const CH=[[50,57,62,64,66,69],[47,54,59,62,64,66],[43,50,55,59,62,66],[45,52,57,61,64,66]];
+   while(s.c<a){pad(s.c,CH[s.i++%4],8);s.c+=8;}while(s.n<a){pluck(s.n,pick(PENTA_D),R(.03,.05));if(Math.random()<.3)pluck(s.n+.18,pick(PENTA_D),.02);s.n+=R(1.1,3.4);}
+   while(s.b<a){for(let k=0;k<1+Math.floor(R(0,3));k++)bubble(s.b+k*.09);s.b+=R(6,15);}}},
+ {ic:'🐋',name:'2 · Ocean adânc',d:'Grav, foarte lent, glissando-uri ca de balenă, multe bule. Aproape fără melodie.',
+  init:t=>({c:t,w:t+3,b:t+1,i:0}),step:(s,a)=>{const CH=[[38,45,50,57],[36,43,48,55],[41,48,53,60],[33,40,45,52]];
+   while(s.c<a){pad(s.c,CH[s.i++%4],12,520,.07,['sine','sine']);s.c+=12;}
+   while(s.w<a){const g=ctx.createGain();env(g,s.w,1.2,.02,.8,1.6);g.connect(bus);const f0=R(220,330),o=osc(s.w,f0,'sine',3.8,g);o.frequency.setValueAtTime(f0,s.w);o.frequency.linearRampToValueAtTime(f0*R(1.25,1.5),s.w+1.4);o.frequency.linearRampToValueAtTime(f0*.9,s.w+3.4);s.w+=R(9,16);}
+   while(s.b<a){for(let k=0;k<2+Math.floor(R(0,5));k++)bubble(s.b+k*R(.06,.14),.016);s.b+=R(2.5,6);}}},
+ {ic:'🎹',name:'3 · Lo-fi acvariu',d:'Acorduri calde de pian electric, ritm foarte discret. Relaxat, ca pe fundal de joc.',
+  init:t=>({c:t,beat:t,i:0,k:0}),step:(s,a)=>{const CH=[[50,57,61,64,69],[47,54,57,62,66],[43,50,54,59,62],[45,52,55,61,64]],B=60/72;
+   while(s.c<a){const ch=CH[s.i++%4];[0,1.5,2.5].forEach(o=>ch.forEach((m,j)=>pluck(s.c+o*B+j*.012,m,.022,2.4,2,.25,'triangle')));s.c+=4*B;}
+   while(s.beat<a){const t=s.beat,st=s.k%8;if(st===0||st===5){const g=ctx.createGain();env(g,t,.003,.09,0,.25);g.connect(bus);const o=osc(t,90,'sine',.3,g);o.frequency.exponentialRampToValueAtTime(45,t+.2);}
+    if(st%2===1)noise(t,.06,.012,'highpass',6000,8000);if(st===4)noise(t,.18,.02,'bandpass',1800,1400,.8);if(Math.random()<.25)pluck(t+B/2,pick([74,76,78,81]),.02,1.4);
+    s.k++;s.beat+=B/2;}}},
+ {ic:'🎁',name:'4 · Cutie muzicală',d:'Arpegii de clopoței, jucăuș și drăguț. Ca un joc cozy.',
+  init:t=>({c:t,i:0}),step:(s,a)=>{const CH=[[74,78,81,86,81,78],[71,74,78,83,78,74],[67,71,74,79,74,71],[69,73,76,81,76,73]],B=.32;
+   while(s.c<a){const ch=CH[s.i%4];pad(s.c,ch.slice(0,3).map(m=>m-24),ch.length*B*2,900,.03);for(let r=0;r<2;r++)ch.forEach((m,j)=>pluck(s.c+(r*ch.length+j)*B,m,j===0?.04:.028,1.2,3,.3));s.i++;s.c+=ch.length*B*2;}}},
+ {ic:'🎋',name:'5 · Grădină zen',d:'Note ciupite ca de koto, rare, cu adiere ușoară de vânt. Foarte liniștit.',
+  init:t=>({n:t+.5,w:t,d:t,i:0}),step:(s,a)=>{const SC=[62,64,67,69,71,74,76,79];
+   while(s.d<a){pad(s.d,[50,57,62],14,600,.035,['sine','sine']);s.d+=14;}
+   while(s.n<a){const m=pick(SC);pluck(s.n,m,.045,2.6,2.98,.22,'triangle');if(Math.random()<.4)pluck(s.n+R(.12,.22),m+pick([-2,-3,2]),.03,2.2,2.98,.2,'triangle');s.n+=R(2,4.5);}
+   while(s.w<a){noise(s.w,R(4,7),.012,'bandpass',R(300,500),R(700,1100),.6);s.w+=R(7,12);}}}
+];
+function stopAll(){clearInterval(timer);timer=null;if(bus){const b=bus,t=ctx.currentTime;b.gain.cancelScheduledValues(t);b.gain.setValueAtTime(b.gain.value,t);b.gain.linearRampToValueAtTime(0,t+.8);setTimeout(()=>b.disconnect(),1200);bus=null;}current=null;draw();}
+function play(i){ensure();if(ctx.state==='suspended')ctx.resume();const was=current;stopAll();if(was===i)return;
+ current=i;newBus();const S=STYLES[i];let s=S.init(ctx.currentTime+.1);const tick=()=>S.step(s,ctx.currentTime+1.2);tick();timer=setInterval(tick,250);draw();}
+function draw(){list.innerHTML=STYLES.map((S,i)=>`<div class="card ${current===i?'on':''}"><div class="ic">${S.ic}</div><div class="t"><b>${S.name}</b><small>${S.d}</small></div><button onclick="play(${i})">${current===i?'■ STOP':'▶ PLAY'}</button></div>`).join('');}
+draw();
+</script></body></html>
