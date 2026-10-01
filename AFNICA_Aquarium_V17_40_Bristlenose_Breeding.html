@@ -8506,7 +8506,7 @@ let BEND=0; let WEXP=2.3;                                               // set p
      }else{
       state.mode='swim';state.tx=t.x;state.ty=t.y;
       const m=t.mul||(t.slow?1.2:(BURST[p0.style]||1.5));
-      state.preset=Object.assign({},p0,{cruise:p0.max*m,max:p0.max*m,accel:p0.accel*(t.chase?2.2:t.slow?1.6:(p0.style==='heavy'?4:2.6))});
+      state.preset=Object.assign({},p0,{cruise:p0.max*m,max:p0.max*m,accel:p0.accel*(t.chase?(t.calm?1:2.2):t.slow?1.6:(p0.style==='heavy'?4:2.6))});
      }
      if(t.face)state.facing=t.face;
      try{_upd(el,state,now);}finally{state.preset=p0;}
@@ -8670,10 +8670,11 @@ REAL_FISH_ASSETS_V154.xipho.adult_m_p_6='data:image/png;base64,iVBORw0KGgoAAAANS
   }catch(e){console.error('AFNICA courtship',e);}
  }
  setInterval(tick,600);
- const rb=(c,now)=>{if(!(c.bnext>now)){c.bt=rand(-1.6,1.6);c.bnext=now+rand(450,1300);}return c.bt.toFixed(2);};   // random arc, toward or away from the viewer
+  const ensureFF=(c,fS,tank)=>{if(c.ffT===c.t0)return;c.ffT=c.t0;c.ff=fS.facing>0?1:-1;const room=c.ff>0?tank.clientWidth-fS.x-80:fS.x;if(room<260)c.ff=-c.ff;};   // she heads for open water so the male has room in front of her
+ const rb=(c,now,el)=>{el.style.zIndex="60";if(!(c.bnext>now)){c.bt=rand(-1.6,1.6);c.bnext=now+rand(450,1300);}return c.bt.toFixed(2);};   // random arc, toward or away from the viewer
  window.chaseTargetV1744=function(el,state,now){
   const tank=el.closest('.tank');if(!tank)return null;
-  const c=CH[String(tank.id||'').replace(/^tank-/,'')];if(!c||!c.mId||now>c.until){if(el.dataset.bend&&el.dataset.bend!=="0")el.dataset.bend="0";return null;}
+  const c=CH[String(tank.id||'').replace(/^tank-/,'')];if(!c||!c.mId||now>c.until){if(el.dataset.bend&&el.dataset.bend!=="0"){el.dataset.bend="0";el.style.zIndex="";}return null;}
   const id=String(el.dataset.fishId),stl=STYLE[c.sp];
   const mS=v16MotionStates.get(c.mId),fS=v16MotionStates.get(c.fId);if(!mS||!fS)return null;
   const fwOf=s=>Math.max(48,95*(s.scale||1));
@@ -8681,19 +8682,19 @@ REAL_FISH_ASSETS_V154.xipho.adult_m_p_6='data:image/png;base64,iVBORw0KGgoAAAANS
    const dir=fS.facing>0?1:-1;
    if(now-c.t0>c.danceAt){                         // swordtail courtship (video): side by side, bodies tilted nose-up, circling each other
     const a=(now-c.t0-c.danceAt)/1000*1.5;
-    if(c.ffT!==c.t0){c.ffT=c.t0;c.ff=fS.facing;}
+    ensureFF(c,fS,tank);
     const dd=c.ff>0?1:-1,T=(now-c.t0-c.danceAt)/1000,fx=fS.x+dd*fwOf(fS)*1.3;
     if(c.dfT!==c.t0){c.dfT=c.t0;c.df=fx>=mS.x?1:-1;}
-    if(T<1){el.dataset.bend=rb(c,now);return {x:fx,y:fS.y-4,mul:6,chase:true,pitch:0,face:c.df};}              // quick dart to the front of her
-    el.dataset.bend=rb(c,now);return {x:fx,y:fS.y-2+Math.sin(T*2.4)*13,mul:.9,chase:true,pitch:0,face:-c.ff};   // arc display: nose up, tail bent
+    if(T<1){el.dataset.bend=rb(c,now,el);return {x:fx,y:fS.y-4,mul:6,chase:true,pitch:0,face:c.df};}              // quick dart to the front of her
+    el.dataset.bend=rb(c,now,el);return {x:fx,y:fS.y-2+Math.sin(T*2.4)*13,mul:.9,chase:true,pitch:0,face:-c.ff};   // arc display: nose up, tail bent
    }
-   el.dataset.bend="0";return {x:fS.x-dir*fwOf(mS)*.5,y:fS.y+16,mul:stl.mul,chase:true};
+   el.dataset.bend="0";el.style.zIndex="";return {x:fS.x-dir*fwOf(mS)*.95,y:fS.y+20,mul:stl.mul,chase:true,face:Math.hypot(mS.x-fS.x,mS.y-fS.y)<150?fS.facing:0};   // trail behind her, heading locked to hers
   }
   if(id===c.fId){                                   // female: run from him, zig-zagging, while he is near
    if(Math.hypot(mS.x-fS.x,mS.y-fS.y)>170)return null;
-   if(now-c.t0>c.danceAt){const tt=(now-c.t0-c.danceAt)/1000;if(c.ffT!==c.t0){c.ffT=c.t0;c.ff=fS.facing;}return {x:fS.x,y:fS.y,mul:.25,chase:true,pitch:0,face:c.ff};}   // she stays level, drifting slowly
+   if(now-c.t0>c.danceAt){const tt=(now-c.t0-c.danceAt)/1000;ensureFF(c,fS,tank);return {x:fS.x,y:fS.y,mul:.25,chase:true,calm:true,pitch:0,face:c.ff};}   // she stays level, drifting slowly
    const dir=fS.x>=mS.x?1:-1;
-   return {x:fS.x+dir*160,y:fS.y+Math.sin(now/520+(fS.phase||0))*46,mul:stl.flee,chase:true};
+   return {x:fS.x+dir*160,y:fS.y+Math.sin(now/520+(fS.phase||0))*46,mul:1,chase:true,calm:true,face:dir};   // she keeps her normal pace
   }
   return null;
  };
