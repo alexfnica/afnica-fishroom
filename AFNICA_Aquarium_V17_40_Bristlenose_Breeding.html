@@ -8202,7 +8202,7 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
  // tent/tt: male Ancistrus snout tentacles - the upper half of the snout columns drifts a pixel or so, each column
  // slightly out of phase, like soft tentacles moved by the water
  function tentDY(tent,tt,x,u){return u<.16?tent*((.16-u)/.16)*Math.sin(tt*2.3+x*.35)+tent*.4*Math.sin(tt*3.7-x*.6):0;}
- let WEXP=2.3;                                               // set per fish before draw() (CFG.e), default body stiffness
+let BEND=0; let WEXP=2.3;                                               // set per fish before draw() (CFG.e), default body stiffness
  function draw(c,r,ph,amp,slow,dors,nose,tent,tt,sway,belly){
   if(dors==null)dors=1;nose=nose||0;tent=tent||0;sway=sway||0;belly=belly||0;
   const {base,W,H,x0,x1,BL,B,fx0,fx1,tipTop,has,pad}=r,g=c.getContext('2d');
@@ -8210,7 +8210,7 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
   const lam=1.15,A=amp*BL,cy=(r.y0+r.y1)/2,sw=2,wp=u=>ph-2*Math.PI*u/lam,n=Math.ceil(W/sw);
   const wave=u=>A*(.02+.98*Math.pow(u,WEXP))*Math.sin(wp(u));
   for(let i=0;i<n;i++){
-   const x=i*sw,u=Math.min(1,Math.max(0,(x1-x)/BL)),dy=wave(u)+(nose&&u<.13?nose*BL*(.13-u)/.13:0);   // nose: snout/barbels dip on a dig thrust
+   const x=i*sw,u=Math.min(1,Math.max(0,(x1-x)/BL)),dy=wave(u)-BEND*BL*.3*Math.pow(u,1.5)+(nose&&u<.13?nose*BL*(.13-u)/.13:0);   // nose: snout/barbels dip on a dig thrust
    let sy=1;if(u>.8){sy=1+.1*((u-.8)/.2)*Math.cos(wp(u)+.6);}          // caudal fin height breathes as it sweeps
    const sTop=has&&x>=fx0-1&&x<=fx1+1?B:0;                              // fin columns: the tip above the back line is drawn below
    g.save();g.translate(0,pad+dy+cy*(1-sy));
@@ -8419,9 +8419,9 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
       const rush=s.fe.classList.contains('v1712Dash');                // cory air dash: hard, fast tail beats
       const freq=(rush?6.5:dig?2.2:(1.2+3.6*sp)*s.cfg.f)*(1+.6*turn); // tail beats per second
       s.ph+=2*Math.PI*freq*dt;
-      WEXP=s.cfg.e||2.3;
+      WEXP=s.cfg.e||2.3;s.bd=(s.bd||0)+((+s.fe.dataset.bend||0)-(s.bd||0))*Math.min(1,dt*7);BEND=s.bd;
       draw(c,r,s.ph,(rush?.07:dig?.012:(.02+.035*sp)*s.cfg.a)*(1+(s.cfg.e?1.2:2.2)*turn),dig?.2:rush?0:1-sp,dig?.3:rush?.2:1,dig?.010*jab+.004*Math.sin(s.ph*1.3):0,0,0,0,+s.fe.dataset.belly||0);
-      WEXP=2.3;                                                     // back to the default for everything else (Ancistrus etc.)
+      WEXP=2.3;BEND=0;                                               // back to the default for everything else (Ancistrus etc.)
      }catch(e){s.bad=true;console.error('AFNICA fin motion (fish)',e);}         // one bad fish must not stop the others
     });
    }catch(e){console.error('AFNICA fin motion',e);}
@@ -8643,21 +8643,23 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
  setInterval(tick,600);
  window.chaseTargetV1744=function(el,state,now){
   const tank=el.closest('.tank');if(!tank)return null;
-  const c=CH[String(tank.id||'').replace(/^tank-/,'')];if(!c||!c.mId||now>c.until)return null;
+  const c=CH[String(tank.id||'').replace(/^tank-/,'')];if(!c||!c.mId||now>c.until){if(el.dataset.bend==="1")el.dataset.bend="0";return null;}
   const id=String(el.dataset.fishId),stl=STYLE[c.sp];
   const mS=v16MotionStates.get(c.mId),fS=v16MotionStates.get(c.fId);if(!mS||!fS)return null;
   const fwOf=s=>Math.max(48,95*(s.scale||1));
   if(id===c.mId){                                   // male: come in behind her, a little below
-   const dir=fS.facing>0?1:-1;
+   const dir=fS.facing<0?1:-1;
    if(now-c.t0>c.danceAt){                         // swordtail courtship (video): side by side, bodies tilted nose-up, circling each other
     const a=(now-c.t0-c.danceAt)/1000*1.5;
-    const dd=fS.facing>0?1:-1;return {x:fS.x-dd*10,y:fS.y-14+Math.sin(a)*7,mul:.9,chase:true,pitch:-34+9*Math.sin(a*1.3)};
+    const dd=fS.facing<0?1:-1,T=(now-c.t0-c.danceAt)/1000,fx=fS.x+dd*fwOf(fS)*.8;
+    if(T<.7){el.dataset.bend='0';return {x:fx,y:fS.y-4,mul:3.2,chase:true,pitch:0};}              // quick dart to the front of her
+    el.dataset.bend='1';return {x:fx+Math.sin(T*2)*5,y:fS.y-12+Math.sin(T*3)*4,mul:.6,chase:true,pitch:-55};   // arc display: nose up, tail bent
    }
-   return {x:fS.x-dir*fwOf(mS)*.5,y:fS.y+16,mul:stl.mul,chase:true};
+   el.dataset.bend="0";return {x:fS.x-dir*fwOf(mS)*.5,y:fS.y+16,mul:stl.mul,chase:true};
   }
   if(id===c.fId){                                   // female: run from him, zig-zagging, while he is near
    if(Math.hypot(mS.x-fS.x,mS.y-fS.y)>170)return null;
-   if(now-c.t0>c.danceAt){const tt=(now-c.t0-c.danceAt)/1000,dd=fS.facing>0?1:-1;return {x:fS.x+dd*70,y:fS.y+10*Math.sin(tt*.9),mul:.3,chase:true,pitch:-22+6*Math.sin(tt*1.1)};}
+   if(now-c.t0>c.danceAt){const tt=(now-c.t0-c.danceAt)/1000,dd=fS.facing<0?1:-1;return {x:fS.x+dd*60,y:fS.y+6*Math.sin(tt*.9),mul:.25,chase:true,pitch:0};}   // she stays level, drifting slowly
    const dir=fS.x>=mS.x?1:-1;
    return {x:fS.x+dir*160,y:fS.y+Math.sin(now/520+(fS.phase||0))*46,mul:stl.flee,chase:true};
   }
