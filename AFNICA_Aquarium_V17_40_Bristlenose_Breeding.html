@@ -8210,14 +8210,14 @@ let BEND=0; let WEXP=2.3;                                               // set p
   const lam=1.15,A=amp*BL,cy=(r.y0+r.y1)/2,sw=2,wp=u=>ph-2*Math.PI*u/lam,n=Math.ceil(W/sw);
   const wave=u=>A*(.02+.98*Math.pow(u,WEXP))*Math.sin(wp(u));
   for(let i=0;i<n;i++){
-   const x=i*sw,u=Math.min(1,Math.max(0,(x1-x)/BL)),dy=wave(u)-BEND*BL*.3*Math.pow(u,1.5)+(nose&&u<.13?nose*BL*(.13-u)/.13:0);   // nose: snout/barbels dip on a dig thrust
-   let sy=1;if(u>.8){sy=1+.1*((u-.8)/.2)*Math.cos(wp(u)+.6);}          // caudal fin height breathes as it sweeps
+   const x=i*sw,u=Math.min(1,Math.max(0,(x1-x)/BL)),dy=wave(u)-BEND*BL*.06*Math.pow(Math.max(0,(u-.45)/.55),1.4)+(nose&&u<.13?nose*BL*(.13-u)/.13:0);   // nose: snout/barbels dip on a dig thrust
+   let sy=1;if(u>.8){sy=1+.1*((u-.8)/.2)*Math.cos(wp(u)+.6);}if(BEND&&u>.45)sy*=1-.24*BEND*Math.pow((u-.45)/.55,1.2);          // caudal fin height breathes as it sweeps
    const sTop=has&&x>=fx0-1&&x<=fx1+1?B:0;                              // fin columns: the tip above the back line is drawn below
    g.save();g.translate(0,pad+dy+cy*(1-sy));
    const td=tent?tentDY(tent,tt,x,u):0;
    // lateral tail sway seen in profile: the rear half swings toward/away from the camera, so it shortens and lengthens
    // along the body axis (no vertical movement at all)
-   const dxs=sway&&u>.3?sway*BL*.05*Math.pow((u-.3)/.7,1.4)*Math.sin(ph):0,xd=x+dxs;
+   const dxs=(sway&&u>.3?sway*BL*.05*Math.pow((u-.3)/.7,1.4)*Math.sin(ph):0)+(BEND&&u>.45?BEND*BL*.24*Math.pow((u-.45)/.55,1.4):0),xd=x+dxs;
    // female condition (V17.43): the belly (lower half, mid-body) swells while carrying young/eggs, is drawn in after
    // giving birth, then fills out again. Positive = fuller, negative = thinner.
    const bb=belly&&u>.18&&u<.78?belly*Math.pow(Math.sin(Math.PI*(u-.18)/.6),1.2):0;
