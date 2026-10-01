@@ -8694,7 +8694,7 @@ REAL_FISH_ASSETS_V154.xipho.adult_m_p_6='data:image/png;base64,iVBORw0KGgoAAAANS
    if(Math.hypot(mS.x-fS.x,mS.y-fS.y)>170)return null;
    if(now-c.t0>c.danceAt){const tt=(now-c.t0-c.danceAt)/1000;ensureFF(c,fS,tank);return {x:fS.x,y:fS.y,mul:.25,chase:true,calm:true,pitch:0,face:c.ff};}   // she stays level, drifting slowly
    const dir=fS.x>=mS.x?1:-1;
-   return {x:fS.x+dir*160,y:fS.y+Math.sin(now/520+(fS.phase||0))*46,mul:1,chase:true,calm:true,face:dir};   // she keeps her normal pace
+   return {x:fS.x+dir*160,y:fS.y+Math.sin(now/520+(fS.phase||0))*30,mul:.7,chase:true,calm:true,face:dir};   // she keeps her normal pace
   }
   return null;
  };
