@@ -8629,7 +8629,8 @@ function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&
     }
     if(now<c.next)return;
     const arr=(typeof tankArrayV14==='function'?tankArrayV14(key):null)||[];
-    const by={};arr.forEach(f=>{if(LIVE.includes(f.species)&&adult(f)){(by[f.species]=by[f.species]||{M:[],F:[]})[f.sex==='F'?'F':'M'].push(f);}});
+    const by={};arr.forEach(f=>{if(LIVE.includes(f.species)&&adult(f)&&tank.querySelector('[data-fish-id="'+f.id+'"]')){      // only fish that are actually drawn (the tank shows at most 7)
+    (by[f.species]=by[f.species]||{M:[],F:[]})[f.sex==='F'?'F':'M'].push(f);}});
     const cands=[];
     for(const sp in by){const g=by[sp],fem=g.F.filter(f=>window.femaleBellyV1743?window.femaleBellyV1743(f)===0:true);
      if(g.M.length&&fem.length)cands.push({sp,m:g.M[Math.floor(Math.random()*g.M.length)],f:fem[Math.floor(Math.random()*fem.length)]});}
