@@ -64,7 +64,7 @@ J[..., :3] = np.clip(J[..., :3] * 1.04 + .015, 0, 1)
 save(J, a[1])
 
 # newborn fry
-Fr = warp(base, 1.75, 26, .82, .62, 230)
+Fr = warp(base, 1.5, 24, .78, 1.0, 0)                               # same long body as the adult, slimmer, bigger eye
 lum = Fr[..., :3] @ np.array([.299, .587, .114], np.float32)
 pale = np.stack([1.0 * np.ones_like(lum), .58 + .25 * lum, .40 + .25 * lum], -1)
 Fr[..., :3] = Fr[..., :3] * .68 + pale * .32                           # pale orange, the red still shows through
