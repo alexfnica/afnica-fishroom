@@ -8497,6 +8497,7 @@ let BEND=0; let WEXP=2.3;                                               // set p
       state.preset=Object.assign({},p0,{cruise:p0.max*m,max:p0.max*m,accel:p0.accel*(t.chase?2.2:t.slow?1.6:(p0.style==='heavy'?4:2.6))});
      }
      try{_upd(el,state,now);}finally{state.preset=p0;}
+     if(t.face)state.facing=t.face;                                       // courtship: hold the heading, no flip-flopping at ~0 speed
      applyPitch(el,state,now,goal);return;
     }
    }
@@ -8643,7 +8644,7 @@ let BEND=0; let WEXP=2.3;                                               // set p
  setInterval(tick,600);
  window.chaseTargetV1744=function(el,state,now){
   const tank=el.closest('.tank');if(!tank)return null;
-  const c=CH[String(tank.id||'').replace(/^tank-/,'')];if(!c||!c.mId||now>c.until){if(el.dataset.bend==="1")el.dataset.bend="0";return null;}
+  const c=CH[String(tank.id||'').replace(/^tank-/,'')];if(!c||!c.mId||now>c.until){if(el.dataset.bend&&el.dataset.bend!=="0")el.dataset.bend="0";return null;}
   const id=String(el.dataset.fishId),stl=STYLE[c.sp];
   const mS=v16MotionStates.get(c.mId),fS=v16MotionStates.get(c.fId);if(!mS||!fS)return null;
   const fwOf=s=>Math.max(48,95*(s.scale||1));
@@ -8651,15 +8652,16 @@ let BEND=0; let WEXP=2.3;                                               // set p
    const dir=fS.facing<0?1:-1;
    if(now-c.t0>c.danceAt){                         // swordtail courtship (video): side by side, bodies tilted nose-up, circling each other
     const a=(now-c.t0-c.danceAt)/1000*1.5;
-    const dd=fS.facing<0?1:-1,T=(now-c.t0-c.danceAt)/1000,fx=fS.x+dd*fwOf(fS)*.8;
-    if(T<.7){el.dataset.bend='0';return {x:fx,y:fS.y-4,mul:3.2,chase:true,pitch:0};}              // quick dart to the front of her
-    el.dataset.bend='1';return {x:fx+Math.sin(T*2)*5,y:fS.y-12+Math.sin(T*3)*4,mul:.6,chase:true,pitch:-55};   // arc display: nose up, tail bent
+    if(c.ffT!==c.t0){c.ffT=c.t0;c.ff=fS.facing;}
+    const dd=c.ff<0?1:-1,T=(now-c.t0-c.danceAt)/1000,fx=fS.x+dd*fwOf(fS)*.8;
+    if(T<.7){el.dataset.bend='0';return {x:fx,y:fS.y-4,mul:3.2,chase:true,pitch:0,face:dd>0?1:-1};}              // quick dart to the front of her
+    el.dataset.bend='1.6';return {x:fx+Math.sin(T*2)*4,y:fS.y-2+Math.sin(T*3)*3,mul:.6,chase:true,pitch:0,face:-c.ff};   // arc display: nose up, tail bent
    }
    el.dataset.bend="0";return {x:fS.x-dir*fwOf(mS)*.5,y:fS.y+16,mul:stl.mul,chase:true};
   }
   if(id===c.fId){                                   // female: run from him, zig-zagging, while he is near
    if(Math.hypot(mS.x-fS.x,mS.y-fS.y)>170)return null;
-   if(now-c.t0>c.danceAt){const tt=(now-c.t0-c.danceAt)/1000,dd=fS.facing<0?1:-1;return {x:fS.x+dd*60,y:fS.y+6*Math.sin(tt*.9),mul:.25,chase:true,pitch:0};}   // she stays level, drifting slowly
+   if(now-c.t0>c.danceAt){const tt=(now-c.t0-c.danceAt)/1000;if(c.ffT!==c.t0){c.ffT=c.t0;c.ff=fS.facing;}return {x:fS.x+(c.ff<0?1:-1)*60,y:fS.y+6*Math.sin(tt*.9),mul:.25,chase:true,pitch:0,face:c.ff};}   // she stays level, drifting slowly
    const dir=fS.x>=mS.x?1:-1;
    return {x:fS.x+dir*160,y:fS.y+Math.sin(now/520+(fS.phase||0))*46,mul:stl.flee,chase:true};
   }
