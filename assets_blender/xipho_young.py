@@ -47,6 +47,20 @@ def warp(s, eye_gain, eye_r, slim, tail_k, ox):
     X = np.where(r < eye_r, EYE[0] + dx * g, X); Y = np.where(r < eye_r, EYE[1] + dy * g / slim, Y)
     return unpremul(sample(P, X, Y))
 
+def dark_eye(s, slim, gain):
+    """a red swordtail has a black pupil in a thin dark-gold iris (a pale magnified eye reads as albino)"""
+    h, w = s.shape[:2]; cy = h * .5
+    ex, ey = EYE[0], cy + (EYE[1] - cy) * slim
+    R = 7.5 * gain                                                    # whole eye radius after magnifying
+    yy, xx = np.mgrid[0:h, 0:w]; d = np.hypot(xx - ex, yy - ey)
+    pupil = np.clip((R * .62 - d) / 1.2, 0, 1)[..., None]
+    iris = np.clip((R - d) / 1.2, 0, 1)[..., None] * (1 - pupil)
+    s[..., :3] = s[..., :3] * (1 - iris) + np.array([.42, .30, .12], np.float32) * iris
+    s[..., :3] = s[..., :3] * (1 - pupil) + np.array([.03, .025, .025], np.float32) * pupil
+    hl = np.clip((1.6 - np.hypot(xx - (ex - R * .25), yy - (ey - R * .28))) / 1.0, 0, 1)[..., None]   # tiny catch-light
+    s[..., :3] = s[..., :3] * (1 - hl * .8) + hl * .8
+    return s
+
 def crop(s):
     ys, xs = np.nonzero(s[..., 3] > .05)
     return s[max(0, ys.min() - 2):ys.max() + 3, max(0, xs.min() - 2):xs.max() + 3]
@@ -61,6 +75,7 @@ base = no_spot(S.copy())
 # juvenile
 J = warp(base, 1.28, 20, .9, 1.0, 0)
 J[..., :3] = np.clip(J[..., :3] * 1.04 + .015, 0, 1)
+J = dark_eye(J, .9, 1.28)
 save(J, a[1])
 
 # newborn fry
@@ -70,4 +85,5 @@ pale = np.stack([1.0 * np.ones_like(lum), .58 + .25 * lum, .40 + .25 * lum], -1)
 Fr[..., :3] = Fr[..., :3] * .68 + pale * .32                           # pale orange, the red still shows through
 fin = Fr[..., 3] < .97                                               # soft edges = fin rays: make them see-through
 Fr[..., 3] = np.where(fin, Fr[..., 3] * .8, Fr[..., 3])
+Fr = dark_eye(Fr, .78, 1.5)
 save(Fr, a[2])
