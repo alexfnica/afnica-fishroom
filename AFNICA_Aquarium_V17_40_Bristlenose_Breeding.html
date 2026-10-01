@@ -8496,6 +8496,7 @@ let BEND=0; let WEXP=2.3;                                               // set p
       const m=t.mul||(t.slow?1.2:(BURST[p0.style]||1.5));
       state.preset=Object.assign({},p0,{cruise:p0.max*m,max:p0.max*m,accel:p0.accel*(t.chase?2.2:t.slow?1.6:(p0.style==='heavy'?4:2.6))});
      }
+     if(t.face)state.facing=t.face;
      try{_upd(el,state,now);}finally{state.preset=p0;}
      if(t.face)state.facing=t.face;                                       // courtship: hold the heading, no flip-flopping at ~0 speed
      applyPitch(el,state,now,goal);return;
@@ -8655,13 +8656,13 @@ let BEND=0; let WEXP=2.3;                                               // set p
     if(c.ffT!==c.t0){c.ffT=c.t0;c.ff=fS.facing;}
     const dd=c.ff<0?1:-1,T=(now-c.t0-c.danceAt)/1000,fx=fS.x+dd*fwOf(fS)*.8;
     if(T<.7){el.dataset.bend='0';return {x:fx,y:fS.y-4,mul:3.2,chase:true,pitch:0,face:dd>0?1:-1};}              // quick dart to the front of her
-    el.dataset.bend='1.6';return {x:fx+Math.sin(T*2)*4,y:fS.y-2+Math.sin(T*3)*3,mul:.6,chase:true,pitch:0,face:-c.ff};   // arc display: nose up, tail bent
+    el.dataset.bend='1.6';return {x:fx,y:fS.y-2+Math.sin(T*3)*3,mul:.6,chase:true,pitch:0,face:-c.ff};   // arc display: nose up, tail bent
    }
    el.dataset.bend="0";return {x:fS.x-dir*fwOf(mS)*.5,y:fS.y+16,mul:stl.mul,chase:true};
   }
   if(id===c.fId){                                   // female: run from him, zig-zagging, while he is near
    if(Math.hypot(mS.x-fS.x,mS.y-fS.y)>170)return null;
-   if(now-c.t0>c.danceAt){const tt=(now-c.t0-c.danceAt)/1000;if(c.ffT!==c.t0){c.ffT=c.t0;c.ff=fS.facing;}return {x:fS.x+(c.ff<0?1:-1)*60,y:fS.y+6*Math.sin(tt*.9),mul:.25,chase:true,pitch:0,face:c.ff};}   // she stays level, drifting slowly
+   if(now-c.t0>c.danceAt){const tt=(now-c.t0-c.danceAt)/1000;if(c.ffT!==c.t0){c.ffT=c.t0;c.ff=fS.facing;}return {x:fS.x,y:fS.y,mul:.25,chase:true,pitch:0,face:c.ff};}   // she stays level, drifting slowly
    const dir=fS.x>=mS.x?1:-1;
    return {x:fS.x+dir*160,y:fS.y+Math.sin(now/520+(fS.phase||0))*46,mul:stl.flee,chase:true};
   }
