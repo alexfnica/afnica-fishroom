@@ -91,4 +91,5 @@ TL = dict(
 )
 
 # sound design synced to the cuts (added to music A): whooshes on whip/zoom transitions, ticks on the build cuts, a hit on the splash
-SFX = [[s['t0'], 'whoosh', .55] for s in SHOTS if s['tin'] in ('whip', 'zoom')] + [[t, 'tick', .25] for t in (30.0, 30.5, 31.0, 31.5)] + [[36.1, 'impact', .35]]
+SFX = [[t, 'whoosh', .28] for t in (4.0, 14.0, 24.0)] +   # only the three big section changes get a (soft) whoosh
+      [[t, 'tick', .25] for t in (30.0, 30.5, 31.0, 31.5)] + [[36.1, 'impact', .35]]

@@ -196,7 +196,7 @@ add(impact(), 0, .45)                                            # opening hit f
 if len(a) > 3:
     import json
     for t_, kind, gn in json.load(open(a[3])):
-        if kind == 'whoosh': add(whoosh(.55), t_ - .3, gn, rng.uniform(-.5, .5))
+        if kind == 'whoosh': add(fft_filter(whoosh(.7), 300, 2600), t_ - .4, gn, rng.uniform(-.3, .3))   # darker, longer, quieter
         elif kind == 'impact': add(impact(), t_, gn)
         elif kind == 'riser': add(riser(BAR), t_, gn)
         elif kind == 'tick':
