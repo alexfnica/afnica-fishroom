@@ -71,6 +71,11 @@ def place(spr, cx, cy, width, flip=False, rot=0.0, fog=0.0, alpha=1.0):
 SPECIES = ('guppy_m', 'guppy_f', 'guppy_fry', 'guppy_nb', 'xipho_m', 'xipho_f', 'xipho_fry', 'molly_m', 'molly_f', 'platy_m', 'platy_f',
            'neon_m', 'neon_f', 'cory_m', 'cory_f', 'anc_m', 'anc_f')
 S = {n: load(n) for n in SPECIES}
+# the real in-game bristlenose: top row of the .ancArt sprite sheet (left = male with bristles, right = female), side view facing right
+sheet = load('anc_sheet'); hh, ww = sheet.shape[:2]
+def crop_alpha(a):
+    ys, xs = np.nonzero(a[..., 3] > .05); return a[ys.min():ys.max() + 1, xs.min():xs.max() + 1].copy()
+S['anc_m'] = crop_alpha(sheet[:int(hh * .40), :ww // 2]); S['anc_f'] = crop_alpha(sheet[:int(hh * .40), ww // 2:])
 
 # sand along the bottom so the catfish have somewhere to sit
 sand = np.clip((yy - (H - 58)) / 58, 0, 1)
@@ -83,12 +88,12 @@ over(img, np.clip(1.0 - np.abs(yy - (H - 58)) / 14, 0, 1) * .10, (.05, .12, .16)
 FISH = [
  # far, small, hazy
  ('guppy_f', 110, 70, 140, False, -5, .45, .95), ('molly_f', 410, 80, 190, True, 3, .40, .95), ('guppy_m', 1250, 80, 160, False, 6, .50, .90),
- ('xipho_f', 1530, 112, 200, True, 4, .40, .95), ('guppy_fry', 60, 250, 62, False, -6, .30, .9), ('xipho_fry', 1440, 470, 80, True, 5, .30, .9),
+ ('xipho_f', 1530, 112, 200, True, 4, .40, .95), ('guppy_fry', 60, 250, 62, False, -6, .30, .9), ('xipho_fry', 1575, 470, 80, True, 5, .30, .9),
  ('platy_f', 440, 385, 150, True, -3, .30, .95), ('platy_m', 1265, 250, 205, False, 4, .20, .95),
  # mid
- ('molly_m', 300, 235, 255, False, -3, .10, 1), ('guppy_m', 345, 515, 170, True, -4, .35, .95), ('xipho_m', 1300, 545, 250, False, -3, .30, 1),
+ ('molly_m', 300, 235, 255, False, -3, .10, 1), ('guppy_m', 395, 470, 150, True, -4, .40, .95), ('xipho_m', 1310, 450, 230, False, -3, .30, 1),
  # bottom dwellers on the sand
- ('cory_m', 500, 592, 185, False, 0, .15, 1), ('cory_f', 1160, 594, 170, True, 0, .15, 1), ('anc_m', 1545, 588, 300, True, 0, .0, 1), ('anc_f', 215, 592, 250, False, 0, .0, 1),
+ ('cory_m', 500, 592, 185, False, 0, .15, 1), ('cory_f', 1160, 594, 170, True, 0, .15, 1), ('anc_m', 1470, 540, 300, True, 0, .0, 1), ('anc_f', 235, 545, 270, False, 0, .0, 1),
  # near, big, sharp
  ('xipho_f', 150, 395, 260, False, 4, 0, 1), ('guppy_m', 1500, 335, 250, True, -5, 0, 1),
 ]
