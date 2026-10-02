@@ -36,7 +36,9 @@ for (let k = 0; k < 6; k++) {
 
 // ---------- the shot image at time t ----------
 function shotSrc(s, t) {
-  const fi = Math.round(s.from + (t - s.t0) * FPS * (s.speed || 1));
+  let fi;
+  if (s.srcs) { const k = Math.round(t * FPS) - s.f0; fi = s.srcs[Math.max(0, Math.min(s.srcs.length - 1, k))]; }
+  else fi = Math.round(s.from + (t - s.t0) * FPS * (s.speed || 1));
   return ROOT + 'raw/' + s.take + '/' + String(clamp(fi, 0, s.len - 1) | 0).padStart(5, '0') + '.jpg';
 }
 function shotXform(s, t) {           // slow push / drift inside the shot + an entry punch
@@ -44,7 +46,9 @@ function shotXform(s, t) {           // slow push / drift inside the shot + an e
   const z = s.zoom ? lerp(s.zoom[0], s.zoom[1], u) : 1.0;
   const px = s.pan ? lerp(s.pan[0], s.pan[1], u) : 0, py = s.pany ? lerp(s.pany[0], s.pany[1], u) : 0;
   let punch = 0; if (s.punch) punch = s.punch * (1 - eOut((t - s.t0) / .32));
-  return {z: z * (1 + punch), x: px, y: py};
+  const lt = t - s.t0, hd = s.ui ? 0 : (s.hand == null ? 1 : s.hand);          // a slow handheld drift
+  const hx = hd * (5 * Math.sin(lt * 1.3 + s.t0) + 2.5 * Math.sin(lt * 2.9 + 1.7)), hy = hd * (4 * Math.sin(lt * 1.1 + 2 * s.t0) + 2 * Math.sin(lt * 3.3));
+  return {z: z * (1 + punch) * (1 + .008 * hd), x: px + hx, y: py + hy};
 }
 function drawShot(im, xf, opts = {}) {
   if (!im) return;
@@ -109,6 +113,25 @@ function tag(name, latin, x, y, t, o) {   // documentary species label: a thin l
 }
 
 // ---------- overlays ----------
+function grade(k) {                 // teal-orange: warm the centre (skin of the fish), cool the edges
+  if (k <= 0) return; g.save(); g.globalCompositeOperation = 'soft-light';
+  const r = g.createRadialGradient(W / 2, H * .45, 60, W / 2, H * .5, H * .7);
+  r.addColorStop(0, 'rgba(255,170,100,' + (.30 * k) + ')'); r.addColorStop(.55, 'rgba(120,140,140,0)'); r.addColorStop(1, 'rgba(0,70,100,' + (.45 * k) + ')');
+  g.fillStyle = r; g.fillRect(0, 0, W, H); g.restore();
+}
+const BOKEH = []; { let sd = 7; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 26; i++) BOKEH.push({x: rnd() * W, y: rnd() * H, r: 10 + rnd() * 46, vx: (rnd() - .5) * 14, vy: -6 - rnd() * 20, a: .04 + rnd() * .09, ph: rnd() * 6}); }
+function bokeh(t, k) {              // out-of-focus particles drifting in front of the lens
+  if (k <= 0) return; g.save(); g.globalCompositeOperation = 'screen';
+  for (const b of BOKEH) {
+    const x = ((b.x + b.vx * t) % (W + 200) + W + 200) % (W + 200) - 100, y = ((b.y + b.vy * t) % (H + 200) + H + 200) % (H + 200) - 100;
+    const a = b.a * k * (.7 + .3 * Math.sin(t * 1.3 + b.ph)), gr = g.createRadialGradient(x, y, 0, x, y, b.r);
+    gr.addColorStop(0, 'rgba(200,240,255,' + a + ')'); gr.addColorStop(.7, 'rgba(200,240,255,' + (a * .6) + ')'); gr.addColorStop(1, 'rgba(200,240,255,0)');
+    g.fillStyle = gr; g.beginPath(); g.arc(x, y, b.r, 0, 6.283); g.fill();
+  }
+  g.restore();
+}
+
 function vignette(k = .5) {
   const r = g.createRadialGradient(W / 2, H * .46, H * .25, W / 2, H * .5, H * .75);
   r.addColorStop(0, 'rgba(0,0,0,0)'); r.addColorStop(1, 'rgba(0,8,14,' + k + ')'); g.fillStyle = r; g.fillRect(0, 0, W, H);
@@ -160,6 +183,7 @@ window.renderFrame = async function (fi) {
     const s = S[k], im = ims[j], xf = shotXform(s, t), next = S[k + 1];
     let opts = {filter: s.filter || ''};
     if (s.blur && t > s.blur[0]) opts.filter += ' blur(' + (s.blur[1] * eOut((t - s.blur[0]) / .9)).toFixed(1) + 'px)';
+    if (s.focus) { const u = (t - s.t0) / s.focus[1]; if (u < 1) opts.filter += ' blur(' + (s.focus[0] * (1 - eIO(clamp(u)))).toFixed(1) + 'px)'; }   // rack focus: soft -> sharp
     // incoming transition of this shot
     if (s.tin === 'whip' && t < s.t0 + s.td / 2) { const u = (t - (s.t0 - s.td / 2)) / s.td; opts.dx = W * (1 - eIO(u)) * (s.dir || 1); opts.hblur = 260 * Math.sin(Math.PI * clamp(u)); }
     if (s.tin === 'zoom' && t < s.t0 + s.td / 2) { const u = clamp((t - (s.t0 - s.td / 2)) / s.td); xf.z *= lerp(1.6, 1, eOut(u)); opts.zblur = .35 * (1 - u); opts.alpha = clamp(u * 2); }
@@ -176,7 +200,9 @@ window.renderFrame = async function (fi) {
   });
   g.restore();
   // looks
-  rays(t, TL.rays || 0);
+  const curShot = S.find(x => t >= x.t0 && t < x.t1) || {};
+  if (!curShot.ui) { grade(TL.grade_k == null ? 1 : TL.grade_k); bokeh(t, TL.bokeh == null ? 1 : TL.bokeh); }
+  rays(t, curShot.ui ? 0 : (TL.rays || 0));
   leak(t, TL.leak == null ? .8 : TL.leak);
   vignette(.55);
   // darken behind the end card

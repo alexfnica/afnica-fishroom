@@ -110,6 +110,27 @@ def reverb(x, secs=2.2, seed=1, damp=4000):
     m = len(x) + n - 1; k = 1 << (m - 1).bit_length()
     return np.fft.irfft(np.fft.rfft(x, k) * np.fft.rfft(ir, k), k)[:len(x)]
 
+# ---------------- underwater foley ----------------
+def blip(f0=700, f1=1500, dur=.05):                               # one small bubble: a fast rising chirp
+    n = int(dur * SR); t = np.arange(n) / SR; f = f0 + (f1 - f0) * (t / dur) ** .7
+    return np.sin(2 * np.pi * np.cumsum(f) / SR) * np.sin(np.pi * t / dur) ** 2
+def bubbles(k=6, spread=.6):
+    out = np.zeros(int((spread + .1) * SR))
+    for _ in range(k):
+        b = blip(rng.uniform(450, 900), rng.uniform(1100, 2200), rng.uniform(.03, .07)); i = int(rng.uniform(0, spread) * SR)
+        out[i:i + len(b)] += b[:len(out) - i] * rng.uniform(.3, 1)
+    return out * .5
+def gulp():                                                       # a soft low suction 'boop'
+    n = int(.22 * SR); t = np.arange(n) / SR; f = 210 * np.exp(-t * 7) + 70
+    return np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t * 14) * np.minimum(1, t / .004)
+def plop():                                                       # a drop / net into water
+    n = int(.35 * SR); t = np.arange(n) / SR; f = 1300 * np.exp(-t * 30) + 260
+    tone = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t * 16)
+    return tone * .8 + fft_filter(rng.uniform(-1, 1, n), 600, 5000) * np.exp(-t * 35) * .4
+def thud():                                                       # a muffled underwater knock
+    n = int(.3 * SR); t = np.arange(n) / SR; f = 130 * np.exp(-t * 9) + 55
+    return fft_filter(np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t * 18) + rng.uniform(-1, 1, n) * np.exp(-t * 60) * .3, 0, 600)
+
 # ---------------- arrangement ----------------
 CH = [[57, 60, 64], [53, 57, 60], [55, 60, 64], [55, 59, 62]]   # Am F C G (voiced close)
 ROOT = [33, 29, 36, 31]
@@ -188,6 +209,12 @@ for b in range(BARS):
         add(snare(), t0 + BEAT, .22); add(snare(), t0 + 3 * BEAT, .22)
         for s in range(8): add(hat(), t0 + s * BEAT / 2 + (swing if s % 2 else 0), .07)
 
+# ambience bed: the quiet hum of a tank (filtered noise) and a few random bubbles
+amb = fft_filter(rng.uniform(-1, 1, N), 40, 420) * .9
+L += amb * .05; R += np.roll(amb, 1500) * .05
+for _ in range(int(T * 1.4)):
+    add(bubbles(rng.integers(1, 4), .3), rng.uniform(0, T - 1), rng.uniform(.04, .09), rng.uniform(-.7, .7))
+
 # drop: big impact on its first beat and a whoosh going into it
 add(impact(), DROP * BAR, .75)
 add(whoosh(1.0), DROP * BAR - .9, .4)
@@ -199,6 +226,10 @@ if len(a) > 3:
         if kind == 'whoosh': add(fft_filter(whoosh(.7), 300, 2600), t_ - .4, gn, rng.uniform(-.3, .3))   # darker, longer, quieter
         elif kind == 'impact': add(impact(), t_, gn)
         elif kind == 'riser': add(riser(BAR), t_, gn)
+        elif kind == 'gulp': add(gulp(), t_, gn); add(bubbles(5, .5), t_ + .08, gn * .6)
+        elif kind == 'plop': add(plop(), t_, gn, rng.uniform(-.3, .3))
+        elif kind == 'thud': add(thud(), t_, gn, rng.uniform(-.25, .25)); add(bubbles(3, .35), t_ + .03, gn * .4)
+        elif kind == 'bubbles': add(bubbles(8, .9), t_, gn)
         elif kind == 'tick':
             n = int(.08 * SR); tt = np.arange(n) / SR; add(np.sin(2 * np.pi * 2400 * tt) * np.exp(-tt * 60), t_, gn)
 

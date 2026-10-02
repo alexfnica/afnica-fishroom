@@ -48,20 +48,20 @@ class Cam:
         x = min(max(self.x - w / 2, 0), VW - w); y = min(max(self.y - h / 2, 0), VH - h)
         return dict(x=x, y=y, width=w, height=h, scale=1080 / (w * DSF))
 
-def run(c, name, seconds, target=None, cam=None, every=None, zoom=None, fixed=None, phase=None):
+def run(c, name, seconds, target=None, cam=None, every=None, zoom=None, fixed=None, phase=None, fps=FPS):
     out = os.path.join(HERE, 'raw', name); os.makedirs(out, exist_ok=True)
     for f in os.listdir(out): os.remove(os.path.join(out, f))
-    cam = cam or Cam(); n = int(seconds * FPS); dt = 1 / FPS; t0 = time.time(); log = []
+    cam = cam or Cam(); n = int(seconds * fps); dt = 1 / fps; t0 = time.time(); log = []
     for i in range(n):
         if every: every(i)
-        c.js('__afStep(%f, 2)' % (1000 / FPS))
+        c.js('__afStep(%f, %d)' % (1000 / fps, 2 if fps <= 30 else 1))
         box = target(i) if target else None
         if fixed: clip = fixed(i)
         else: clip = cam.update(box, dt, zoom(i) if callable(zoom) else zoom)
         c.shot(os.path.join(out, '%05d.jpg' % i), clip=clip, q=94)
         log.append({'clip': clip, 'ph': c.js(phase) if phase else None})
         if i % 60 == 0: print(name, i, '/', n, round(time.time() - t0), 's', flush=True)
-    json.dump(log, open(os.path.join(out, 'cam.json'), 'w'))
+    json.dump(log, open(os.path.join(out, 'cam.json'), 'w')); json.dump({'fps': fps}, open(os.path.join(out, 'meta.json'), 'w'))
     print('DONE', name, n, 'frames', round(time.time() - t0), 's', flush=True)
 
 # filming only: every fish gets a preferred depth spread over the whole (tall) water column, and starts there
@@ -74,13 +74,33 @@ SPREAD = r'''(()=>{if(window.__spreadOn)return 0;window.__spreadOn=1;const o=v16
 DOF = r'''(()=>{let s=document.getElementById('trDof');if(!s){s=document.createElement('style');s.id='trDof';document.head.appendChild(s);}
  s.textContent='#tank-main .v171BackPlantGroup,#tank-main .v171Wood,#tank-main .v171Rocks,#tank-main .v175SubstrateAssetLayer,#tank-main .v174SurfaceAssetLayer,#tank-main .v176EpiphyteAssetLayer,#tank-main .floor,#tank-main .v17SubstrateGlow{filter:blur(%(b)spx) brightness(.9)!important}#tank-main .v13Debris,#tank-main .v17WaterCaustics{filter:blur(%(d)spx)!important}#tank-main .waterTimer,#tank-main .waterMeter{display:none!important}';return 1;})()'''
 
-def game(tank_js, bleed=True, warm=4, lo=.25, span=.4, dof=0):
+# filming only: extra staging with the game's own plant assets so the tall tank has depth (back layer of tall,
+# soft vallisneria, a sharper mid layer, big very blurred leaves in the foreground, floaters hanging from the top)
+SCAPE = "st.scapes=st.scapes||{};st.scapes.main=Object.assign(st.scapes.main||{},{ground:'amazonia',surface:'redroot',substrate:'vallisneria',epiphyte:'javafern',wood:'branch',rock:'dragon'});"
+STAGE = r"""(()=>{const t=document.getElementById('tank-main');if(!t||t.querySelector('.trStage'))return 0;
+ const sub=t.querySelector('img.v175SubstrateAsset'),sur=t.querySelector('img.v174SurfaceAsset');if(!sub)return -1;
+ const H=t.clientHeight,W=t.clientWidth,R=(a,b)=>a+Math.random()*(b-a);
+ const put=(src,o)=>{const im=document.createElement('img');im.src=src;im.className='trStage';
+  im.style.cssText='position:absolute;pointer-events:none;'+(o.top!=null?'top:'+o.top+'px;':'bottom:'+o.bottom+'px;')+'left:'+o.x+'px;height:'+o.h+'px;width:auto;z-index:'+o.z+';filter:'+o.f+';opacity:'+o.a+';transform:scaleX('+(o.flip?-1:1)+');transform-origin:50% 100%';
+  t.appendChild(im);return im;};
+ for(let i=0;i<9;i++)put(sub.src,{x:R(-60,W-40),bottom:R(20,50),h:R(560,900),z:4,f:'blur(3.2px) brightness(.62) saturate(.85)',a:.9,flip:Math.random()<.5});
+ for(let i=0;i<4;i++)put(sub.src,{x:R(-40,W-60),bottom:R(25,40),h:R(300,420),z:7,f:'blur(1.2px) brightness(.8)',a:1,flip:Math.random()<.5});
+ put(sub.src,{x:-150,bottom:-60,h:980,z:44,f:'blur(13px) brightness(.4) saturate(.9)',a:.95});
+ put(sub.src,{x:W-130,bottom:-90,h:1040,z:44,f:'blur(15px) brightness(.38) saturate(.9)',a:.95,flip:true});
+ if(sur)[[-50,150],[W-140,190]].forEach(([x,h])=>put(sur.src,{x,top:R(-30,-12),h,z:9,f:'blur(2px) brightness(.8)',a:.9,flip:Math.random()<.5}));
+ // waving: a slow sway for every staged plant
+ const css=document.createElement('style');css.textContent='@keyframes trSway{0%,100%{rotate:-1.5deg}50%{rotate:1.8deg}}.trStage{animation:trSway 6s ease-in-out infinite}';document.head.appendChild(css);
+ t.querySelectorAll('.trStage').forEach((e,i)=>{e.style.animationDelay=(-i*1.37)+'s';e.style.animationDuration=(5+i%4)+'s';});
+ return t.querySelectorAll('.trStage').length;})()"""
+
+def game(tank_js, bleed=True, warm=4, lo=.25, span=.4, dof=0, stage=True):
     c = open_game(VW, VH, DSF)
     c.js(CAM_JS)
     if dof: c.js(DOF % dict(b=dof, d=dof * .6))
     if bleed: c.js(FULLBLEED)
-    c.js('(()=>{' + tank_js + ';T.show("main");T.clean();return 1;})()')
+    c.js('(()=>{' + (SCAPE if stage else '') + tank_js + ';T.show("main");T.clean();return 1;})()')
     if bleed: c.js(FULLBLEED)
+    if bleed and stage: advance(c, .2); print('stage', c.js(STAGE))
     advance(c, .3); c.js(SPREAD % dict(lo=lo, span=span))
     advance(c, warm)
     return c
@@ -99,7 +119,7 @@ def take_guppy_court():
             advance(c, .6)
         c.js(COURT_FIX % dict(dance=2600, hold=6500, nthr=1, side=1))
         ids = court_ids(c); print('court', ids)
-        run(c, 'guppy_court', 16, target=lambda i: c.js("CAM.box(%s)" % json.dumps(ids)), cam=Cam(pad=1.08, zmin=2.6, zmax=3.6, tau=.4), phase=PH_COURT)
+        run(c, 'guppy_court', 15, fps=120, target=lambda i: c.js("CAM.box(%s)" % json.dumps(ids)), cam=Cam(pad=1.08, zmin=2.6, zmax=3.6, tau=.4), phase=PH_COURT)
     finally: c.close()
 
 def take_xipho_court():
@@ -119,7 +139,9 @@ def take_fight():
     try:
         c.js("fightDebugV1748().NEXT.main=0; courtshipV1744.main={next:1e12}"); advance(c, .5)
         ids = json.loads(c.js("JSON.stringify((()=>{const f=fightDebugV1748().FIGHT.main;return f?[f.a,f.b]:null})())") or 'null'); print('fight', ids)
-        run(c, 'fight', 20, target=lambda i: c.js("CAM.box(%s)" % json.dumps(ids)), cam=Cam(pad=1.1, zmin=2.1, zmax=3.0, tau=.35), phase=PH_FIGHT)
+        # filming only: make sure the round shows the real swordtail moves, with three nips at the flank
+        print('seq', c.js("(()=>{const f=fightDebugV1748().FIGHT.main;if(!f)return 0;f.seq=['lateral','nip','spin','nip','lock','nip','pause'];f.si=0;f.segEnd=performance.now()+1600;return f.seq.length})()"))
+        run(c, 'fight', 14, fps=120, target=lambda i: c.js("CAM.box(%s)" % json.dumps(ids)), cam=Cam(pad=1.1, zmin=2.1, zmax=3.0, tau=.35), phase=PH_FIGHT)
     finally: c.close()
 
 BROOD = r'''(()=>{const mom=tankArrayV14('main').find(f=>f.sex==='F'&&f.species==='%(sp)s');const fry=[];
@@ -166,7 +188,18 @@ def take_hunt():
         c.js("(()=>{const r=Math.random;Math.random=()=>.45+r()*.55;return 1})()")   # filming only: the strike lands
         ids = json.loads(c.js("JSON.stringify(%s)" % FORCE_HUNT % dict(sp='xipho'))); print('hunter', ids)
         tgt = "(()=>{const a=CAM.box(['%s']),b=CAM.sel('#tank-main .brood45Fry[data-fid=\"%s\"]');if(!a)return b;if(!b)return a;const x0=Math.min(a.x-a.w/2,b.x-b.w/2),x1=Math.max(a.x+a.w/2,b.x+b.w/2),y0=Math.min(a.y-a.h/2,b.y-b.h/2),y1=Math.max(a.y+a.h/2,b.y+b.h/2);return {x:(x0+x1)/2,y:(y0+y1)/2,w:x1-x0,h:y1-y0}})()" % (ids[0], ids[1])
-        run(c, 'hunt', 9, target=lambda i: c.js(tgt), cam=Cam(pad=1.25, zmin=2.4, zmax=3.4, tau=.35),
+        run(c, 'hunt', 6, fps=120, target=lambda i: c.js(tgt), cam=Cam(pad=1.25, zmin=2.4, zmax=3.4, tau=.35),
+            phase="(()=>{const h=huntDebugV1746().HUNT.main;return h?Object.fromEntries(Object.entries(h).filter(([k,v])=>typeof v!=='object').map(([k,v])=>[k,typeof v==='number'?+v.toFixed(0):v])):null})()")
+    finally: c.close()
+
+def take_hunt2():
+    c = game("T.tank('main',[T.fish('platy','F',34),T.fish('guppy','F',30),T.fish('guppy','M',30)])", warm=3, dof=3)
+    try:
+        c.js(BROOD % dict(sp='guppy', n=12, budget=6)); advance(c, 2)
+        c.js("(()=>{const r=Math.random;Math.random=()=>.45+r()*.55;return 1})()")   # filming only: the strike lands
+        ids = json.loads(c.js("JSON.stringify(%s)" % FORCE_HUNT % dict(sp='platy'))); print('hunter', ids)
+        tgt = "(()=>{const a=CAM.box(['%s']),b=CAM.sel('#tank-main .brood45Fry[data-fid=\"%s\"]');if(!a)return b;if(!b)return a;const x0=Math.min(a.x-a.w/2,b.x-b.w/2),x1=Math.max(a.x+a.w/2,b.x+b.w/2),y0=Math.min(a.y-a.h/2,b.y-b.h/2),y1=Math.max(a.y+a.h/2,b.y+b.h/2);return {x:(x0+x1)/2,y:(y0+y1)/2,w:x1-x0,h:y1-y0}})()" % (ids[0], ids[1])
+        run(c, 'hunt2', 6, fps=120, target=lambda i: c.js(tgt), cam=Cam(pad=1.25, zmin=2.4, zmax=3.4, tau=.35),
             phase="(()=>{const h=huntDebugV1746().HUNT.main;return h?Object.fromEntries(Object.entries(h).filter(([k,v])=>typeof v!=='object').map(([k,v])=>[k,typeof v==='number'?+v.toFixed(0):v])):null})()")
     finally: c.close()
 
@@ -237,9 +270,9 @@ def take_anc_glass():
     c = game("T.tank('main',[T.fish('anc','F',50),T.fish('cory','M',30),T.fish('guppy','M',30)])", warm=3, dof=0)
     try:
         fid = c.js("String(tankArrayV14('main')[0].id)"); sel = "#tank-main [data-fish-id=\"%s\"]" % fid
-        for k in range(150):
+        for k in range(500):
             b = c.js("(()=>{const e=document.querySelector('%s');return e?[e.dataset.belly||'',e.dataset.ancSurface||'',e.dataset.ancMode||'']:null})()" % sel)
-            if b and b[0] and float(b[0]) > .6 and b[2] not in ('detach',): break
+            if b and b[1] == 'glass' and b[2] not in ('detach', 'toEdgeG', 'attach'): break
             advance(c, 1)
         print('glass', b, 'after', k, 's')
         advance(c, 1.5)
