@@ -68,14 +68,34 @@ def place(spr, cx, cy, width, flip=False, rot=0.0, fog=0.0, alpha=1.0):
     rgb = rgb * (1 - fog) + WATER * fog * 1.4                    # distant fish sink into the water
     sub = img[ys0:ys1, xs0:xs1]; over(sub, a, 0); sub[..., :3] = sub[..., :3] * (1 - a[..., None]) + rgb * a[..., None]; img[ys0:ys1, xs0:xs1] = sub
 
-S = {n: load(n) for n in ('guppy_m', 'guppy_f', 'guppy_fry', 'guppy_nb', 'xipho_m', 'xipho_f', 'xipho_fry')}
+SPECIES = ('guppy_m', 'guppy_f', 'guppy_fry', 'guppy_nb', 'xipho_m', 'xipho_f', 'xipho_fry', 'molly_m', 'molly_f', 'platy_m', 'platy_f',
+           'neon_m', 'neon_f', 'cory_m', 'cory_f', 'anc_m', 'anc_f')
+S = {n: load(n) for n in SPECIES}
+
+# sand along the bottom so the catfish have somewhere to sit
+sand = np.clip((yy - (H - 58)) / 58, 0, 1)
+grain = rng.normal(0, 1, (H, W)).astype(np.float32)
+over(img, np.clip(sand ** .7, 0, 1) * .92, (.50 + .03 * grain, .41 + .03 * grain, .28 + .03 * grain) if False else (.46, .38, .27))
+img[..., :3] += (sand[..., None] * grain[..., None] * .025)
+over(img, np.clip(1.0 - np.abs(yy - (H - 58)) / 14, 0, 1) * .10, (.05, .12, .16))
+
 # (sprite, x, y, width, flip, tilt, fog, alpha)  far fish first
 FISH = [
- ('guppy_fry', 210, 130, 70, False, -6, .35, .9), ('xipho_fry', 1440, 470, 82, True, 5, .3, .9), ('guppy_nb', 90, 330, 52, False, 4, .4, .8),
- ('guppy_f', 120, 80, 150, False, -5, .45, .95), ('xipho_f', 1530, 120, 210, True, 4, .4, .95), ('guppy_m', 330, 500, 190, True, -4, .35, .95),
- ('xipho_m', 1300, 560, 250, False, -3, .3, 1), ('guppy_m', 1210, 90, 170, False, 6, .5, .9), ('guppy_f', 420, 70, 170, True, 3, .5, .9),
- ('xipho_f', 175, 400, 270, False, 4, 0, 1), ('guppy_m', 1500, 330, 260, True, -5, 0, 1),
+ # far, small, hazy
+ ('guppy_f', 110, 70, 140, False, -5, .45, .95), ('molly_f', 410, 80, 190, True, 3, .40, .95), ('guppy_m', 1250, 80, 160, False, 6, .50, .90),
+ ('xipho_f', 1530, 112, 200, True, 4, .40, .95), ('guppy_fry', 60, 250, 62, False, -6, .30, .9), ('xipho_fry', 1440, 470, 80, True, 5, .30, .9),
+ ('platy_f', 440, 385, 150, True, -3, .30, .95), ('platy_m', 1265, 250, 205, False, 4, .20, .95),
+ # mid
+ ('molly_m', 300, 235, 255, False, -3, .10, 1), ('guppy_m', 345, 515, 170, True, -4, .35, .95), ('xipho_m', 1300, 545, 250, False, -3, .30, 1),
+ # bottom dwellers on the sand
+ ('cory_m', 500, 592, 185, False, 0, .15, 1), ('cory_f', 1160, 594, 170, True, 0, .15, 1), ('anc_m', 1545, 588, 300, True, 0, .0, 1), ('anc_f', 215, 592, 250, False, 0, .0, 1),
+ # near, big, sharp
+ ('xipho_f', 150, 395, 260, False, 4, 0, 1), ('guppy_m', 1500, 335, 250, True, -5, 0, 1),
 ]
+# two neon schools: tight groups moving the same way
+for (sx, sy, fl, n) in ((760, 105, False, 8), (860, 535, True, 7)):
+    for i in range(n):
+        FISH.append(('neon_' + ('m' if i % 2 else 'f'), sx + rng.uniform(-120, 120), sy + rng.uniform(-38, 38), rng.uniform(70, 92), fl, rng.uniform(-6, 6), .38, .95))
 for n, x, y, w, fl, rot, fog, al in FISH: place(S[n], x, y, w, fl, rot, fog, al)
 for _ in range(14):                                              # bubbles
     bx, by, br = rng.uniform(30, W - 30), rng.uniform(30, H - 30), rng.uniform(4, 15)
