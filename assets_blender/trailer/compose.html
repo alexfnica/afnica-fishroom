@@ -1,0 +1,220 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+@font-face{font-family:Bahn;src:url('file:///C:/Windows/Fonts/bahnschrift.ttf');font-weight:100 900;font-stretch:75% 100%}
+@font-face{font-family:Goth;src:url('file:///C:/Windows/Fonts/GOTHIC.TTF')}
+@font-face{font-family:GothB;src:url('file:///C:/Windows/Fonts/GOTHICB.TTF')}
+html,body{margin:0;background:#000;overflow:hidden}
+canvas{display:block}
+</style></head>
+<body><canvas id="cv" width="1080" height="1920"></canvas>
+<script>
+// AFNICA trailer compositor. window.TL (timeline) is set from Python; renderFrame(i) draws frame i (30 fps).
+const W = 1080, H = 1920, FPS = 30;
+const cv = document.getElementById('cv'), g = cv.getContext('2d');
+const ROOT = 'file:///D:/Retirement/assets_blender/trailer/';
+const cache = new Map();
+function img(src) {
+  if (cache.has(src)) return cache.get(src);
+  const p = new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
+  cache.set(src, p); if (cache.size > 400) cache.delete(cache.keys().next().value); return p;
+}
+const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const eOut = t => 1 - Math.pow(1 - clamp(t), 3);
+const eIn = t => Math.pow(clamp(t), 3);
+const eIO = t => { t = clamp(t); return t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; };
+const eBack = t => { t = clamp(t); const c1 = 1.7, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); };
+
+// ---------- grain: a few precomputed noise tiles ----------
+const grain = [];
+for (let k = 0; k < 6; k++) {
+  const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d'), d = x.createImageData(256, 256);
+  for (let i = 0; i < d.data.length; i += 4) { const v = 128 + (Math.random() - .5) * 120; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 255; }
+  x.putImageData(d, 0, 0); grain.push(c);
+}
+
+// ---------- the shot image at time t ----------
+function shotSrc(s, t) {
+  const fi = Math.round(s.from + (t - s.t0) * FPS * (s.speed || 1));
+  return ROOT + 'raw/' + s.take + '/' + String(clamp(fi, 0, s.len - 1) | 0).padStart(5, '0') + '.jpg';
+}
+function shotXform(s, t) {           // slow push / drift inside the shot + an entry punch
+  const u = clamp((t - s.t0) / Math.max(.01, s.t1 - s.t0));
+  const z = s.zoom ? lerp(s.zoom[0], s.zoom[1], u) : 1.0;
+  const px = s.pan ? lerp(s.pan[0], s.pan[1], u) : 0, py = s.pany ? lerp(s.pany[0], s.pany[1], u) : 0;
+  let punch = 0; if (s.punch) punch = s.punch * (1 - eOut((t - s.t0) / .32));
+  return {z: z * (1 + punch), x: px, y: py};
+}
+function drawShot(im, xf, opts = {}) {
+  if (!im) return;
+  const z = xf.z, w = W * z, h = H * z, x = (W - w) / 2 + xf.x + (opts.dx || 0), y = (H - h) / 2 + xf.y + (opts.dy || 0);
+  g.save(); g.globalAlpha = opts.alpha == null ? 1 : opts.alpha;
+  g.filter = (TL.grade || 'contrast(1.08) saturate(1.18) brightness(1.02)') + (opts.filter ? ' ' + opts.filter : '');
+  if (opts.zblur) {                 // zoom blur: average of progressively bigger copies
+    const n = 9; for (let k = 0; k < n; k++) { const zz = 1 + opts.zblur * k / n; g.globalAlpha = (opts.alpha == null ? 1 : opts.alpha) * (k ? 1 / (k + 1) : 1);
+      g.drawImage(im, (W - w * zz) / 2 + xf.x, (H - h * zz) / 2 + xf.y, w * zz, h * zz); }
+  } else if (opts.hblur) {          // directional blur for whip pans
+    const n = 9; for (let k = 0; k < n; k++) { g.globalAlpha = (opts.alpha == null ? 1 : opts.alpha) * (k ? 1 / (k + 1) : 1); g.drawImage(im, x + opts.hblur * (k / (n - 1) - .5), y, w, h); }
+  } else g.drawImage(im, x, y, w, h);
+  g.restore();
+}
+
+// ---------- text ----------
+function word(txt, x, y, t, o) {    // letters rise in one after the other, blur to sharp; whole word scales out at the end
+  const {size = 150, font = '700 %spx Bahn', color = '#fff', track = 8, stagger = .035, dur = .42, exit = .28, t1 = 1e9, glow = 'rgba(80,200,255,.35)'} = o;
+  g.save(); g.font = font.replace('%s', size); g.textBaseline = 'alphabetic';
+  const ws = [...txt].map(ch => g.measureText(ch).width), total = ws.reduce((a, b) => a + b, 0) + track * (txt.length - 1);
+  const ex = clamp((t - (t1 - exit)) / exit), sc = 1 + .08 * eIn(ex), ga = 1 - eIn(ex);
+  g.translate(x, y); g.scale(sc, sc);
+  let cx = -total / 2;
+  [...txt].forEach((ch, i) => {
+    const lt = (t - i * stagger) / dur, a = clamp(lt) * ga;
+    if (a > 0) {
+      const off = (1 - eOut(lt)) * size * .45, bl = (1 - eOut(lt)) * 14 + ex * 10;
+      g.save(); g.globalAlpha = a; g.filter = bl > .3 ? 'blur(' + bl.toFixed(1) + 'px)' : 'none';
+      g.shadowColor = glow; g.shadowBlur = 40; g.fillStyle = color; g.fillText(ch, cx, off);
+      g.shadowColor = 'rgba(0,0,0,.55)'; g.shadowBlur = 24; g.shadowOffsetY = 6; g.fillText(ch, cx, off); g.restore();
+    }
+    cx += ws[i] + track;
+  });
+  g.restore();
+  return total;
+}
+function sub(txt, x, y, t, o) {      // small tracked caps that fade in while the tracking opens up
+  const {size = 38, font = '%spx GothB', color = '#a8ecff', track0 = 4, track1 = 16, dur = .7, exit = .28, t1 = 1e9} = o;
+  const a = eOut(t / dur) * (1 - eIn(clamp((t - (t1 - exit)) / exit)));
+  if (a <= 0) return;
+  g.save(); g.font = font.replace('%s', size); g.letterSpacing = lerp(track0, track1, eOut(t / (dur * 1.6))).toFixed(1) + 'px';
+  g.textAlign = 'center'; g.globalAlpha = a; g.fillStyle = color; g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 18;
+  g.fillText(txt, x, y); g.restore();
+}
+function line(x, y, t, o) {
+  const {w = 300, dur = .5, t1 = 1e9, exit = .25, color = 'rgba(160,236,255,.9)'} = o;
+  const k = eOut(t / dur) * (1 - eIn(clamp((t - (t1 - exit)) / exit))); if (k <= 0) return;
+  g.save(); g.fillStyle = color; g.shadowColor = color; g.shadowBlur = 12; g.fillRect(x - w * k / 2, y, w * k, 3); g.restore();
+}
+
+function tag(name, latin, x, y, t, o) {   // documentary species label: a thin line grows, the name slides in, the latin name follows in italics
+  const {t1 = 1e9, exit = .3} = o;
+  const out = 1 - eIn(clamp((t - (t1 - exit)) / exit)); if (out <= 0) return;
+  const k1 = eOut(t / .45), k2 = eOut((t - .12) / .5), k3 = eOut((t - .3) / .5);
+  g.save(); g.shadowColor = 'rgba(0,0,0,.65)'; g.shadowBlur = 16;
+  g.globalAlpha = out; g.fillStyle = 'rgba(170,236,255,.95)'; g.fillRect(x, y - 13, 56 * k1, 3);
+  g.globalAlpha = out * clamp(k2); g.font = '36px GothB'; g.letterSpacing = '7px'; g.fillStyle = '#ffffff'; g.textBaseline = 'middle';
+  g.fillText(name, x + 76 - 26 * (1 - k2), y - 12);
+  g.globalAlpha = out * clamp(k3); g.font = 'italic 34px Georgia'; g.letterSpacing = '1px'; g.fillStyle = '#bfeaff';
+  g.fillText(latin, x + 76 - 26 * (1 - k3), y + 32);
+  g.restore();
+}
+
+// ---------- overlays ----------
+function vignette(k = .5) {
+  const r = g.createRadialGradient(W / 2, H * .46, H * .25, W / 2, H * .5, H * .75);
+  r.addColorStop(0, 'rgba(0,0,0,0)'); r.addColorStop(1, 'rgba(0,8,14,' + k + ')'); g.fillStyle = r; g.fillRect(0, 0, W, H);
+}
+function leak(t, k) {               // slow warm/cyan light leaks drifting across
+  if (k <= 0) return;
+  g.save(); g.globalCompositeOperation = 'screen';
+  const x1 = W * (.15 + .5 * Math.sin(t * .37)), y1 = H * (.15 + .1 * Math.sin(t * .23));
+  let r = g.createRadialGradient(x1, y1, 0, x1, y1, 700); r.addColorStop(0, 'rgba(120,220,255,' + (.20 * k) + ')'); r.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = r; g.fillRect(0, 0, W, H);
+  const x2 = W * (.85 - .4 * Math.sin(t * .29 + 1)), y2 = H * (.8 + .08 * Math.cos(t * .31));
+  r = g.createRadialGradient(x2, y2, 0, x2, y2, 650); r.addColorStop(0, 'rgba(255,170,90,' + (.12 * k) + ')'); r.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = r; g.fillRect(0, 0, W, H); g.restore();
+}
+function rays(t, k) {               // god rays from the surface
+  if (k <= 0) return;
+  g.save(); g.globalCompositeOperation = 'screen';
+  for (let i = 0; i < 5; i++) {
+    const x = W * (i / 4) + Math.sin(t * .4 + i * 1.7) * 60, w = 90 + 40 * Math.sin(i * 2.3);
+    g.save(); g.translate(x, -50); g.rotate(.22 + .03 * Math.sin(t * .5 + i));
+    const lg = g.createLinearGradient(0, 0, 0, H * .9); lg.addColorStop(0, 'rgba(200,245,255,' + (.10 * k) + ')'); lg.addColorStop(1, 'rgba(200,245,255,0)');
+    g.fillStyle = lg; g.filter = 'blur(18px)'; g.fillRect(-w / 2, 0, w, H * .9); g.restore();
+  }
+  g.restore();
+}
+function flash(k, color = '255,255,255') { if (k <= 0) return; g.save(); g.fillStyle = 'rgba(' + color + ',' + clamp(k) + ')'; g.fillRect(0, 0, W, H); g.restore(); }
+function grainFx(i, k = .07) {
+  g.save(); g.globalCompositeOperation = 'overlay'; g.globalAlpha = k;
+  const p = g.createPattern(grain[i % grain.length], 'repeat'); g.translate((i * 97) % 256, (i * 57) % 256); g.fillStyle = p; g.fillRect(-256, -256, W + 512, H + 512); g.restore();
+}
+function bars(k) { if (k <= 0) return; const h = 120 * k; g.fillStyle = '#000'; g.fillRect(0, 0, W, h); g.fillRect(0, H - h, W, h); }
+
+// ---------- one frame ----------
+window.renderFrame = async function (fi) {
+  const t = fi / FPS, S = TL.shots;
+  // which shots are visible: the current one, plus the neighbour during a transition
+  const need = [];
+  for (let k = 0; k < S.length; k++) {
+    const s = S[k], td = s.td || 0, prev = S[k - 1];
+    const a = s.t0 - (s.tin === 'whip' || s.tin === 'zoom' || s.tin === 'cross' ? td / 2 : 0), b = s.t1 + ((S[k + 1] && ['whip', 'zoom', 'cross'].includes(S[k + 1].tin)) ? (S[k + 1].td || 0) / 2 : 0);
+    if (t >= a && t < b) need.push(k);
+  }
+  const ims = await Promise.all(need.map(k => img(shotSrc(S[k], t))));
+  g.save(); g.fillStyle = '#000'; g.fillRect(0, 0, W, H);
+  // camera shake on impacts
+  let shx = 0, shy = 0; (TL.shake || []).forEach(([ts, amp]) => { const u = t - ts; if (u >= 0 && u < .45) { const d = amp * Math.exp(-u * 9); shx += Math.sin(u * 83) * d; shy += Math.cos(u * 71) * d; } });
+  g.translate(shx, shy);
+  need.forEach((k, j) => {
+    const s = S[k], im = ims[j], xf = shotXform(s, t), next = S[k + 1];
+    let opts = {filter: s.filter || ''};
+    if (s.blur && t > s.blur[0]) opts.filter += ' blur(' + (s.blur[1] * eOut((t - s.blur[0]) / .9)).toFixed(1) + 'px)';
+    // incoming transition of this shot
+    if (s.tin === 'whip' && t < s.t0 + s.td / 2) { const u = (t - (s.t0 - s.td / 2)) / s.td; opts.dx = W * (1 - eIO(u)) * (s.dir || 1); opts.hblur = 260 * Math.sin(Math.PI * clamp(u)); }
+    if (s.tin === 'zoom' && t < s.t0 + s.td / 2) { const u = clamp((t - (s.t0 - s.td / 2)) / s.td); xf.z *= lerp(1.6, 1, eOut(u)); opts.zblur = .35 * (1 - u); opts.alpha = clamp(u * 2); }
+    if (s.tin === 'cross' && t < s.t0 + s.td / 2) { opts.alpha = clamp((t - (s.t0 - s.td / 2)) / s.td); }
+    if (s.tin === 'cut' && t < s.t0 + .14) opts.zblur = .12 * (1 - (t - s.t0) / .14);
+    // outgoing transition into the next shot
+    if (next && t >= s.t1 - (next.td || 0) / 2 && t < s.t1 + (next.td || 0) / 2) {
+      const u = (t - (s.t1 - next.td / 2)) / next.td;
+      if (next.tin === 'whip') { opts.dx = -W * eIO(u) * (next.dir || 1); opts.hblur = 260 * Math.sin(Math.PI * clamp(u)); }
+      if (next.tin === 'zoom') { xf.z *= lerp(1, 1.9, eIn(u)); opts.zblur = .45 * u; }
+    }
+    if (next && t >= s.t1 && !(['whip', 'zoom', 'cross'].includes(next.tin))) return;
+    drawShot(im, xf, opts);
+  });
+  g.restore();
+  // looks
+  rays(t, TL.rays || 0);
+  leak(t, TL.leak == null ? .8 : TL.leak);
+  vignette(.55);
+  // darken behind the end card
+  (TL.dim || []).forEach(([a, b, k]) => { if (t >= a) { g.fillStyle = 'rgba(0,6,12,' + (k * eOut((t - a) / .6)) + ')'; g.fillRect(0, 0, W, H); } });
+  // texts
+  (TL.texts || []).forEach(x => {
+    if (t < x.t0 || t >= x.t1) return; const lt = t - x.t0;
+    if (x.kind === 'word') word(x.text, x.x || W / 2, x.y, lt, Object.assign({t1: x.t1 - x.t0}, x));
+    else if (x.kind === 'sub') sub(x.text, x.x || W / 2, x.y, lt, Object.assign({t1: x.t1 - x.t0}, x));
+    else if (x.kind === 'line') line(x.x || W / 2, x.y, lt, Object.assign({t1: x.t1 - x.t0}, x));
+    else if (x.kind === 'tag') tag(x.text, x.latin, x.x || 70, x.y || 270, lt, {t1: x.t1 - x.t0});
+  });
+  // logos: the app icon (rounded, pops in) and the splash screen (full white page with the logo)
+  for (const L of (TL.logos || [])) {
+    if (t < L.t0 || t >= L.t1) continue; const li = await img(ROOT + L.src); if (!li) continue;
+    const lt = t - L.t0;
+    if (L.splash) {
+      const a = clamp(lt / .25); g.save(); g.globalAlpha = a; g.fillStyle = L.bg || '#fff'; g.fillRect(0, 0, W, H);
+      const z = lerp(1.06, 1.0, eOut(lt / 1.6)), w = L.w * z, h = w * li.height / li.width;
+      g.drawImage(li, (W - w) / 2, L.y - h / 2, w, h); g.restore(); continue;
+    }
+    const k = eBack(lt / .5), a = clamp(lt / .2) * (1 - eIn(clamp((t - (L.t1 - .3)) / .3)));
+    const w = L.w * lerp(.55, 1, k), h = w * li.height / li.width, x = (W - w) / 2, y = L.y - h / 2, r = (L.round || 0) * w;
+    g.save(); g.globalAlpha = a;
+    g.shadowColor = 'rgba(0,0,0,.55)'; g.shadowBlur = 60; g.shadowOffsetY = 18;
+    g.beginPath(); g.roundRect(x, y, w, h, r); g.fillStyle = '#0b2a38'; g.fill();
+    g.shadowColor = 'transparent'; g.save(); g.clip(); g.drawImage(li, x, y, w, h);
+    const sh = clamp((lt - .45) / .7); if (sh > 0 && sh < 1) {              // a glossy sheen sweeps across the icon once
+      const sx = x - w + sh * w * 3, lg = g.createLinearGradient(sx, y, sx + w * .5, y + h);
+      lg.addColorStop(0, 'rgba(255,255,255,0)'); lg.addColorStop(.5, 'rgba(255,255,255,.35)'); lg.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = lg; g.fillRect(x, y, w, h); }
+    g.restore(); g.lineWidth = 3; g.strokeStyle = 'rgba(200,240,255,.35)'; g.stroke(); g.restore();
+  }
+  // flashes (impacts) and fades
+  (TL.flashes || []).forEach(([ts, k, d]) => { const u = (t - ts) / (d || .35); if (u >= 0 && u < 1) flash(k * Math.pow(1 - u, 2)); });
+  (TL.fades || []).forEach(([a, b, dir]) => { if (t >= a && t < b) { const u = (t - a) / (b - a); flash(dir === 'in' ? 1 - u : u, '0,0,0'); } else if (dir === 'out' && t >= b) flash(1, '0,0,0'); });
+  grainFx(fi, .06);
+  return 1;
+};
+window.ready = (async () => { await Promise.all([document.fonts.load('700 100px Bahn'), document.fonts.load('40px Goth'), document.fonts.load('40px GothB')]); return 1; })();
+</script></body></html>
