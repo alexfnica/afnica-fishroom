@@ -2,3 +2,10 @@ assets_blender/trailer/_profiles/
 assets_blender/trailer/raw/
 assets_blender/trailer/out/frames/
 assets_blender/trailer/test/
+# render intermediates (frames, per-clip audio and copies of the final videos, which live in the repo root)
+assets_blender/trailer/out/frames_*/
+assets_blender/trailer/out/*.mp4
+assets_blender/trailer/out/music_AFNICA_*.wav
+assets_blender/trailer/out/sfx_*.json
+assets_blender/trailer/*log*.txt
+.claude/launch.json

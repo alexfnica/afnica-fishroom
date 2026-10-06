@@ -1,0 +1,16 @@
+<!doctype html><meta charset="utf-8"><title>asset receiver</title>
+<body style="font:14px sans-serif;background:#111;color:#ddd">
+<p>Asset receiver: waiting for images…</p><pre id="log"></pre>
+<script>
+// Dev helper: another tab posts {name, b64} with window.postMessage; this page forwards it to the local receiver (port 8766).
+addEventListener('message', async e => {
+  const d = e.data || {};
+  if (!d.name || !d.b64) return;
+  const bin = Uint8Array.from(atob(d.b64), c => c.charCodeAt(0));
+  let msg;
+  try { const r = await fetch('http://localhost:8766/' + d.name, { method: 'POST', body: bin }); msg = d.name + ' -> ' + r.status; }
+  catch (err) { msg = d.name + ' ERR ' + err.message; }
+  document.getElementById('log').textContent += msg + '\n';
+  e.source && e.source.postMessage({ done: d.name, msg }, '*');
+});
+</script>

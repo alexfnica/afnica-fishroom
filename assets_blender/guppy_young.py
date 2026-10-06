@@ -47,10 +47,10 @@ def warp(s, eye_gain, eye_r, slim, tail_k, ox):
     X = np.where(r < eye_r, EYE[0] + dx * g, X); Y = np.where(r < eye_r, EYE[1] + dy * g / slim, Y)
     return unpremul(sample(P, X, Y))
 
-def dark_eye(s, slim, gain):
+def dark_eye(s, slim, gain, dx=0.0):
     """a red swordtail has a black pupil in a thin dark-gold iris (a pale magnified eye reads as albino)"""
     h, w = s.shape[:2]; cy = h * .5
-    ex, ey = EYE[0], cy + (EYE[1] - cy) * slim
+    ex, ey = EYE[0] - dx, cy + (EYE[1] - cy) * slim
     R = 6.0 * gain                                                    # whole eye radius after magnifying
     yy, xx = np.mgrid[0:h, 0:w]; d = np.hypot(xx - ex, yy - ey)
     pupil = np.clip((R * .62 - d) / 1.2, 0, 1)[..., None]
@@ -90,11 +90,31 @@ save(Fr, a[2])
 
 # newborn (first 3 days): even slimmer, the biggest eye, pale and a little see-through, fins almost clear
 if len(a) > 3:
-    N = warp(base, 1.75, 26, .7, 1.0, 0)
+    # a real newborn guppy: a small, round, see-through tail (not the adult's fan), a glassy body with the spine
+    # showing through, a silvery belly and very big dark eyes
+    TAIL_END = 110                                                    # the caudal fin ends here on the female sprite
+    N = warp(base, 2.0, 26, .72, .38, TAIL_END)
+    h, w = N.shape[:2]; cut = TAIL_END * .38
     lum = N[..., :3] @ np.array([.299, .587, .114], np.float32)
-    silver = np.stack([.25 + .7 * lum, .27 + .7 * lum, .31 + .7 * lum], -1)
-    N[..., :3] = N[..., :3] * .25 + silver * .75                       # newborn: almost colourless
+    silver = np.stack([.3 + .62 * lum, .33 + .62 * lum, .37 + .62 * lum], -1)
+    N[..., :3] = N[..., :3] * .15 + silver * .85                       # almost colourless
+    xx = np.arange(w)[None, :].repeat(h, 0)
     fin = N[..., 3] < .97
-    N[..., 3] = np.where(fin, N[..., 3] * .45, N[..., 3] * .86)         # slightly see-through, clear fins
-    N = dark_eye(N, .7, 1.75)
+    a0 = N[..., 3].copy()
+    N[..., 3] = np.where(xx < cut + 4, a0 * .32, np.where(fin, a0 * .3, a0 * .62))   # glassy body, nearly clear fins and tail
+    body = (a0 > .9) & (xx >= cut + 4)
+    for x in range(int(cut) + 4, w):                                  # spine showing through: a faint dark line along the body
+        ys = np.nonzero(body[:, x])[0]
+        if len(ys) < 4: continue
+        y0, y1 = ys.min(), ys.max(); my = int(y0 + (y1 - y0) * .56)
+        for dy, k in ((-1, .25), (0, .4), (1, .25)):
+            yy = my + dy
+            if 0 <= yy < h:
+                N[yy, x, :3] = N[yy, x, :3] * (1 - k) + np.array([.16, .18, .2], np.float32) * k
+                N[yy, x, 3] = max(N[yy, x, 3], .7)
+        if x > w * .45:                                               # silvery belly in the front half
+            by0 = int(y0 + (y1 - y0) * .62)
+            N[by0:y1, x, :3] = np.minimum(1, N[by0:y1, x, :3] * .7 + .32)
+            N[by0:y1, x, 3] = np.maximum(N[by0:y1, x, 3], .78)
+    N = dark_eye(N, .72, 2.0, TAIL_END * (1 - .38))
     save(N, a[3])

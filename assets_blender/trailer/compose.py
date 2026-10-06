@@ -6,9 +6,11 @@
 import os, sys, json, time, math, subprocess
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cdp import Chrome
-import timeline
-from timeline import TL, SFX, DURATION, MUSIC
-HERE = os.path.dirname(os.path.abspath(__file__)); OUTF = os.path.join(HERE, 'out', 'frames'); os.makedirs(OUTF, exist_ok=True)
+import importlib
+timeline = importlib.import_module(os.environ.get('AF_TL', 'timeline'))   # AF_TL=timeline_molly renders the molly clip
+TL, SFX, DURATION, MUSIC = timeline.TL, timeline.SFX, timeline.DURATION, timeline.MUSIC
+OUTNAME = getattr(timeline, 'OUTNAME', 'AFNICA_trailer.mp4'); TAG = '' if OUTNAME == 'AFNICA_trailer.mp4' else '_' + os.path.splitext(OUTNAME)[0]
+HERE = os.path.dirname(os.path.abspath(__file__)); OUTF = os.path.join(HERE, 'out', 'frames' + TAG); os.makedirs(OUTF, exist_ok=True)
 BL = r'D:\Blender\blender.exe'; FPS = 30
 N = int(round(DURATION * FPS))
 
@@ -28,15 +30,15 @@ def events(take, log, fps):
             try:
                 if pred(p): ev[name] = i / fps + extra; return
             except Exception: pass
-    if take.startswith('hunt'):
+    if take.startswith('hunt') or take.endswith('hunt'):
         first(lambda p: p and p.get('phase') == 'strike', 'strike')
         first(lambda p: p and p.get('phase') == 'chew', 'chew')
-    if take in ('guppy_court', 'xipho_court'):
+    if take in ('guppy_court', 'xipho_court') or take.endswith('court'):
         first(lambda p: p and p.get('T', -9) >= 1.0, 'display')
         first(lambda p: p and p.get('res') is not None, 'thrust')
         hits = [i / fps for i, p in enumerate(ph) if p and p.get('hit') is not None and p['hit'] < .03]
         ev['hits'] = hits
-    if take == 'fight':
+    if take == 'fight' or take.endswith('fight'):
         nips = []; prev = None
         for i, p in enumerate(ph):
             seg = p.get('seg') if p else None
@@ -46,7 +48,7 @@ def events(take, log, fps):
         if nips: ev['nip'] = nips[0]
         if len(nips) > 1: ev['nip2'] = nips[1]
         first(lambda p: p and p.get('seg') == 'chase', 'chase')
-    if take == 'net': ev['dodge'] = 40 / 30 + .25; ev['catch'] = 110 / 30 + .33
+    if take == 'net' or take.endswith('_net'): ev['dodge'] = 40 / 30 + .25; ev['catch'] = 110 / 30 + .33
     if take == 'feed': ev['feed'] = 15 / 30 + .4
     return ev
 
@@ -127,10 +129,10 @@ if __name__ == '__main__':
     finally:
         if c: c.close()
     if rng is None or rng == (0, N - 1):
-        json.dump(sfx, open(os.path.join(HERE, 'out', 'sfx.json'), 'w')); print('sfx', sorted(sfx))
-        wav = os.path.join(HERE, 'out', 'music_trailer.wav')
-        r = subprocess.run([BL, '-b', '-P', os.path.join(HERE, 'music.py'), '--', 'A', wav, str(MUSIC['bars']), os.path.join(HERE, 'out', 'sfx.json'), str(MUSIC['drop']), str(MUSIC['end'])], capture_output=True, text=True)
+        json.dump(sfx, open(os.path.join(HERE, 'out', 'sfx%s.json' % TAG), 'w')); print('sfx', sorted(sfx))
+        wav = os.path.join(HERE, 'out', 'music%s.wav' % (TAG or '_trailer'))
+        r = subprocess.run([BL, '-b', '-P', os.path.join(HERE, 'music.py'), '--', 'A', wav, str(MUSIC['bars']), os.path.join(HERE, 'out', 'sfx%s.json' % TAG), str(MUSIC['drop']), str(MUSIC['end'])], capture_output=True, text=True)
         print([l for l in r.stdout.splitlines() if 'SAVED' in l or 'rror' in l][-3:])
-        mp4 = os.path.join(HERE, 'out', 'AFNICA_trailer.mp4')
+        mp4 = os.path.join(HERE, 'out', OUTNAME)
         r = subprocess.run([BL, '-b', '-P', os.path.join(HERE, 'encode.py'), '--', OUTF, wav, mp4], capture_output=True, text=True)
         print([l for l in r.stdout.splitlines() if 'ENCODED' in l or 'rror' in l][-3:])
