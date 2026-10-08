@@ -131,7 +131,7 @@ if __name__ == '__main__':
     if rng is None or rng == (0, N - 1):
         json.dump(sfx, open(os.path.join(HERE, 'out', 'sfx%s.json' % TAG), 'w')); print('sfx', sorted(sfx))
         wav = os.path.join(HERE, 'out', 'music%s.wav' % (TAG or '_trailer'))
-        r = subprocess.run([BL, '-b', '-P', os.path.join(HERE, 'music.py'), '--', 'A', wav, str(MUSIC['bars']), os.path.join(HERE, 'out', 'sfx%s.json' % TAG), str(MUSIC['drop']), str(MUSIC['end'])], capture_output=True, text=True)
+        r = subprocess.run([BL, '-b', '-P', os.path.join(HERE, 'music.py'), '--', MUSIC.get('style', 'A'), wav, str(MUSIC['bars']), os.path.join(HERE, 'out', 'sfx%s.json' % TAG), str(MUSIC['drop']), str(MUSIC['end'])], capture_output=True, text=True)
         print([l for l in r.stdout.splitlines() if 'SAVED' in l or 'rror' in l][-3:])
         mp4 = os.path.join(HERE, 'out', OUTNAME)
         r = subprocess.run([BL, '-b', '-P', os.path.join(HERE, 'encode.py'), '--', OUTF, wav, mp4], capture_output=True, text=True)
