@@ -61,6 +61,10 @@ The file is layered. What runs is decided by source order: later `<style>`/`<scr
   Flag these rather than silently keeping them or removing them.
 - Duplicate function declarations are rare. `frame` is declared 3 times, each inside a separate IIFE. Most "duplicates" are versioned copies with different names, like `fooV13` and `fooV16`. Find the live one by grepping for its callers.
 
+## Current work
+
+See `HANDOFF.md` in the repo root for where the last session stopped and what comes next (it is the source of truth for continuing; "curtarea" = courtship).
+
 ## Working rules (from the owner)
 
 - **Talk to the owner in Romanian.** Code, comments and commit messages stay in English.
