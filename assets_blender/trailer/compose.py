@@ -48,6 +48,14 @@ def events(take, log, fps):
         if nips: ev['nip'] = nips[0]
         if len(nips) > 1: ev['nip2'] = nips[1]
         first(lambda p: p and p.get('seg') == 'chase', 'chase')
+        slaps = []; prev = None
+        for i, p in enumerate(ph):
+            seg = p.get('seg') if p else None
+            if seg == 'slap' and prev != 'slap': slaps.append(i / fps)
+            prev = seg
+        ev['slaps'] = slaps
+        first(lambda p: p and p.get('seg') == 'spin', 'spin')
+        first(lambda p: p and p.get('seg') == 'pursue', 'pursue')
     if take == 'net' or take.endswith('_net'): ev['dodge'] = 40 / 30 + .25; ev['catch'] = 110 / 30 + .33
     if take == 'feed': ev['feed'] = 15 / 30 + .4
     return ev
