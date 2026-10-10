@@ -63,7 +63,7 @@ The file is layered. What runs is decided by source order: later `<style>`/`<scr
 
 ## Current work
 
-See `HANDOFF.md` in the repo root for where the last session stopped and what comes next (it is the source of truth for continuing; "curtarea" = courtship).
+See `HANDOFF.md` in the repo root for where the last session stopped and what comes next, and `PLAYBOOK.md` for the owner's taste, ready-made test scenes, how to measure, the 3D fish system and the video pipeline (it is the source of truth for continuing; "curtarea" = courtship).
 
 ## Working rules (from the owner)
 
