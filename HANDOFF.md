@@ -1,46 +1,54 @@
-# Handoff — where work stopped (2026-10-09, end of the cloud session)
+# Handoff — where work stopped (2026-10-10, cloud session)
 
-Read this first when continuing. Topic so far: **xipho (swordtail) COURTSHIP** ("curtarea" = courtship, not cleaning).
-Everything below is in the V17.74–V17.76 blocks of the game HTML.
+Read this first when continuing. Topic: **guppy male SIGMOID display** (the S-dance in courtship). Code tag **V17.81**.
+Previous topic (swordtail courtship V17.74–V17.76) is finished; its notes are in git history (`git show 63ed01f:HANDOFF.md`).
 
-## Done and approved by the owner
+## Reference
+The owner sent a real clip, "Blue Moscow guppy mating" (4 s, vertical). Frame by frame:
+- he stops IN FRONT of her snout, heading the way she heads;
+- his rear half bends sideways into the depth until the tail fin is edge-on: a vertical blade at her face (~0.5 s, tremor);
+- he pivots fast through the depth toward the camera (C-bend);
+- he ends FACING her in an S: nose up toward her face, tail fanned down and back (~0.3–0.6 s);
+- she turns her head toward him, then swims off over him and he follows.
+Earlier attempts (vertical sine on the flat sprite, static lateral S, slow pivoting "breathing" S) were rejected as unnatural.
 
-**Earlier (V17.74–V17.75, already committed before this session)**
-- Guppy size scale, newborn livebearers x1.15, show-off only toward own species, lag fix.
-- Sword stays straight; swordtail flare = dorsal only; two fights at once; no snout-to-snout lock.
-- Swordtail FIGHT fully 3D (M3_GLSL): carousel spin, nip, tail-beating, counter-bite, burst pursuit. 3D turns for all livebearers and neons. Gonopodium len 48.
+## Done (V17.81, uncommitted until the owner says so)
+**3D body (fin-motion block, shader `M3_GLSL`, `glBent`)**
+- Guppy males now get the full 3D pose in the generic path: kf (head/tail ratio), vk, bank, plus dorsal/tail flare (`FLAREP.guppy`).
+- New uniform `uVf` (vertical bend of the head half, `pose3g` 14th param `vf`, `data-vf`).
+- New uniform `uHr`: **rigid head** for guppy (bend stops 0.4 × front half in front of the middle, the head goes on straight). The owner called the bent head "horrendous".
+- Inner body slices (`uLay` 1, .5, 0, -.5) for guppy **only when |cos psi| < .75**: a head-on view during the turn is solid, not a hollow white outline.
+- Pectorals while 3D: the procedural pectoral (`pf80Motion`/`pf80Draw`) is drawn into a per-fish texture (`s.tex3`, `o3.src`) that `glBent` uploads every frame, so the fins beat and stay attached in 3D.
+- `data-still` may be fractional (0..1): the swim wave fades in/out instead of switching. Old '0'/'1' behave as before.
 
-**This session: the swordtail courtship display (V17.76)**
-All of it is in `chaseCoreV1744`, in the block `c.sp==='xipho'&&window.pose3gV1775&&T<1+hold`, plus the female branch just below it.
-One of four displays is picked at random per courtship (`c.xvar`):
-- **0 – round her**: he swims alongside (tropicaltanktv clip), then goes round her snout on the fight-carousel circle (about 184 deg, 3D body bent to the circle, kf 1, bank .28, no screen-space tilt), then backs in tail-first toward her snout, then returns alongside.
-- **1 – cornering sweep**: he bursts in front of her, head away, tail tip at her snout, and swings round her snout like a clock hand (tail and sword sweep across her face), small hook at the tip.
-- **2 – head left, she faces left**: in front of her snout, head to the LEFT of the screen, turned about 3/4 toward us, tail and sword curling away into the depth.
-- **3 – she faces right** (variant 2 when `c.ff>0`, flag `c.xv3`): face to face on her right, head left, body bent in a C round her snout so his tail and sword go round her and he blocks her way. Turned about 138 deg (not head-on: head-on squashed the snout, owner said it looked odd).
-- **Burst and flight cycles (variants 1–3)**: he bursts across her path (0.5–0.9 s, cubic ease-out, head first, turns to his final heading only at arrival, small lift over her). She flinches (short recoil, still facing forward), turns round (`c.ff` flips) and bolts. He overtakes and bursts again. 2 or 3 cycles (`c.xcyc`, 1.5 s each), then she freezes while he blocks her, and near the end she edges toward him.
-- **She yields, he fertilizes**: the accept/refuse answer is decided once at the start (`c.resPre`, same rule as `settle()`, which now uses it). When the courtship ends in a thrust and she accepts, she stops fleeing and holds still through his approach under her; `settle()` then stores the sperm as before. If she refuses, the old behaviour stays (she bolts at the end).
-- **Female reaction** for variant 0 is only: she slows and holds while he circles.
+**Display logic (new block at the end of the file, `window.gupDanceV1781` / `window.gupFemV1781`)**
+- Called first in `chaseCoreV1744`, guppy male branch (the old S code below it is only a fallback when it returns null).
+- ONE display per courtship with AT MOST ONE TURN (the owner rejected repeated spins and the raised-head pose):
+  - he swims in with the normal engine, head first (mul 1.7, a bit below her when coming from behind); the 3D pose starts only when he is within 0.75 body of his spot, from his current yaw (`startYawV1775`), so there is no flip;
+  - from BEHIND her: tail blade at her snout (1 or 2 blades if the window is ≥ 7.4 s, relaxed in place between them), then ONE turn toward her along a small arc (head first, C peaks mid-turn, bank .3, nose down .12), then a LEVEL lateral S facing her (no pitch, no tail-down) with short S pulses every 1.6 s, relaxed facing her at the window end;
+  - from IN FRONT of her: no blade, no turn — straight to the S facing her.
+- Every pose value goes through a critically damped follow (ω 14), the heading is wrapped to the nearest turn, her heading `dd` is latched when the display starts, snap ramps with distance.
+- Measured turns of the courting male (`gtest` counts heading flips): from behind 2 in 12 s (the display turn + the old thrust code's turn), from in front 1 (only the thrust code's).
+- Positions: A = her snout + his half length (his tail at her snout), B a bit further, all relative to her live position; mirrored for a left-heading female (psi → PI − psi, kap sign flips).
+- She turns her head toward him (yaw .75, flat sprite narrowed, no tilt) while he faces her (`c.g81f`).
+- Tuning constants in `K` at the top of the block.
 
-**Bugs found on the way (fixed — worth knowing)**
-- V17.58 flips `c.ff` when the female nears the glass. My block now smooths his side (`c.xds`, `dd`) and latches it per burst cycle, otherwise he teleported (one-frame flip of yaw and side).
-- A TDZ error (a `const` used before its declaration) in the block is swallowed by the try/catch around the motion chain, so the fish silently falls back to the old behaviour. `syntax_check_node.py` does NOT catch it. Always check `el.dataset.m3/psi/kap` in a headless run after editing this block.
-- The 3D body centring shift `P3.dx` pulled the male back toward her. For variants 2–3 the yaw reference passed to `pose3gV1775` is his own heading (`psiF`), so no shift.
-- Fish positions are clamped to the tank (`v16Bounds`): a target outside the tank is silently pinned to the glass.
-
-## Test-only globals left in the code (flag, do not rely on them)
-`window.__xvarForce` (0–2), `window.__xcycForce` (cycles), `window.__resForce` (1 = she accepts), `window.__sideS` (curvature side). They are harmless when undefined. Remove them if the owner wants a clean file.
-
-## How it was tested in the cloud (nothing of this is in the repo)
-Headless Chromium through Playwright (`/opt/pw-browsers/chromium-1194/chrome-linux/chrome`, node module at `/opt/node22/lib/node_modules/playwright`): load the HTML, `window.save=()=>{}`, build a tank with `tankArrayV14`, set `window.__afHourOverride=12`, force the courtship (`courtshipV1744.main={next:0}` and the `COURT_FIX` from `assets_blender/trailer/takes.py`), log with `requestAnimationFrame` (state x/y, `data-psi/kap/side/bank/kf`), record video with `recordVideo`. A 1100x900 viewport gives a 1050x390 tank, where the female no longer hits the glass. YouTube is blocked in the cloud: the owner uploads clips and frames are cut with ffmpeg.
+## Measured (headless Chromium, fake clock from `assets_blender/trailer/cdp.py`)
+- PLAYBOOK §2 scene (2 M + 2 F guppy, looping courtship, sneak off, hold 7–7.5 s): 2 display cycles, 0 console errors, male max step 9.4 px/frame (in the old thrust phase), max yaw change 0.34 rad/frame. Big steps of the female / other male are the old flinch dash and sneaky dart (intended).
+- Frame cost (software WebGL in the container, so absolute numbers are inflated): median during the display 33 ms vs 34 ms with none of the V17.81 GL additions; the slices doubled it until limited to head-on views. Check on the laptop with a GPU.
+- Syntax check: `with syntax errors 0`. NOTE: shader compile errors are not caught by it - check visually.
+- `aquarium-reviewer` pass done. Fixed: her heading is latched only when the pose starts (not during the approach); a pose never starts if it cannot finish inside the display window (short hold 4.5 s tested: he is relaxed at the window end, the hand-back to the flat sprite is seamless); a guppy cut off mid-display lowers its fins (courtship-end cleanup); on an exception her head turn is reset and the error is logged once. Its "texture binding leak" finding was a false positive (`glBent` re-binds `tx` before drawing, line ~8324). Still open: `data-fb` is never cleared (pre-existing), `vf`/`uVf` plumbing exists but the display passes 0 (unused). Not tested: a tank mixing a 3D guppy with a 3D molly/xipho at the same time.
 
 ## Not done / next
-- The owner has NOT yet seen the final yield and fertilization clip on his own machine; ask for feedback first.
-- Display 0 has no burst-and-flight cycles and no flinch; decide with the owner if it should.
-- The vertical caudal "blade" from the tropicaltanktv clip (frames f75–f80) is not done (needs a shader change).
-- The refusal case (she does not yield, bolts) was never filmed.
-- Residual: when the female turns at the glass at the very moment the circle starts there can still be a fast turn of about 2 rad in 0.1 s (narrow tank only; the wide tank rarely triggers it).
-- Burst peaks reach about 8.8 body lengths per second in the longest crossing (variant 3); may be too fast.
-- Then, as before: molly fight and courtship.
+- **The owner approved the in-game display (`guppy_S_in_joc_v2.mp4`, single turn) on 2026-10-10: "gata, e bine".**
+- Flat-sprite flash: exactly head-on during the pivot the head still looks a bit squashed (flat sprite seen from the front).
+- Ideas not done: a tremor ripple on the tail edge (fine, the owner dislikes trembling tails), eye/head tracking her, random variation per courtship (tail curl toward/away, 1–3 cycles, blade only without the pivot).
+- Female in the game keeps her old slow "watch" drift; in the test scene she also swims off over him at the end. In the game the old post-display code (thrust or swim off) follows the display.
+- The test rigs (`clip*.js`, `gtest.js`, `perf.js`) live only in the cloud scratchpad, not in the repo.
+- Clips in the repo root (untracked): `guppy_S_clip_*.mp4`, `guppy_S_in_joc.mp4`, `guppy_S_variante.png`, `guppy_S_ref_vs_joc.jpg`. Decide with the owner which to keep before committing.
 
-## Owner preferences learned this session
-Talk Romanian; do not repeat the same frames over and over; show a COMPLETE clip, never cut-offs; the female must not tilt ("does not exist"); no tail trembling; measure instead of guessing; he pays for credits, so batch work and verify before showing. Commit and push only when he asks.
+## Test-only globals left in the code (from V17.76, flag, do not rely on them)
+`window.__xvarForce`, `window.__xcycForce`, `window.__resForce`, `window.__sideS`. Harmless when undefined.
+
+## Owner preferences learned
+Romanian; copy a real clip instead of guessing; smooth transitions (no velocity kinks); turns must read as 3D; the head is rigid (no rubber head); show complete clips; measure; commit/push only when asked.
