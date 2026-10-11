@@ -12824,15 +12824,34 @@ window.addEventListener('load',function(){
   if(s.age>=7&&s.age<S.cory.adult){const ph=Math.sin(t*8.6+s.index*1.7);return {hop:.12+.88*Math.pow(Math.max(0,ph),2.2),sp:30};}
   return null;
  };
+ /* owner: larvae and fry stay grouped up and hidden, usually under plants, stones or wood. One shelter per tank (the
+    biggest piece of cover, kept for a few minutes); each youngster keeps to a spot under it and is drawn behind the
+    decoration there, so it peeks out between the leaves/stones. Now and then one darts out a little and comes back. */
+ const HIDE=new WeakMap();
+ function shelter(tank,t){
+  let h=HIDE.get(tank);if(h&&t<h.until)return h;
+  const tr=tank.getBoundingClientRect(),c=[];
+  tank.querySelectorAll('.v171Rocks img,.v171Wood img,.v175SubstrateAsset').forEach(im=>{const r=im.getBoundingClientRect();if(r.width<8)return;
+   const kind=im.closest('.v171Rocks')?'rock':im.closest('.v171Wood')?'wood':'plant',cx=(r.left+r.right)/2-tr.left,hw=Math.min(r.width*(kind==='plant'?.22:.3),70);
+   if(cx-hw<20||cx+hw>tank.clientWidth-20)return;c.push({x:cx,hw,kind,w:r.width*(kind==='rock'?1.3:1)});});
+  c.sort((a,b)=>b.w-a.w);
+  const pick=c.length?c[Math.floor(Math.random()*Math.min(2,c.length))]:null;
+  h={x:pick?pick.x:tank.clientWidth*.5,hw:pick?Math.max(25,pick.hw):40,cover:!!pick,until:t+rnd(150,300)};HIDE.set(tank,h);return h;
+ }
  /* larva and fry: our own little locomotion (the V17.12 engine only draws them) */
  function young(s,t,dt,tank){
   const el=s.el,larva=s.age<=2,L=el.offsetWidth*s.scale;
+  const shh=HIDE.get(tank),under=shh&&shh.cover&&Math.abs(s.x-shh.x)<shh.hw+s.radius*.4;
+  if(s.lift84==null)s.lift84=rnd(5,12);
+  s.lb84=(s.lb84||0)+((under?s.lift84:0)-(s.lb84||0))*Math.min(1,dt*2);   /* under cover it sits a little further back: behind the stone/wood/leaves */
+  const base=s.base-s.lb84;
   let F=s.fr84;
   if(F&&t-(F.seen||t)>.5)F=null;   /* stale (re-render, other tank): start from a rest where it is */
   if(!F){F=s.fr84={mode:'rest',until:t+rnd(.5,larva?6:2),x0:s.x,peck:0};}
   F.seen=t;
+  if(!s.placed84){s.placed84=1;const sh=shelter(tank,t);if(s.sh84==null)s.sh84=rnd(-1,1);s.x=clamp(sh.x+s.sh84*sh.hw,s.radius,s.w-s.radius);F.x0=s.x;}   /* first time in this tank: it is already with the group (it hatched here) */
   if(F.mode==='rest'){
-   s.y+=(s.base-s.y)*Math.min(1,dt*3);
+   s.y+=(base-s.y)*Math.min(1,dt*3);
    const f=s.face<0?-1:1;
    if(larva)s.angle+=(-4*f+.6*Math.sin(t*1.6+s.index)-s.angle)*Math.min(1,dt*3);   /* propped nose-up on the yolk, breathing */
    else{   /* a little peck at the bottom now and then */
@@ -12844,11 +12863,19 @@ window.addEventListener('load',function(){
    if(t>F.until){   /* next move */
     let tx=null;
     if(!larva&&window.coryWaferTargetV1743){try{const r=coryWaferTargetV1743(tank,s,t);if(r&&Number.isFinite(r.x))tx=r.x;}catch(e){}}   /* live food, wafers */
+    const sh=shelter(tank,t);
+    if(s.sh84==null)s.sh84=rnd(-1,1);   /* its own place in the group */
+    const home=clamp(sh.x+s.sh84*sh.hw,s.radius,s.w-s.radius);
     let dir=tx!=null?Math.sign(tx-s.x)||f:(Math.random()<.72?f:-f);
+    if(tx==null){
+     if(Math.abs(s.x-home)>sh.hw*.5)dir=Math.sign(home-s.x)||f;                  /* back under cover */
+     else if(Math.random()<.9&&((s.x+dir*L*.6)-sh.x)*dir>sh.hw)dir=-dir;        /* don't wander out (now and then one does) */
+    }
     const lo=s.radius,hi=s.w-s.radius;
     if(s.x<lo+20)dir=1;if(s.x>hi-20)dir=-1;
     let D=larva?rnd(.15,.35)*L:rnd(.3,.9)*L;   /* a fry dart covers under a body length */
     if(tx!=null)D=Math.min(Math.abs(tx-s.x),L*1.2);
+    else if(Math.abs(s.x-home)>sh.hw*.5)D=Math.min(Math.abs(home-s.x),L*(larva?.6:1.1));
     F.dir=dir;F.D=D;F.x0=s.x;F.y0=s.y;
     F.mode=dir!==f?'turn':'dart';F.t0=t;F.dur=larva?rnd(.4,.65):rnd(.32,.5);   /* peak about 2 x D / dur: ~3-4 body lengths per second */
    }
@@ -12862,12 +12889,14 @@ window.addEventListener('load',function(){
   /* dart: a hard start and a glide to a stop (larva: a jerky S-wriggle) */
   const p=clamp((t-F.t0)/F.dur,0,1),e=1-Math.pow(1-p,2);   /* quick start, glide to a stop */
   s.x=clamp(F.x0+F.dir*F.D*e,s.radius,s.w-s.radius);
-  if(larva){s.y=s.base+1.2*Math.sin(p*Math.PI*6)*(1-p);s.angle=F.dir*(-4+11*Math.sin(t*2*Math.PI*9)*(1-p*.6));el.dataset.quiver='1';}
-  else{s.y=s.base-2.2*Math.sin(Math.PI*p);s.angle+=(-6*F.dir*(1-p)-s.angle)*Math.min(1,dt*10);el.dataset.quiver=(.7*(1-p)).toFixed(2);}
+  if(larva){s.y=base+1.2*Math.sin(p*Math.PI*6)*(1-p);s.angle=F.dir*(-4+11*Math.sin(t*2*Math.PI*9)*(1-p*.6));el.dataset.quiver='1';}
+  else{s.y=base-2.2*Math.sin(Math.PI*p);s.angle+=(-6*F.dir*(1-p)-s.angle)*Math.min(1,dt*10);el.dataset.quiver=(.7*(1-p)).toFixed(2);}
   if(p>=1){F.mode='rest';F.until=t+(larva?rnd(4,12):rnd(.6,2.4));F.peckAt=0;delete el.dataset.quiver;}
  }
  try{const _fr=window.coryFrameV1783;window.coryFrameV1783=function(s,t,dt,tank,all){
-  try{if(s.age<7){s.target=null;s.vx=s.vy=0;s.mode=s.age<=2?'yolk-rest':'fry';s.el.classList.remove('v1712DeepForage','v1712Rest');young(s,t,dt,tank);return true;}}catch(e){console.error('AFNICA young cory',e);}
+  try{if(s.age<7){s.target=null;s.vx=s.vy=0;s.mode=s.age<=2?'yolk-rest':'fry';s.el.classList.remove('v1712DeepForage','v1712Rest');young(s,t,dt,tank);
+   const sh=HIDE.get(tank),z=sh&&sh.cover&&Math.abs(s.x-sh.x)<sh.hw+s.radius*.4?'7':'';if(s.el.style.zIndex!==z){if(z)s.el.style.setProperty('z-index',z,'important');else s.el.style.removeProperty('z-index');}   /* under the cover: behind plants, wood and stones */
+   return true;}}catch(e){console.error('AFNICA young cory',e);}
   return _fr?_fr.apply(this,arguments):false;
  };}catch(e){console.error('AFNICA V17.84 frame hook',e);}
  /* the juvenile tail beats a little quicker than the adult's */
