@@ -1,4 +1,36 @@
-# Handoff — where work stopped (2026-10-09, end of the cloud session)
+# Handoff — where work stopped (2026-10-11, cloud session)
+
+## Latest topic: CORYDORAS SPAWNING RITUAL (V17.81, NOT committed yet — owner has to see it first)
+
+New block `V17.81 CORYDORAS SPAWNING RITUAL` at the very end of the game HTML (style + IIFE), plus:
+- two defaults in `ensureHealthState`: `st.coryEggs81=[]` (visible eggs `{x,y,k}`, fractions of the tank, k `g` glass / `l` leaf), `st.coryRitual81=null` (`{day}` = ritual due today);
+- V17.12 cory engine, `coryBreeding` branch: reads `data-cory-face`/`data-cory-ang` into its own state and postpones its air dash 20-60 s, so the hand-back is smooth.
+
+**Trigger:** a Main Tank water change that finishes in real time (not one closed by Next Day) with >=1 healthy adult cory male + 1 female
+and no `st.corySpawn`. Runs only while the Main Tank is shown (the clock pauses elsewhere). The old path (`startCorySpawnV172`, >=4 cory,
+only when Next Day closes an active water change) is untouched.
+
+**Phases per round** (3-5 rounds, ~40 s each): nudge (male snout on her flank, forward nudges only) -> chase (sand bursts or up/down the
+front glass, male follows her own path with a 0.38 s lag) -> cut (he arrives beside her snout and turns toward us) -> T (10-17 s, still,
+fins only; male beside her snout nearly head-on, head toward her, drawn in front; `TP` opens it into a V with heads together; eggs fade
+into her pelvic basket in the last 4 s) -> part -> carry (to the egg column on the front glass, or once per ritual a plant leaf found by
+sampling the plant picture alpha, not behind wood/rocks) -> lay (nose up 3.5 s, 2-4 eggs dropped at the basket) -> leave -> rest.
+Successive rounds alternate males. Eggs: 5 px, translucent white with a pale yellow core, column on the glass (z 41) or on the leaf (z 9).
+`st.corySpawn={startDay,endDay:day+1,count:75% of eggs,v81:true}` is created at the first egg; `finishCorySpawnV172` (wrapped) hatches
+them next day and clears `st.coryEggs81`. The old PNG `.coryEggCluster` is hidden for v81 spawns.
+
+**Measured (headless, 2M+1F, 3 full rituals):** no console errors, 0 backward-swimming frames, max step 4 px/frame (female), 6.8 (males in
+the glass chase), re-render mid-T and tank switch OK (pauses), hatch -> fry OK. aquarium-reviewer: no blockers.
+
+**Test hooks (flag):** `coryRitualV1781.start()` forces a ritual (refused while an old non-v81 spawn exists), `coryRitualDebugV1781()`
+returns `{R,ctl,TP,leafSpot}`; `TP` = the male T pose (f0/f1 turn, a0/a1 tilt, dx/dy offset, z).
+
+**Open / ask the owner:** does the T read well (2D sprite only, no 3D cory shader); carry to a far site can take ~14 s; hatch stays
+"next day" like before (real: 3-5 days); the 2-3 cory case now spawns (old path needed 4).
+
+---
+
+# Earlier handoff (2026-10-09): xipho courtship
 
 Read this first when continuing. Topic so far: **xipho (swordtail) COURTSHIP** ("curtarea" = courtship, not cleaning).
 Everything below is in the V17.74–V17.76 blocks of the game HTML.

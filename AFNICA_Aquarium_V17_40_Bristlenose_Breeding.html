@@ -3472,6 +3472,8 @@ if(!Array.isArray(st.breederTank))st.breederTank=[];
 if(st.corySpawn===undefined)st.corySpawn=null;
 if(st.coryBreederEggs===undefined)st.coryBreederEggs=false;
 if(!Array.isArray(st.coryEggs))st.coryEggs=[];
+if(!Array.isArray(st.coryEggs81))st.coryEggs81=[];   /* V17.81 visible eggs of the main-tank spawn */
+if(st.coryRitual81===undefined)st.coryRitual81=null;   /* V17.81 spawning ritual due today {day} */
 if(typeof st.tankHealthBreeder!=='number')st.tankHealthBreeder=100;
 if(typeof st.daysNoCleanBreeder!=='number')st.daysNoCleanBreeder=0;
 if(!st.daily.breeder)st.daily.breeder={feed:false,water:false,clean:false};
@@ -7487,7 +7489,9 @@ body:has(.tank.waterChanging,.tank.persistentWaterActive) #v1712-test-dash{
    if(group&&t-group.start>=28){g.school=null;all.forEach(s=>{s.mode='forage';s.target=null;s.wait=t+random(.3,2);s.dashAt=Math.max(s.dashAt,t+random(5,18));});}
    all.forEach(s=>{
     if(s.el.classList.contains('coryBreeding')){
-     const r=s.el.getBoundingClientRect(),tr=tank.getBoundingClientRect();s.x=r.left+r.width/2-tr.left;s.y=r.top+r.height/2-tr.top;s.vx=s.vy=0;s.target=null;s.mode='forage';return;
+     const r=s.el.getBoundingClientRect(),tr=tank.getBoundingClientRect();s.x=r.left+r.width/2-tr.left;s.y=r.top+r.height/2-tr.top;s.vx=s.vy=0;s.target=null;s.mode='forage';
+     const cf=parseFloat(s.el.dataset.coryFace);if(isFinite(cf)){s.face=cf;s.angle=parseFloat(s.el.dataset.coryAng)||0;s.dashAt=Math.max(s.dashAt,t+random(20,60));}   // V17.81: the spawning ritual hands back its heading too
+     return;
     }
     if(s.mode==='dash'){
      const d=s.dash,e=t-d.start;
@@ -11627,6 +11631,409 @@ window.addEventListener('load',function(){
  const _sz=sizeFor;
  sizeFor=function(f){let v=_sz.apply(this,arguments);try{if(f&&window.stageV1745&&stageV1745(f)==='newborn')v*=NB;const k=f&&K[f.species];if(k)return v*(k[f.sex]||k.F);}catch(e){}return v;};
  try{render();}catch(e){}
+})();
+</script>
+<style>
+/* ===== V17.81 CORYDORAS SPAWNING RITUAL ===== */
+.coryEggLayer81{position:absolute;inset:0;pointer-events:none}
+.coryEggLayer81.glass{z-index:41}
+.coryEggLayer81.leaf{z-index:9}
+.coryEgg81{position:absolute;width:5px;height:5px;margin:-2.5px 0 0 -2.5px;border-radius:50%;
+ background:radial-gradient(circle at 50% 55%,#f0d17e 0 24%,#f6e3b2 36%,rgba(255,248,226,.62) 56%,rgba(255,255,255,.78) 80%,rgba(255,255,255,.3) 100%);
+ box-shadow:0 0 0 .5px rgba(255,255,255,.28),0 .5px 1px rgba(0,30,40,.25);animation:coryEggIn81 .45s ease-out both}
+.coryEgg81:after{content:"";position:absolute;left:1px;top:.8px;width:1.3px;height:1.1px;border-radius:50%;background:rgba(255,255,255,.9)}
+.coryEggLayer81.leaf .coryEgg81{filter:brightness(.93)}
+@keyframes coryEggIn81{from{transform:scale(.35);opacity:.2}to{transform:scale(1);opacity:1}}
+.coryBasket81{position:absolute;width:15px;height:10px;margin:-3px 0 0 -7.5px;pointer-events:none;transform-origin:50% 20%;
+ transform:scale(var(--b,0));opacity:var(--b,0);z-index:3}
+.coryBasket81 svg{display:block;width:100%;height:100%;overflow:visible}
+</style>
+<script>
+/* ===== V17.81 CORYDORAS SPAWNING RITUAL (main tank) =====
+   After a fresh water change in the Main Tank, adult panda corydoras (at least one male and one female, healthy) spawn
+   the way real ones do (reference clip: males crowd the female and nudge her flanks, chase her along the sand and up the
+   front glass, then the T-position):
+   - NUDGE: the males crowd her, snouts on her flank.
+   - CHASE: she runs in short bursts along the sand or up and down the front glass, the male right behind her.
+   - CUT + T: he overtakes, turns across her head nearly facing us (drawn foreshortened, like the middle of a turn) and
+     she clamps her snout on his flank behind the pectoral. Both hold still ~10-17 s, only fins flutter; slowly the T
+     opens into an oblique V. Meanwhile the eggs appear between her clasped pelvic fins (the "basket").
+   - CARRY + LAY: he leaves, she carries the eggs to the front glass (or a plant leaf), presses nose-up 3-4 s and leaves
+     2-4 sticky eggs (about 1/20 of her length, translucent white with a pale yellow core). Then she glides back down.
+   - The round repeats 3-5 times, building a column of eggs on the glass.
+   Eggs are stored in st.coryEggs81 ([{x,y,k}] as fractions of the tank, k 'g' glass / 'l' leaf) and tied to the old
+   hatch: st.corySpawn {startDay,endDay,count,v81:true}; finishCorySpawnV172() hatches them the next day as before.
+   Motion hand-off: the fish get the class coryBreeding, so the V17.12 cory engine only reads back their position (and
+   now face/angle from data-cory-face/data-cory-ang) and continues smoothly when the ritual releases them.
+   Test hooks: coryRitualV1781.start() forces a ritual now; coryRitualDebugV1781() exposes the state. */
+(function(){
+ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),smooth=t=>{t=clamp(t,0,1);return t*t*(3-2*t)},rnd=(a,b)=>a+Math.random()*(b-a);
+ const now=()=>performance.now()/1000;
+ const BASKET=[.52,.90];      /* clasped pelvic fins, fractions of the fish box (facing right) */
+ const SNOUT=[.95,.70];       /* her snout tip */
+ const FLANK=[.60,.55];       /* his flank just behind the pectoral */
+ const TP={f0:-.08,f1:-.24,a0:-8,a1:-14,dx:10,dy:-4,z:32};   /* T pose of the male, beside her snout and nearly facing us: turn (0 = head-on; minus = his head toward her)
+    and tilt at the start/end of the hold (the T opens into a V, heads together), offset from her snout, drawn in front of her */
+ const ctl=new Map();         /* fish id -> controlled state */
+ let R=null,last=now(),prevW=null,prevDay=null;
+
+ function tankEl(){return document.getElementById('tank-main');}
+ function adults(){try{return (st.fish||[]).filter(f=>f&&!f.dead&&!f.disease&&f.species==='cory'&&f.age>=S.cory.adult&&!(f.health<70));}catch(e){return [];}}
+ function elOf(tank,id){return tank&&tank.querySelector('.modelFish[data-fish-id="'+id+'"]:not(.deadFish)');}
+ function busy(el){return !el||el.classList.contains('v1712Dash')||(el.classList.contains('coryBreeding')&&!el.classList.contains('coryRitual81'));}
+ function sandY(tank,el){const fl=tank.querySelector('.floor'),top=fl?fl.offsetTop+7:tank.clientHeight-55;return top-el.offsetHeight*(+el.dataset.v16Scale||1)*.16;}
+
+ /* ---- controlled fish ---- */
+ function grab(tank,id,z){
+  const el=elOf(tank,id);if(!el)return null;
+  let c=ctl.get(id);
+  if(!c){
+   const r=el.getBoundingClientRect(),tr=tank.getBoundingClientRect();
+   const m=/rotate\(([-\d.e]+)deg\)[^)]*\)\s*scaleX\(([-\d.e]+)\)/.exec(el.style.transform||'');
+   const sx=m?+m[2]:1,af=clamp((Math.abs(sx)-.28)/.72,.05,1);
+   c={id,x:r.left+r.width/2-tr.left-tank.clientLeft,y:r.top+r.height/2-tr.top-tank.clientTop,vx:0,vy:0,face:(sx<0?-1:1)*af,ang:m?+m[1]:0,z:z||30,hold:false,quiver:0,ph:rnd(0,6.28),el:null};
+   ctl.set(id,c);
+  }
+  if(c.el!==el){   /* first grab, or the tank was re-rendered */
+   c.el=el;el.classList.remove('v1712DeepForage','v1712Rest','v1712Inspect','v1712Dash');
+   el.classList.add('coryBreeding','coryRitual81');
+  }
+  c.sc=+el.dataset.v16Scale||1;c.W=el.offsetWidth;c.H=el.offsetHeight;c.base=sandY(tank,el);
+  return c;
+ }
+ function release(c){
+  const el=c.el;if(!el)return;
+  el.classList.remove('coryBreeding','coryRitual81');
+  el.style.removeProperty('z-index');
+  const b=el.querySelector('.coryBasket81');if(b)b.remove();
+  delete el.dataset.quiver;
+  setTimeout(()=>{delete el.dataset.coryFace;delete el.dataset.coryAng;},300);
+ }
+ function fs(c){return .28+.72*Math.abs(c.face);}                       /* projected length: narrow mid-turn, never a card */
+ function sg(c){return c.face<0?-1:1;}
+ function pt(c,u,v){                                                     /* a point of the body (box fractions) in tank px */
+  const lx=(u-.5)*c.W*c.sc*fs(c)*sg(c),ly=(v-.5)*c.H*c.sc,a=c.ang*Math.PI/180;
+  return {x:c.x+lx*Math.cos(a)-ly*Math.sin(a),y:c.y+lx*Math.sin(a)+ly*Math.cos(a)};
+ }
+ function offAt(c,u,v,ang,face){const s={x:0,y:0,W:c.W,H:c.H,sc:c.sc,face,ang};return pt(s,u,v);}
+ function turnTo(c,want,dt,rate){c.face+=(want-c.face)*Math.min(1,dt*(rate||4.2));if(Math.abs(c.face)<.02)c.face=(want<0?-1:1)*.02;}
+ /* swim toward a point: head first (no backward swimming), eased speed, body pitched along the path */
+ function swim(c,tx,ty,dt,o){
+  o=o||{};const dx=tx-c.x,dy=ty-c.y,d=Math.hypot(dx,dy);
+  let want=o.face!=null?o.face:(Math.abs(dx)>(o.dead||5)?Math.sign(dx):sg(c)),brake=false;
+  if(Math.sign(want)!==sg(c)&&c.vx*sg(c)>8){want=sg(c)*.4;brake=true;}   /* brake before turning: never drift backwards */
+  turnTo(c,want,dt,o.turn);
+  let v=Math.min(o.sp||50,d*(o.k||1.8));
+  if(o.hop){c.ph+=dt*(o.hopF||6.6);v*=.22+.78*Math.pow(Math.max(0,Math.sin(c.ph)),1.4);}   /* cory move in short bursts */
+  let ux=d?dx/d:0,uy=d?dy/d:0;
+  let vx=ux*v,vy=uy*v;
+  if(Math.sign(vx)&&Math.sign(vx)!==sg(c))vx=0;else vx*=smooth(Math.abs(c.face)*1.25);   /* only along the drawn heading */
+  const bl=1-Math.exp(-(brake?9:(o.acc||4))*dt);
+  c.vx+=(vx-c.vx)*bl;c.vy+=(vy-c.vy)*bl;c.x+=c.vx*dt;c.y+=c.vy*dt;
+  let tgt=o.ang!=null?o.ang:0;
+  if(o.ang==null){const s=Math.hypot(c.vx,c.vy);if(s>6){const ph=c.face>0?Math.atan2(c.vy,c.vx):Math.atan2(-c.vy,-c.vx);tgt=clamp(ph*180/Math.PI,-72,72)*Math.min(1,s/35);}
+   if(c.y>c.base-6&&tgt*sg(c)<0)tgt*=.35;}                                /* along the sand: stay level */
+  c.ang+=(tgt-c.ang)*Math.min(1,dt*(o.angK||5));
+  return d;
+ }
+ function ease(c,tx,ty,dt,k){const b=Math.min(1,dt*(k||3));const ox=c.x,oy=c.y;c.x+=(tx-c.x)*b;c.y+=(ty-c.y)*b;c.vx=(c.x-ox)/Math.max(dt,1e-3);c.vy=(c.y-oy)/Math.max(dt,1e-3);}
+ function draw(c,tank){
+  const el=c.el;if(!el)return;
+  c.x=clamp(c.x,18,tank.clientWidth-18);c.y=clamp(c.y,c.H*c.sc/2+8,c.base+2);
+  const sx=sg(c)*fs(c);
+  const props={animation:'none',transition:'none',left:(c.x-c.W/2)+'px',top:(c.y-c.H/2)+'px',right:'auto',bottom:'auto','transform-origin':'center',translate:'none',rotate:'none',transform:`rotate(${c.ang.toFixed(2)}deg) scale(${c.sc}) scaleX(${sx.toFixed(4)})`,'z-index':String(c.z)};
+  for(const [k,v] of Object.entries(props))el.style.setProperty(k,v,'important');
+  el.dataset.coryFace=c.face.toFixed(4);el.dataset.coryAng=c.ang.toFixed(2);
+  el.dataset.coryMotion='spawn';el.dataset.coryJab='0';
+  el.dataset.turn=c.hold?'0':(1-Math.abs(c.face)).toFixed(2);
+  if(c.quiver>0)el.dataset.quiver=c.quiver.toFixed(2);else delete el.dataset.quiver;
+ }
+ /* the egg basket between her clasped pelvic fins */
+ function basket(c,v,n){
+  const el=c.el;if(!el)return;let b=el.querySelector('.coryBasket81');
+  if(v<=.001){if(b)b.remove();return;}
+  if(!b||+b.dataset.n!==n){
+   if(!b){b=document.createElement('div');b.className='coryBasket81';el.append(b);}
+   b.dataset.n=n;b.style.left=(BASKET[0]*100)+'%';b.style.top=(BASKET[1]*100)+'%';
+   const E=[[7.5,4.6],[5.1,4.1],[9.9,4.1],[7.5,2.5]].slice(0,clamp(n,1,4));
+   b.innerHTML='<svg viewBox="0 0 15 10"><defs><radialGradient id="ce81" cx=".5" cy=".55" r=".5"><stop offset=".26" stop-color="#f0d17e"/><stop offset=".4" stop-color="#f6e3b2"/><stop offset=".62" stop-color="#fff8e2" stop-opacity=".7"/><stop offset=".85" stop-color="#fff" stop-opacity=".85"/><stop offset="1" stop-color="#fff" stop-opacity=".35"/></radialGradient></defs>'+
+    '<path d="M2.2 .6 C1.6 3.6 3.2 7.2 6.4 8.6 C5.6 6 4.6 3.4 2.2 .6Z" fill="#efe3d6" fill-opacity=".62" stroke="#cdb9a6" stroke-opacity=".5" stroke-width=".3"/>'+
+    E.map(e=>'<circle cx="'+e[0]+'" cy="'+e[1]+'" r="1.75" fill="url(#ce81)" stroke="#fff" stroke-opacity=".35" stroke-width=".2"/>').join('')+
+    '<path d="M12.8 .6 C13.4 3.6 11.8 7.2 8.6 8.6 C9.4 6 10.4 3.4 12.8 .6Z" fill="#efe3d6" fill-opacity=".72" stroke="#cdb9a6" stroke-opacity=".55" stroke-width=".3"/></svg>';
+  }
+  b.style.setProperty('--b',v.toFixed(3));
+ }
+ function basketPt(tank,c){
+  const b=c.el&&c.el.querySelector('.coryBasket81 svg');if(!b)return pt(c,BASKET[0],BASKET[1]+.06);
+  const r=b.getBoundingClientRect(),tr=tank.getBoundingClientRect();return {x:r.left+r.width/2-tr.left-tank.clientLeft,y:r.top+r.height*.5-tr.top-tank.clientTop};
+ }
+
+ /* ---- eggs on the glass and leaves ---- */
+ const fresh=new WeakSet();   /* eggs laid in this session pop in; reloaded ones are just there */
+ function eggs(tank){
+  const E=Array.isArray(st.coryEggs81)?st.coryEggs81:[];
+  if(E.length&&!st.corySpawn){st.coryEggs81=[];return eggs(tank);}   /* hatched or cleared elsewhere */
+  const old=tank.querySelector('.coryEggCluster');if(old)old.style.display=st.corySpawn&&st.corySpawn.v81?'none':'';
+  for(const k of ['g','l']){
+   const list=E.filter(e=>e.k===k);let L=tank.querySelector('.coryEggLayer81.'+(k==='g'?'glass':'leaf'));
+   if(!list.length){if(L)L.remove();continue;}
+   if(!L){L=document.createElement('div');L.className='coryEggLayer81 '+(k==='g'?'glass':'leaf');tank.append(L);}
+   if(L.childElementCount>list.length)L.innerHTML='';
+   for(let i=L.childElementCount;i<list.length;i++){const e=list[i],d=document.createElement('i');d.className='coryEgg81';d.style.left=(e.x*100).toFixed(3)+'%';d.style.top=(e.y*100).toFixed(3)+'%';if(!fresh.has(e))d.style.animation='none';fresh.delete(e);L.append(d);}
+  }
+ }
+ function layEgg(tank,p,k){
+  ensureHealthState();
+  if(!st.corySpawn)st.corySpawn={startDay:st.day,endDay:st.day+1,count:0,v81:true};
+  const e={x:+(p.x/tank.clientWidth).toFixed(4),y:+(p.y/tank.clientHeight).toFixed(4),k};fresh.add(e);st.coryEggs81.push(e);
+  const n=st.coryEggs81.length;st.corySpawn.count=Math.max(1,Math.round(n*.75));   /* not every egg hatches */
+  st.coryRitual81=null;   /* the spawn is on record now: a reload must not start a second ritual today */
+  try{save();}catch(e){console.error('AFNICA cory eggs save',e);}
+  eggs(tank);
+ }
+ /* a spot on a plant leaf (opaque pixel of a plant picture, not hidden behind wood or rocks) */
+ const alphaCache=new Map();
+ function alphaAt(img,tank,x,y){
+  try{
+   if(!img.complete||!img.naturalWidth)return 0;
+   let a=alphaCache.get(img.src);
+   if(!a){const cv=document.createElement('canvas'),w=cv.width=Math.min(400,img.naturalWidth),h=cv.height=Math.round(img.naturalHeight*w/img.naturalWidth);const g=cv.getContext('2d',{willReadFrequently:true});g.drawImage(img,0,0,w,h);a={w,h,d:g.getImageData(0,0,w,h).data};alphaCache.set(img.src,a);}
+   const tr=tank.getBoundingClientRect(),par=img.offsetParent;if(!par)return 0;const pr=par.getBoundingClientRect();
+   const px=x+tr.left+tank.clientLeft-pr.left-par.clientLeft,py=y+tr.top+tank.clientTop-pr.top-par.clientTop;
+   const cs=getComputedStyle(img),M=new DOMMatrix(cs.transform==='none'?undefined:cs.transform),o=cs.transformOrigin.split(' ').map(parseFloat);
+   const ox=img.offsetLeft+o[0],oy=img.offsetTop+o[1],q=M.inverse().transformPoint(new DOMPoint(px-ox,py-oy));
+   const u=(q.x+o[0])/img.offsetWidth,v=(q.y+o[1])/img.offsetHeight;
+   if(u<0||u>=1||v<0||v>=1)return 0;
+   return a.d[(Math.floor(v*a.h)*a.w+Math.floor(u*a.w))*4+3];
+  }catch(e){return 0;}
+ }
+ function leafSpot(tank){
+  const plants=[...tank.querySelectorAll('.v175SubstrateAssetLayer img')],occ=[...tank.querySelectorAll('.v171Wood img,.v171Rocks img')];
+  if(!plants.length)return null;
+  const fl=tank.querySelector('.floor'),top=fl?fl.offsetTop:tank.clientHeight-60,w=tank.clientWidth;
+  for(let i=0;i<80;i++){
+   const pl=plants[i%plants.length],r=pl.getBoundingClientRect(),tr=tank.getBoundingClientRect();
+   const x=clamp(rnd(r.left,r.right)-tr.left,75,w-75),y=rnd(top-150,top-55);
+   if(alphaAt(pl,tank,x,y)>200&&alphaAt(pl,tank,x+3,y)>160&&alphaAt(pl,tank,x,y+3)>160&&!occ.some(o=>alphaAt(o,tank,x,y)>40))return {x,y};
+  }
+  return null;
+ }
+
+ /* ---- the ritual ---- */
+ function start(force){
+  const tank=tankEl();if(!tank||R)return false;
+  const vis=adults().filter(f=>!busy(elOf(tank,f.id)));
+  const F=vis.filter(f=>f.sex==='F'),M=vis.filter(f=>f.sex==='M');
+  if(!F.length||!M.length)return false;
+  if(st.corySpawn&&(!force||!st.corySpawn.v81))return false;   /* one clutch at a time (the old day-change spawn has no visible eggs) */
+  const fem=F[0].id,males=M.slice(0,2).map(f=>f.id);
+  const w=tank.clientWidth;
+  R={fem,males,round:0,rounds:3+Math.floor(Math.random()*3),phase:'nudge',t:0,T:0,day:st.day,hist:[],
+     colX:rnd(.28,.72)*w,leafUsed:false,eggsThisRound:0};
+  ctl.clear();
+  const f=grab(tank,fem,31);males.forEach(id=>grab(tank,id,30));
+  if(!f){R=null;return false;}
+  if(Math.abs(R.colX-f.x)>w*.3)R.colX=clamp(f.x+rnd(-.2,.2)*w,w*.22,w*.78);   /* lay near where she is */
+  newRound(tank);
+  try{st.log='🐟 Corydoras are spawning after the fresh water change!';toast('🐟 Corydoras are spawning · watch the T-position');}catch(e){}
+  return true;
+ }
+ function stop(msg){
+  ctl.forEach(release);ctl.clear();R=null;
+  if(msg)try{toast(msg);}catch(e){}
+ }
+ function newRound(tank){
+  const f=ctl.get(R.fem),w=tank.clientWidth;
+  R.mi=R.males[R.round%R.males.length];          /* successive T-positions with different males */
+  R.eggsThisRound=2+Math.floor(Math.random()*3);
+  R.glassRun=R.round===0||Math.random()<.45;
+  const roomR=w-f.x,roomL=f.x;R.dir=roomR>roomL?1:-1;
+  const len=Math.min(R.glassRun?170:150,Math.max(roomR,roomL)-150);
+  const b=f.base,x0=f.x,d=R.dir;
+  R.path=R.glassRun?[{x:x0+d*len*.42,y:b-rnd(95,140),sp:115},{x:x0+d*len*.78,y:b-rnd(30,55),sp:95},{x:x0+d*len,y:b,sp:70}]
+                   :[{x:x0+d*len*.35,y:b,sp:70,hop:1,pause:.5},{x:x0+d*len*.7,y:b,sp:70,hop:1,pause:.4},{x:x0+d*len,y:b,sp:60,hop:1}];
+  R.wp=0;R.pause=0;
+  R.useLeaf=!R.leafUsed&&R.round>0&&Math.random()<.4;
+  R.site=null;
+  setPhase('nudge');
+ }
+ function setPhase(p){R.phase=p;R.t=0;}
+ function lagged(lag){
+  const h=R.hist,t=R.T-lag;if(!h.length)return null;
+  for(let i=h.length-1;i>0;i--)if(h[i-1].t<=t){const a=h[i-1],b=h[i],k=clamp((t-a.t)/Math.max(1e-3,b.t-a.t),0,1);return {x:a.x+(b.x-a.x)*k,y:a.y+(b.y-a.y)*k,s:b.s};}
+  return h[0];
+ }
+ /* males that are not the active one: stay with the group, potter on the sand */
+ function idleMale(c,f,dt,tank,i){
+  if(!c.idle||R.T>c.idle.until||Math.hypot(c.x-c.idle.x,c.y-c.idle.y)<3&&R.T>c.idle.until-1.5){
+   const w=tank.clientWidth,side=Math.random()<.5?-1:1;
+   c.idle={x:clamp(f.x+side*rnd(90,170),70,w-70),y:c.base,until:R.T+rnd(3,6)};
+  }
+  swim(c,c.idle.x,c.idle.y,dt,{sp:34,hop:1});
+ }
+ function follow(c,f,dt,lag,back,lift){   /* snout right behind her, along her own path */
+  const p=lagged(lag);if(!p)return;
+  const s=p.s||sg(f),tx=p.x-s*back,ty=Math.min(c.base,p.y-(lift||0));
+  swim(c,tx,ty,dt,{sp:170,acc:5,k:2.6,dead:8});
+ }
+ function frame(){
+  const t=now(),dt=Math.min(.05,t-last);last=t;
+  try{
+   const tank=tankEl();
+   if(tank)eggs(tank);
+   watch();
+   if(!R){if(st.coryRitual81&&tank&&document.visibilityState==='visible'&&!tank.matches('.waterChanging,.persistentWaterActive')){
+     if(st.coryRitual81.day!==st.day||st.corySpawn||!adults().some(f=>f.sex==='M')||!adults().some(f=>f.sex==='F'))st.coryRitual81=null;else start(false);}
+   }
+   else if(tank&&document.visibilityState==='visible')step(tank,dt);
+  }catch(e){console.error('AFNICA cory spawning ritual',e);try{stop();}catch(_){} }
+  requestAnimationFrame(frame);
+ }
+ function watch(){   /* a finished Main Tank water change (not one closed by the day change) starts the ritual */
+  let w=null;try{w=st.waterChanges&&st.waterChanges.main;}catch(e){}
+  const act=!!w;
+  if(prevW===true&&!act&&prevDay===st.day&&!st.corySpawn&&!R){st.coryRitual81={day:st.day};}
+  prevW=act;prevDay=st.day;
+ }
+ function step(tank,dt){
+  if(R.day!==st.day){stop();return;}
+  const f=grab(tank,R.fem,31);if(!f){stop();return;}
+  const ms=R.males.map(id=>grab(tank,id,30));if(ms.some(m=>!m)){stop();return;}
+  const m=ctl.get(R.mi),others=ms.filter(x=>x!==m);
+  R.T+=dt;R.t+=dt;
+  const w=tank.clientWidth,s=R.dir;
+  f.hold=false;m.hold=false;f.quiver=0;m.quiver=0;
+  let bv=+(f.bv||0);
+  switch(R.phase){
+   case 'nudge':{   /* he crowds her, snout on her flank; she shuffles on */
+    const tx=clamp(f.x+s*14,70,w-70);
+    swim(f,tx,f.base,dt,{sp:16,hop:1,face:R.t>.6?s:undefined});
+    const nb=Math.pow(Math.max(0,Math.sin(R.t*5.2)),2)*5;   /* forward nudges only */
+    swim(m,f.x-s*(f.W*f.sc*.12+m.W*m.sc*.45)+s*nb,f.base-5,dt,{sp:90,acc:4,face:Math.abs(m.x-f.x)>40?undefined:s});
+    others.forEach((o,i)=>swim(o,f.x-s*(f.W*.55+o.W*.5)*(1.2+i*.4),o.base-8,dt,{sp:70,hop:1}));
+    if(R.t>3.2&&Math.abs(f.face-s)<.1)setPhase('chase');
+    break;}
+   case 'chase':{
+    const p=R.path[R.wp];
+    if(R.pause>0){R.pause-=dt;swim(f,f.x+s*3,p.y,dt,{sp:6,face:s});}
+    else{
+     const d=swim(f,p.x,p.y,dt,{sp:p.sp,hop:p.hop,acc:p.hop?6:3.4,face:s,k:1.5,angK:3.5});
+     if(d<7){if(p.pause)R.pause=p.pause;R.wp++;if(R.wp>=R.path.length){setPhase('cut');break;}}
+    }
+    follow(m,f,dt,.38,f.W*f.sc*.12+m.W*m.sc*.45,3);
+    others.forEach((o,i)=>follow(o,f,dt,.9+i*.4,f.W*f.sc*.12+o.W*o.sc*.5,8));
+    if(R.t>14)setPhase('cut');
+    break;}
+   case 'cut':{   /* he overtakes and turns across her head */
+    swim(f,f.x+s*2,f.base,dt,{sp:10,face:s,acc:3});
+    const sn=pt(f,SNOUT[0],SNOUT[1]);
+    if(!R.cutB){
+     const o=offAt(m,FLANK[0],FLANK[1],-5*s,s*TP.f0);
+     const tx=sn.x-o.x+s*TP.dx,ty=Math.min(m.base,sn.y-o.y+TP.dy);
+     const d=swim(m,tx,ty,dt,{sp:150,acc:5,face:s,k:2.4});
+     if(d<9||R.t>3.2){R.cutB=R.t;m.z=TP.z;}
+    }else{
+     const k=smooth((R.t-R.cutB)/1.3);
+     turnTo(m,s*(1-(1-TP.f0)*k),dt,6);
+     m.ang+=(-TP.a0*s*k-m.ang)*Math.min(1,dt*4);
+     const o=offAt(m,FLANK[0],FLANK[1],m.ang,m.face);
+     const tx=sn.x-o.x+s*TP.dx;
+     if((tx-m.x)*s>0||k>.95)ease(m,tx,Math.min(m.base-1,sn.y-o.y+TP.dy),dt,3+6*k);else ease(m,m.x,Math.min(m.base-1,sn.y-o.y+TP.dy),dt,3+6*k);   /* settles forward only */
+     if(R.t-R.cutB>1.6){R.cutB=null;R.holdT=R.round===0?rnd(14,17):rnd(9,13);setPhase('T');}
+    }
+    others.forEach((o,i)=>idleMale(o,f,dt,tank,i));
+    break;}
+   case 'T':{   /* held still; fins only; the T slowly opens into an oblique V */
+    const k=smooth(R.t/R.holdT);
+    f.hold=m.hold=true;f.quiver=m.quiver=.35;
+    f.vx=f.vy=0;f.ang+=(3*s-f.ang)*Math.min(1,dt*2);
+    f.face=s;
+    m.face=s*(TP.f0+(TP.f1-TP.f0)*k);m.ang=-(TP.a0+(TP.a1-TP.a0)*k)*s;m.z=TP.z;
+    const sn=pt(f,SNOUT[0],SNOUT[1]),o=offAt(m,FLANK[0],FLANK[1],m.ang,m.face);
+    ease(m,sn.x-o.x+s*TP.dx,Math.min(m.base-1,sn.y-o.y+TP.dy),dt,8);
+    bv=smooth((R.t-(R.holdT-4))/3.2);   /* the eggs appear in her basket */
+    others.forEach((o2,i)=>{   /* the other male passes by and leaves them alone */
+     if(R.t>R.holdT*.35&&!o2.pass)o2.pass={x:clamp(f.x-s*rnd(140,220),70,w-70)};
+     if(o2.pass)swim(o2,o2.pass.x,o2.base,dt,{sp:30,hop:1});else idleMale(o2,f,dt,tank,i);
+    });
+    if(R.t>=R.holdT){others.forEach(o2=>o2.pass=null);setPhase('part');}
+    break;}
+   case 'part':{   /* he finishes his turn and swims off past her head; she stays a moment */
+    f.hold=true;f.quiver=.2;bv=1;
+    swim(f,f.x,f.base,dt,{sp:4,face:s});
+    const gx=clamp(f.x+s*rnd(150,190),70,w-70);
+    if(R.t<.9){turnTo(m,s,dt,3.2);m.ang+=(0-m.ang)*Math.min(1,dt*4);}
+    else{if(!m.away)m.away=gx;swim(m,m.away,m.base,dt,{sp:55,hop:1,face:s});}
+    others.forEach((o,i)=>idleMale(o,f,dt,tank,i));
+    if(R.t>2.4){m.away=null;pickSite(tank,f);setPhase('carry');}
+    break;}
+   case 'carry':{   /* she takes the eggs to the glass or a leaf: along the sand, then up nose first */
+    bv=1;
+    const S=R.site,c=S.c;
+    if(Math.abs(f.x-c.x)>6&&f.y>f.base-10){swim(f,c.x,f.base,dt,{sp:95,hop:1,acc:5,k:2.2});}
+    else{
+     const d=swim(f,c.x,c.y,dt,{sp:48,acc:3.2,k:1.4,face:S.face});
+     const near=1-smooth((d-8)/50);
+     f.ang+=(S.ang-f.ang)*Math.min(1,dt*3*near);
+     if(d<3||Math.abs(f.y-c.y)<2.5){setPhase('lay');R.laid=0;}
+    }
+    ms.forEach((o,i)=>{if(o===m&&R.t<3)idleMale(o,f,dt,tank,i);else if(i===0&&Math.abs(o.x-f.x)>120)swim(o,clamp(f.x-s*80,70,w-70),o.base,dt,{sp:40,hop:1});else idleMale(o,f,dt,tank,i);});
+    if(R.t>22&&!S.re){pickSite(tank,f,true);R.site.re=true;}   /* too far: the glass right above her will do (no jump) */
+    break;}
+   case 'lay':{   /* nose up, belly and basket pressed to the glass/leaf for ~3.5 s; she creeps up a little */
+    const S=R.site;f.hold=true;f.quiver=.25;
+    f.ang+=(S.ang-f.ang)*Math.min(1,dt*3);
+    const creep=-6*smooth(R.t/3.4);
+    ease(f,S.c.x,S.c.y+creep,dt,4);
+    const due=Math.floor(clamp((R.t-.9)/2.3,0,1)*R.eggsThisRound+1e-6);
+    while(R.laid<Math.min(due,R.eggsThisRound)){
+     const p=basketPt(tank,f);
+     layEgg(tank,{x:p.x+rnd(-1.4,1.4),y:p.y+rnd(-.8,.8)},S.k);R.laid++;
+    }
+    bv=1-R.laid/R.eggsThisRound;
+    ms.forEach((o,i)=>idleMale(o,f,dt,tank,i));
+    if(R.t>3.6)setPhase('leave');
+    break;}
+   case 'leave':{   /* glides back down to the sand, levelling out */
+    bv=0;
+    const r=f.W*f.sc/2+8,tx=clamp(f.x+s*25,r,w-r);
+    swim(f,tx,f.base,dt,{sp:38,acc:2.4,k:1.2,face:s,ang:0,angK:1.8});
+    ms.forEach((o,i)=>idleMale(o,f,dt,tank,i));
+    if(R.t>2.8&&f.y>f.base-4)setPhase('rest');
+    break;}
+   case 'rest':{
+    bv=0;
+    const r=f.W*f.sc/2+8;
+    swim(f,clamp(f.x+s*8,r,w-r),f.base,dt,{sp:10,hop:1});
+    ms.forEach((o,i)=>{const rr=o.W*o.sc/2+8;if(o.x<rr||o.x>w-rr)swim(o,clamp(o.x,rr,w-rr),o.base,dt,{sp:30});else idleMale(o,f,dt,tank,i);});
+    if(R.t>(R.round+1>=R.rounds?2.5:rnd(3.5,4.5))){
+     R.round++;
+     if(R.round>=R.rounds){const n=(st.coryEggs81||[]).length;stop(n?'🥚 '+n+' corydoras eggs on the glass · they hatch tomorrow':null);try{st.log='🥚 Corydoras laid '+n+' eggs on the glass and leaves.';save();}catch(e){}return;}
+     newRound(tank);
+    }
+    break;}
+  }
+  f.bv=bv;basket(f,bv,R.eggsThisRound);
+  R.hist.push({t:R.T,x:f.x,y:f.y,s:sg(f)});while(R.hist.length&&R.hist[0].t<R.T-3)R.hist.shift();
+  ctl.forEach(c=>draw(c,tank));
+ }
+ function pickSite(tank,f,here){
+  const w=tank.clientWidth,fl=tank.querySelector('.floor'),top=fl?fl.offsetTop:tank.clientHeight-60;
+  let p=null,k='g';
+  if(R.useLeaf&&!here){p=leafSpot(tank);if(p){k='l';R.leafUsed=true;}}
+  if(!p){const n=(st.coryEggs81||[]).filter(e=>e.k==='g').length;p={x:(here?f.x:R.colX)+rnd(-5,5),y:top-48-n*6.2+rnd(-3,3)};p.y=Math.max(p.y,top-185);}
+  const face=Math.abs(p.x-f.x)>12?Math.sign(p.x-f.x):sg(f);
+  const ang=(k==='g'?-68:-50)*face;
+  const o=offAt(f,BASKET[0],BASKET[1]+.06,ang,face);
+  R.site={k,p,face,ang,c:{x:p.x-o.x,y:p.y-o.y}};
+  R.site.c.x=clamp(R.site.c.x,30,w-30);
+ }
+ requestAnimationFrame(frame);
+
+ /* hatching clears the eggs */
+ try{const _fin=finishCorySpawnV172;finishCorySpawnV172=function(){const r=_fin.apply(this,arguments);try{if(!st.corySpawn)st.coryEggs81=[];}catch(e){}return r;};}catch(e){console.error('AFNICA V17.81 hatch hook',e);}
+ window.coryRitualV1781={start:()=>start(true),stop:()=>stop()};
+  window.coryRitualDebugV1781=()=>({R,ctl,TP,leafSpot:()=>leafSpot(tankEl())});
 })();
 </script>
 </body></html>
