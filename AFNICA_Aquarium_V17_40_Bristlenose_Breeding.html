@@ -7534,8 +7534,9 @@ body:has(.tank.waterChanging,.tank.persistentWaterActive) #v1712-test-dash{
     }
     if(s.target){
      // Real corydoras cross the bottom in short hops, not a constant glide: quick burst, near-stop, burst.
-     const hop=s.age<7?1:.2+.8*Math.pow(Math.max(0,Math.sin(t*6.6+s.index*1.7)),1.4);
-     steer(s,s.target.x,s.target.y,dt,(s.age<7?6:34)*hop);
+     const gt=window.coryGaitV1784&&window.coryGaitV1784(s,t);   // V17.84: juveniles have a quicker, more jittery rhythm
+     const hop=gt?gt.hop:s.age<7?1:.2+.8*Math.pow(Math.max(0,Math.sin(t*6.6+s.index*1.7)),1.4);
+     steer(s,s.target.x,s.target.y,dt,(gt?gt.sp:s.age<7?6:34)*hop);
      if(Math.hypot(s.x-s.target.x,s.y-s.target.y)<2){const ah=window.coryArriveV1783&&window.coryArriveV1783(s,t,tank);s.target=null;s.wait=t+(ah?ah.wait:random(2,5));s.fStart=t;s.fEnd=s.wait;s.fPh=random(0,6.28);s.el.classList.add(ah&&ah.rest?'v1712Rest':'v1712DeepForage')}   // V17.83: a rest instead of a dig, shy/bold pauses
     }
     else if(s.age>=7&&s.el.classList.contains('v1712DeepForage')){
@@ -8852,7 +8853,7 @@ let BEND=0,SIG=0,SFL=0,SWRG=null;   /* SWRG (V17.75): [u,v] sword root of a swor
        if(+s.fe.dataset.gono>.01)drawGono(c,rr,+s.fe.dataset.gono,gL,s.fe.dataset.gonoOver==="1",gsp);else if(+s.fe.dataset.gonoLen>1.2)drawGono(c,rr,.12,gL*.5,false,gsp);}   /* a long lyretail gonopodium shows even at rest */
       if(!s.gl&&s.fe.dataset.m3==='1'){const ds=s.fe.dataset,cy=ds.species==='cory',o3g={psi:+ds.psi||0,kap:+ds.kap||0,side:+ds.side||1,amp:cy&&ds.still==='1'?.004:.03+.08*sp,bank:cy?+ds.bank||0:0,pit:+ds.pit||0,thk:cy?+ds.thk||.12:0};if(cy){o3g.vk=+ds.vk||0;o3g.kf=ds.kf!=null?+ds.kf:1;}   /* V17.81: a cory is a round-bodied fish (thicker) and may lie on its side (spawning T) */s.gl=glBent(c,rr,0,s.ph,0,0,/^xipho\|(adult|full)_m$/.test(c.dataset.wk||'')?'xipho':'gen',o3g);s.o3=s.gl;}   /* V17.75 3D turns of every livebearer / neon */
       if(window.finGrowV1763&&!s.gl)finGrowV1763(c,rr,s);s.gl=false;   /* V17.75: the bigger dorsal is painted onto the FLAT sprite only - over a bent or 3D fish it landed in the wrong place */   /* V17.63 bigger dorsal with age, long anal fin */
-       if(!s.o3){pectoral(c,rr,s,dt,dig?.0:sp);breathe(c,rr,s,dt,sp);}s.o3=false;if(s.shF>.02&&window.shimFilmV1767)shimFilmV1767(c,s.shF);   /* V17.67 faint white film while shimmying */   /* V17.55 pectorals, V17.53 gills and mouth */WEXP=2.3;BEND=0;SIG=0;SFL=0;TBR=1;SWRG=null;                                               // back to the default for everything else (Ancistrus etc.)
+       if(!s.o3&&!/\|(larva84|fry84)$/.test(c.dataset.wk||'')){pectoral(c,rr,s,dt,dig?.0:sp);breathe(c,rr,s,dt,sp);}   /* V17.84: no adult fin/gill overlays on the young cory drawings */s.o3=false;if(s.shF>.02&&window.shimFilmV1767)shimFilmV1767(c,s.shF);   /* V17.67 faint white film while shimmying */   /* V17.55 pectorals, V17.53 gills and mouth */WEXP=2.3;BEND=0;SIG=0;SFL=0;TBR=1;SWRG=null;                                               // back to the default for everything else (Ancistrus etc.)
      }catch(e){s.bad=true;console.error('AFNICA fin motion (fish)',e);}         // one bad fish must not stop the others
     });
    }catch(e){console.error('AFNICA fin motion',e);}
@@ -12182,7 +12183,7 @@ window.addEventListener('load',function(){
   if(st.corySpawn||R)return;
   const a=adults();if(!a.some(f=>f.sex==='M')||!a.some(f=>f.sex==='F'))return;
   const w=C.wc===d-1?.5:0,n=C.food.filter(x=>x<d).length,fp=Math.min(.65,.25*n),p=1-(1-w)*(1-fp);
-  if(p>0&&Math.random()<p){st.coryRitual81={day:d,delay:Math.round(rnd(20,90))};st.coryCond81.food=C.food.filter(x=>x>=d);try{save();}catch(e){}}
+  if(p>0&&Math.random()<p){st.coryRitual81={day:d,delay:Math.round(rnd(60,140))};   /* V17.85: long enough to see them glass surfing first */st.coryCond81.food=C.food.filter(x=>x>=d);try{save();}catch(e){}}
  }
  try{const _nd=nextDay;nextDay=function(){const r=_nd.apply(this,arguments);try{roll();}catch(e){console.error('AFNICA cory spawn roll',e);}return r;};}catch(e){console.error('AFNICA V17.81 day hook',e);}
  /* the old path (a water change still running at the day change hatched fry at once) now only counts as a water change */
@@ -12791,6 +12792,150 @@ window.addEventListener('load',function(){
 
  window.coryLifeDebugV1783=()=>({G,GEO,startRest:tank=>{const g=grp(tank,nowS());g.restNext=0;g.rest=null;},scare:tank=>{grp(tank,nowS()).scaredUntil=nowS()+12;},perchNow:()=>{forcePerch=true;}});
  try{render();}catch(e){}
+})();
+</script>
+<script>
+/* ===== V17.84 YOUNG CORYDORAS MOTION =====
+   The first three corydoras models now move like real young cory (owner: "make the animations of the first 3 models more
+   realistic"):
+   - LARVA (age 0-2, the yolk-sac "wiggler"): it lies on the bottom, a little nose-up on its heavy yolk sac, and every few
+     seconds wriggles a short way in a quick S-shaped burst (fast tail, the body rocking), then lies still again.
+   - FRY (age 3-6): short quick darts along the bottom (a hard tail beat, a glide to a stop), pauses propped on the sand,
+     little pecks at the bottom between darts; it turns on the spot before darting the other way, and darts after small
+     live food (V17.82) when there is some.
+   - JUVENILE (age 7 to adult): the adult's stop-and-go, but quicker and more jittery - a faster hop rhythm with longer
+     stops and a quicker tail.
+   The larva and fry drawings (coryFryAssetV1717) are now registered with the V17.42 fin-motion layer (keys
+   cory|larva84 and cory|fry84), so their tail and body wave with the swimming like every other fish (no pectoral or
+   gill overlay on them - those are placed for the adult sprites). Their movement is driven here through the V17.83
+   per-frame hook; the juvenile rhythm goes through coryGaitV1784 in the V17.12 engine. */
+(function(){
+ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),rnd=(a,b)=>a+Math.random()*(b-a);
+ const sized=url=>{try{const svg=decodeURIComponent(url.split(',')[1]).replace('viewBox="0 0 96 44"','width="288" height="132" viewBox="0 0 96 44"');return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);}catch(e){return null;}};
+ try{
+  const C=REAL_FISH_ASSETS_V154.cory;
+  if(C&&window.coryFryAssetV1717){C.larva84=sized(coryFryAssetV1717({age:1}));C.fry84=sized(coryFryAssetV1717({age:5}));}
+  const _rk=realAssetKeyV154;
+  realAssetKeyV154=function(f){if(f&&f.species==='cory'&&f.age<7&&C&&C.larva84)return 'cory|'+(f.age<=2?'larva84':'fry84');return _rk.apply(this,arguments);};
+ }catch(e){console.error('AFNICA V17.84 young sprites',e);}
+
+ /* juvenile gait for the V17.12 engine: quicker rhythm, longer stops */
+ window.coryGaitV1784=function(s,t){
+  if(s.age>=7&&s.age<S.cory.adult){const ph=Math.sin(t*8.6+s.index*1.7);return {hop:.12+.88*Math.pow(Math.max(0,ph),2.2),sp:30};}
+  return null;
+ };
+ /* larva and fry: our own little locomotion (the V17.12 engine only draws them) */
+ function young(s,t,dt,tank){
+  const el=s.el,larva=s.age<=2,L=el.offsetWidth*s.scale;
+  let F=s.fr84;
+  if(!F){F=s.fr84={mode:'rest',until:t+rnd(.5,larva?6:2),x0:s.x,peck:0};}
+  if(F.mode==='rest'){
+   s.y+=(s.base-s.y)*Math.min(1,dt*3);
+   const f=s.face<0?-1:1;
+   if(larva)s.angle+=(-4*f+.6*Math.sin(t*1.6+s.index)-s.angle)*Math.min(1,dt*3);   /* propped nose-up on the yolk, breathing */
+   else{   /* a little peck at the bottom now and then */
+    if(!F.peckAt)F.peckAt=t+rnd(.3,1.2);
+    if(t>F.peckAt&&t<F.peckAt+.28)F.peck=Math.sin(Math.PI*(t-F.peckAt)/.28);else{F.peck=0;if(t>F.peckAt+.28)F.peckAt=t+rnd(.5,1.6);}
+    s.angle+=(10*f*F.peck-s.angle)*Math.min(1,dt*12);
+   }
+   delete el.dataset.quiver;
+   if(t>F.until){   /* next move */
+    let tx=null;
+    if(!larva&&window.coryWaferTargetV1743){try{const r=coryWaferTargetV1743(tank,s,t);if(r&&Number.isFinite(r.x))tx=r.x;}catch(e){}}   /* live food, wafers */
+    let dir=tx!=null?Math.sign(tx-s.x)||f:(Math.random()<.72?f:-f);
+    const lo=s.radius,hi=s.w-s.radius;
+    if(s.x<lo+20)dir=1;if(s.x>hi-20)dir=-1;
+    let D=larva?rnd(.15,.35)*L:rnd(.3,.9)*L;   /* a fry dart covers under a body length */
+    if(tx!=null)D=Math.min(Math.abs(tx-s.x),L*1.2);
+    F.dir=dir;F.D=D;F.x0=s.x;F.y0=s.y;
+    F.mode=dir!==f?'turn':'dart';F.t0=t;F.dur=larva?rnd(.4,.65):rnd(.32,.5);   /* peak about 2 x D / dur: ~3-4 body lengths per second */
+   }
+   return;
+  }
+  if(F.mode==='turn'){   /* on the spot, quick, before darting the other way */
+   s.face+=(F.dir-s.face)*Math.min(1,dt*(larva?7:10));s.angle+=(0-s.angle)*Math.min(1,dt*8);
+   if(Math.abs(F.dir-s.face)<.08){s.face=F.dir;F.mode='dart';F.t0=t;F.x0=s.x;}
+   return;
+  }
+  /* dart: a hard start and a glide to a stop (larva: a jerky S-wriggle) */
+  const p=clamp((t-F.t0)/F.dur,0,1),e=1-Math.pow(1-p,2);   /* quick start, glide to a stop */
+  s.x=clamp(F.x0+F.dir*F.D*e,s.radius,s.w-s.radius);
+  if(larva){s.y=s.base+1.2*Math.sin(p*Math.PI*6)*(1-p);s.angle=F.dir*(-4+11*Math.sin(t*2*Math.PI*9)*(1-p*.6));el.dataset.quiver='1';}
+  else{s.y=s.base-2.2*Math.sin(Math.PI*p);s.angle+=(-6*F.dir*(1-p)-s.angle)*Math.min(1,dt*10);el.dataset.quiver=(.7*(1-p)).toFixed(2);}
+  if(p>=1){F.mode='rest';F.until=t+(larva?rnd(4,12):rnd(.6,2.4));F.peckAt=0;delete el.dataset.quiver;}
+ }
+ try{const _fr=window.coryFrameV1783;window.coryFrameV1783=function(s,t,dt,tank,all){
+  try{if(s.age<7){s.target=null;s.vx=s.vy=0;s.mode=s.age<=2?'yolk-rest':'fry';s.el.classList.remove('v1712DeepForage','v1712Rest');young(s,t,dt,tank);return true;}}catch(e){console.error('AFNICA young cory',e);}
+  return _fr?_fr.apply(this,arguments):false;
+ };}catch(e){console.error('AFNICA V17.84 frame hook',e);}
+ /* the juvenile tail beats a little quicker than the adult's */
+ setInterval(()=>{try{document.querySelectorAll('.tank .modelFish[data-species="cory"][data-life-stage="juvenile"]:not(.coryBreeding)').forEach(el=>{if(!el.dataset.quiver||+el.dataset.quiver<.2)el.dataset.quiver='.2';});}catch(e){}},1000);
+ window.youngCoryDebugV1784=()=>({keys:Object.keys(REAL_FISH_ASSETS_V154.cory||{})});
+ try{render();}catch(e){}
+})();
+</script>
+<script>
+/* ===== V17.85 GLASS SURFING BEFORE SPAWNING =====
+   Owner: when adult and full-grown corydoras are ready to spawn, before the ritual, they swim up and down the front or
+   side glass again and again - the telltale sign. On a spawning day (st.coryRitual81 pending, V17.81), until the ritual
+   starts, every adult cory in the Main Tank does bouts of 2-4 climbs: nose up along the glass (front glass where it is,
+   or the nearest side glass), a pitch over at the top, head first back down, level out on the sand, again. Between
+   bouts it forages normally (4-12 s). The wait before the ritual is longer now (60-140 s of watching), so the sign shows.
+   Driven through the V17.83 per-frame hook; nothing is saved. */
+(function(){
+ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),smooth=t=>{t=clamp(t,0,1);return t*t*(3-2*t)},rnd=(a,b)=>a+Math.random()*(b-a);
+ function ready(tank){
+  try{const P=st.coryRitual81;if(!P||P.day!==st.day||st.corySpawn)return false;
+   if(window.coryRitualDebugV1781&&coryRitualDebugV1781().R)return false;
+   return tank.id==='tank-main'&&!tank.matches('.waterChanging,.persistentWaterActive');}catch(e){return false;}
+ }
+ let told=-1;
+ function surf(s,t,dt,tank){
+  let Q=s.sf85;
+  if(!Q)Q=s.sf85={mode:'idle',next:t+rnd(.5,6)};
+  const f=s.face<0?-1:1,H=tank.clientHeight,top=Math.max(s.el.offsetHeight*s.scale/2+14,H*rnd(.12,.18));
+  if(Q.mode==='idle'){
+   if(t<Q.next)return false;
+   const side=Math.random()<.3,w=s.w;
+   Q.x=side?(s.x<w/2?s.radius+2:w-s.radius-2):clamp(s.x,s.radius,w-s.radius);
+   Q.cycles=2+Math.floor(Math.random()*3);Q.top=top+rnd(0,H*.25);Q.mode=Math.abs(Q.x-s.x)>4?'go':'up';Q.t0=t;
+   if(told!==st.day){told=st.day;try{st.log='🐟 The corydoras are glass surfing - they look ready to spawn.';toast('🐟 Corydoras glass surfing · a sign they are ready to spawn');}catch(e){}}
+  }
+  if(Q.mode==='go'){   /* to the spot on the glass, along the sand */
+   const dx=Q.x-s.x,v=Math.min(45,Math.abs(dx)*2)*Math.sign(dx);s.x+=v*dt;if(Math.abs(v)>2)s.face+=(Math.sign(v)-s.face)*Math.min(1,dt*4.6);
+   s.y+=(s.base-s.y)*Math.min(1,dt*3);s.angle+=(0-s.angle)*Math.min(1,dt*5);
+   if(Math.abs(dx)<3){Q.mode='up';Q.t0=t;Q.y0=s.y;}
+  }else if(Q.mode==='up'){   /* nose up, climbing the glass */
+   const d=Math.max(20,Q.y0-Q.top),dur=d/55,p=clamp((t-Q.t0)/dur,0,1);
+   s.y=Q.y0-d*smooth(p);s.x=Q.x+Math.sin(t*5)*1.2;
+   s.angle+=(-68*f*smooth(Math.min(1,p*4))-s.angle)*Math.min(1,dt*7);
+   if(p>=1){Q.mode='over';Q.t0=t;}
+  }else if(Q.mode==='over'){   /* at the top it pitches over, head first down */
+   const p=clamp((t-Q.t0)/.55,0,1);s.angle=f*(-68+120*smooth(p));s.y=Q.top-2*Math.sin(Math.PI*p);
+   if(p>=1){Q.mode='down';Q.t0=t;Q.y0=s.y;}
+  }else if(Q.mode==='down'){
+   const d=Math.max(10,s.base-Q.y0),dur=d/48,p=clamp((t-Q.t0)/dur,0,1);
+   s.y=Q.y0+d*smooth(p);s.x=Q.x+Math.sin(t*5)*1.2;
+   const lim=8+Math.max(0,s.base-s.y)*1.2;s.angle+=(f*Math.min(52,lim)-s.angle)*Math.min(1,dt*6);   /* levels out before the sand */
+   if(p>=1){Q.cycles--;Q.mode='land';Q.t0=t;}
+  }else if(Q.mode==='land'){
+   s.angle+=(0-s.angle)*Math.min(1,dt*6);s.y+=(s.base-s.y)*Math.min(1,dt*4);
+   if(t-Q.t0>rnd(.3,.6)){if(Q.cycles>0){Q.mode='up';Q.t0=t;Q.y0=s.y;Q.top=top+rnd(0,H*.25);}else{Q.mode='idle';Q.next=t+rnd(4,12);return false;}}
+  }
+  s.vx=s.vy=0;s.target=null;s.mode='surf';s.el.classList.remove('v1712DeepForage','v1712Rest');
+  return true;
+ }
+ try{const _fr=window.coryFrameV1783;window.coryFrameV1783=function(s,t,dt,tank,all){
+  try{
+   if(s.age>=S.cory.adult&&ready(tank)){if(surf(s,t,dt,tank))return true;}
+   else if(s.sf85){   /* no longer due: finish the climb (pitch over where it is, glide down), then stop */
+    const Q=s.sf85;Q.cycles=0;
+    if(Q.mode==='idle'||Q.mode==='go')s.sf85=null;
+    else{if(Q.mode==='up'){Q.mode='over';Q.t0=t;Q.top=s.y;}if(surf(s,t,dt,tank))return true;s.sf85=null;}
+   }
+  }catch(e){console.error('AFNICA cory glass surfing',e);}
+  return _fr?_fr.apply(this,arguments):false;
+ };}catch(e){console.error('AFNICA V17.85 hook',e);}
 })();
 </script>
 </body></html>

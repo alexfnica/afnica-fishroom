@@ -66,6 +66,21 @@ Owner asked for everything from the idea list plus a smaller adult stage:
   during 'eat'; air-dash factor uses the lower of V17.66 and health (no double counting). Note: existing adult cory younger than
   full-grown age shrink once to the young-adult size on the first load (owner asked for the smaller adult stage).
 
+### V17.84 YOUNG CORYDORAS MOTION + V17.85 GLASS SURFING (end of file)
+- Larva (age 0-2) and fry (3-6) drawings (`coryFryAssetV1717`) are registered with the V17.42 fin layer as `cory|larva84` /
+  `cory|fry84` (sized SVG data URLs in `REAL_FISH_ASSETS_V154.cory`, `realAssetKeyV154` wrapped), so their tail and body wave.
+  No pectoral/gill overlays on them (V17.42 line guarded). Their locomotion runs in the V17.83 frame hook (V17.84 wrapper):
+  larva lies nose-up on its yolk and wriggles 15-35% of a body length every 4-12 s (quiver 1); fry dart 0.3-0.9 body length in
+  0.32-0.5 s (peak ~3.4 BL/s), turn on the spot first, pause 0.6-2.4 s with little pecks, dart toward small live food.
+  Juvenile (7 to adult) gait via `coryGaitV1784` in V17.12 (hop rhythm 8.6 Hz, longer stops, speed 30) + quiver .2.
+  Measured: larva <=1.3 px/frame, fry <=5.5 (headless ~40 ms frames), juvenile <1 outside the air dash.
+- Glass surfing (owner: the telltale sign before spawning): while `st.coryRitual81` is pending today and the ritual has not
+  started, adult cory in the Main Tank do bouts of 2-4 climbs up the front glass (where they are) or the nearest side glass:
+  nose up, pitch over at the top, head first down, level out; 4-12 s of foraging between bouts; a toast/log the first time.
+  The pre-ritual wait is now 60-140 s of watching. A climb in progress is finished when the ritual starts.
+- Test note: the game switches back to the Main Tank 100 ms after the page `load` event (old code near the bristlenose
+  setup); tests must wait for `load` before switching tanks.
+
 ### Cory pectorals (V17.42 `pectoral()`, `window.CORYPECT_V1781`)
 Cory pectoral = thick bony serrated spine: no sculling. Held stiff, spread out-down while sitting (rest -.28 rad), pressed back at
 speed (fold +.14), slow small drift, a quick outward flick when a hop starts (speed jump > `kick`). Drawn as one rigid piece.
