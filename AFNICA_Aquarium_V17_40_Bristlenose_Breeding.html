@@ -11668,7 +11668,7 @@ window.addEventListener('load',function(){
 .coryEgg81.e81b1{background:radial-gradient(circle,#fbfaf6 0 55%,#efece4 75%,rgba(255,255,255,.5) 100%);box-shadow:0 0 0 .5px rgba(255,255,255,.4)}
 .coryEgg81.e81b2{background:radial-gradient(circle,#fbfaf6 0 50%,#ecebe5 70%,rgba(255,255,255,.55) 100%);box-shadow:0 0 1.5px 1.2px rgba(245,245,240,.55),0 0 3px 2px rgba(235,240,235,.25)}
 .coryEgg81.e81b1:after,.coryEgg81.e81b2:after{display:none}
-.coryClasp81{position:absolute;left:0;top:0;pointer-events:none;z-index:33;overflow:visible}
+.coryClasp81{position:absolute;left:0;top:0;pointer-events:none;z-index:33;overflow:visible;filter:none!important;width:auto!important;height:auto!important}   /* the game styles every svg (size, a dimming filter) */
 .coryEggBtn81{position:absolute;top:8px;z-index:60;padding:4px 9px;border-radius:14px;border:1px solid rgba(240,220,150,.6);background:rgba(44,40,20,.75);color:#fff2c8;font:700 11px sans-serif;cursor:pointer;backdrop-filter:blur(2px)}
 .coryBasket81{position:absolute;width:15px;height:10px;margin:-3px 0 0 -7.5px;pointer-events:none;transform-origin:50% 20%;
  transform:scale(var(--b,0));opacity:var(--b,0);z-index:3}
@@ -11841,6 +11841,7 @@ window.addEventListener('load',function(){
  }
  function layEgg(tank,p,k){
   ensureHealthState();
+  if(st.corySpawn&&!st.corySpawn.v81)return;   /* an old-style spawn is pending: no visible eggs for it */
   if(!st.corySpawn)st.corySpawn={startDay:st.day,endDay:st.day+3+(Math.random()<.5?1:0),count:0,v81:true,tank:'main'};   /* 3-4 days */
   const e={x:+(p.x/tank.clientWidth).toFixed(4),y:+(p.y/tank.clientHeight).toFixed(4),k,d:st.day,b:Math.random()<.2?1:0};fresh.add(e);st.coryEggs81.push(e);   /* b: about 1 in 5 is not fertilized */
   recount();
@@ -11891,7 +11892,7 @@ window.addEventListener('load',function(){
   if(R.rounds>=4){R.breaks.push(Math.floor(R.rounds/2)-1);if(R.rounds>=6&&Math.random()<.6)R.breaks=[1,3];}
   ctl.clear();
   const f=grab(tank,fem,31);males.forEach(id=>grab(tank,id,30));
-  if(!f){R=null;return false;}
+  if(!f){stop();return false;}
   if(Math.abs(R.colX-f.x)>w*.3)R.colX=clamp(f.x+rnd(-.2,.2)*w,w*.22,w*.78);   /* lay near where she is */
   newRound(tank);
   try{st.log='🐟 Corydoras are spawning after the fresh water change!';toast('🐟 Corydoras are spawning · watch the T-position');}catch(e){}
@@ -11967,16 +11968,14 @@ window.addEventListener('load',function(){
   const t=now(),dt=Math.min(.05,t-last);last=t;
   try{
    const tank=tankEl();
-   document.querySelectorAll('#tank-main,#tank-fry').forEach(eggs);
-   if(tank&&!R)predation(tank,dt);
-   eggUI(tank);
+   try{document.querySelectorAll('#tank-main,#tank-fry').forEach(eggs);if(tank&&!R)predation(tank,dt);eggUI(tank);}catch(e){console.error('AFNICA cory eggs',e);}
    watch();
    if(!R){if(st.coryRitual81&&tank&&document.visibilityState==='visible'&&!tank.matches('.waterChanging,.persistentWaterActive')){
      if(st.coryRitual81.day!==st.day||st.corySpawn||!adults().some(f=>f.sex==='M')||!adults().some(f=>f.sex==='F'))st.coryRitual81=null;
      else{waited+=dt;if(waited>=(st.coryRitual81.delay||0))start(false);}}
    }
    else if(tank&&document.visibilityState==='visible')step(tank,dt);
-  }catch(e){console.error('AFNICA cory spawning ritual',e);try{stop();}catch(_){} }
+  }catch(e){console.error('AFNICA cory spawning ritual',e);try{st.coryRitual81=null;stop();}catch(_){} }   /* drop today's ritual: a persistent error must not restart it every frame */
   requestAnimationFrame(frame);
  }
  function watch(){   /* a finished Main Tank water change is remembered: the corydoras may spawn the next day */
@@ -12152,11 +12151,11 @@ window.addEventListener('load',function(){
  try{const _nd=nextDay;nextDay=function(){const r=_nd.apply(this,arguments);try{roll();}catch(e){console.error('AFNICA cory spawn roll',e);}return r;};}catch(e){console.error('AFNICA V17.81 day hook',e);}
  /* the old path (a water change still running at the day change hatched fry at once) now only counts as a water change */
  try{startCorySpawnV172=function(){try{ensureHealthState();st.coryCond81.wc=st.day;}catch(e){}return false;};}catch(e){}
- window.coryLiveFoodV1781=function(key){try{if(key!=='main')return;ensureHealthState();st.coryCond81.food.push(st.day);}catch(e){}};
+ window.coryLiveFoodV1781=function(key){try{if(key!=='main')return;ensureHealthState();if(!st.coryCond81.food.includes(st.day))st.coryCond81.food.push(st.day);}catch(e){}};   /* one entry per day, however many portions */
 
  /* hatching: only good eggs hatch; if none is left nothing hatches (the old code would have made 6 fry from a zero count) */
  try{const _fin=finishCorySpawnV172;finishCorySpawnV172=function(){
-  try{const sp=st.corySpawn;if(sp&&sp.v81&&st.day>=sp.endDay){recount();if(!(sp.count>0)){st.corySpawn=null;st.coryEggs81=[];st.log='🥚 None of the corydoras eggs hatched.';return;}}}catch(e){}
+  try{const sp=st.corySpawn;if(sp&&sp.v81&&st.day>=sp.endDay){recount();if(!(sp.count>0)){st.corySpawn=null;st.coryEggs81=[];st.log='🥚 None of the corydoras eggs hatched.';try{save();}catch(_){}return;}}}catch(e){}
   const r=_fin.apply(this,arguments);try{if(!st.corySpawn)st.coryEggs81=[];}catch(e){}return r;};}catch(e){console.error('AFNICA V17.81 hatch hook',e);}
 
  /* ---- 4: hungry fish find the eggs; the player can move them to the Fry Tank ---- */
@@ -12490,6 +12489,7 @@ window.addEventListener('load',function(){
       b.onclick=e=>{e.stopPropagation();if(tank.querySelector('.liveMenu82'))closeMenu();else openMenu(tank,key,b);};
       tank.appendChild(b);updateBtns();
      }
+     {const lb=tank.querySelector('.liveBtn82'),wb=tank.querySelector('.waferBtn43');if(lb&&wb){const L=(wb.offsetLeft+wb.offsetWidth+6)+'px';if(lb.style.left!==L)lb.style.left=L;}}
      const list=FOOD[key];
      if(list&&list.length){step(tank,list,dt,t);corysEat(tank,list);}
      if(list&&list.length||tank.querySelector('canvas.liveFoodCanvas82'))draw(tank,list,t);
