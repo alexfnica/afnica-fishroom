@@ -12828,7 +12828,9 @@ window.addEventListener('load',function(){
  function young(s,t,dt,tank){
   const el=s.el,larva=s.age<=2,L=el.offsetWidth*s.scale;
   let F=s.fr84;
+  if(F&&t-(F.seen||t)>.5)F=null;   /* stale (re-render, other tank): start from a rest where it is */
   if(!F){F=s.fr84={mode:'rest',until:t+rnd(.5,larva?6:2),x0:s.x,peck:0};}
+  F.seen=t;
   if(F.mode==='rest'){
    s.y+=(s.base-s.y)*Math.min(1,dt*3);
    const f=s.face<0?-1:1;
@@ -12892,14 +12894,18 @@ window.addEventListener('load',function(){
  let told=-1;
  function surf(s,t,dt,tank){
   let Q=s.sf85;
+  if(Q&&t-(Q.seen||t)>.5){   /* we lost the fish for a while (ritual, air dash, school, other tank): pick up from where it is now */
+   Q=s.sf85=s.y<s.base-3?{mode:'down',t0:t,y0:s.y,x:s.x,cycles:0,top:s.y}:{mode:'idle',next:t+rnd(2,6)};
+  }
   if(!Q)Q=s.sf85={mode:'idle',next:t+rnd(.5,6)};
+  Q.seen=t;
   const f=s.face<0?-1:1,H=tank.clientHeight,top=Math.max(s.el.offsetHeight*s.scale/2+14,H*rnd(.12,.18));
   if(Q.mode==='idle'){
    if(t<Q.next)return false;
    const side=Math.random()<.3,w=s.w;
    Q.x=side?(s.x<w/2?s.radius+2:w-s.radius-2):clamp(s.x,s.radius,w-s.radius);
-   Q.cycles=2+Math.floor(Math.random()*3);Q.top=top+rnd(0,H*.25);Q.mode=Math.abs(Q.x-s.x)>4?'go':'up';Q.t0=t;
-   if(told!==st.day){told=st.day;try{st.log='🐟 The corydoras are glass surfing - they look ready to spawn.';toast('🐟 Corydoras glass surfing · a sign they are ready to spawn');}catch(e){}}
+   Q.cycles=2+Math.floor(Math.random()*3);Q.top=top+rnd(0,H*.25);Q.mode=Math.abs(Q.x-s.x)>4?'go':'up';Q.t0=t;Q.y0=s.y;
+   if(told!==st.day&&!(st.coryRitual81&&st.coryRitual81.surfTold)){told=st.day;try{st.coryRitual81.surfTold=1;st.log='🐟 The corydoras are glass surfing - they look ready to spawn.';toast('🐟 Corydoras glass surfing · a sign they are ready to spawn');}catch(e){}}
   }
   if(Q.mode==='go'){   /* to the spot on the glass, along the sand */
    const dx=Q.x-s.x,v=Math.min(45,Math.abs(dx)*2)*Math.sign(dx);s.x+=v*dt;if(Math.abs(v)>2)s.face+=(Math.sign(v)-s.face)*Math.min(1,dt*4.6);
@@ -12930,7 +12936,7 @@ window.addEventListener('load',function(){
    if(s.age>=S.cory.adult&&ready(tank)){if(surf(s,t,dt,tank))return true;}
    else if(s.sf85){   /* no longer due: finish the climb (pitch over where it is, glide down), then stop */
     const Q=s.sf85;Q.cycles=0;
-    if(Q.mode==='idle'||Q.mode==='go')s.sf85=null;
+    if(Q.mode==='idle'||Q.mode==='go'||t-(Q.seen||t)>.5)s.sf85=null;   /* stale: nothing to finish */
     else{if(Q.mode==='up'){Q.mode='over';Q.t0=t;Q.top=s.y;}if(surf(s,t,dt,tank))return true;s.sf85=null;}
    }
   }catch(e){console.error('AFNICA cory glass surfing',e);}
