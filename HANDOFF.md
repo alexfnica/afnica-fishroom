@@ -81,6 +81,19 @@ Owner asked for everything from the idea list plus a smaller adult stage:
 - Test note: the game switches back to the Main Tank 100 ms after the page `load` event (old code near the bristlenose
   setup); tests must wait for `load` before switching tanks.
 
+### Group glass surfing, hiding young, breeding box (V17.85 rewrite, V17.84 edits, V17.86)
+- Glass surfing is now a GROUP behaviour (owner): one bout per tank (`G` in V17.85): all adults gather at one spot of the
+  front glass (side by side, .48 body apart) or a side glass (tight bunch), then climb together on a shared rhythm, each fish
+  0-1.2 s behind (random order); 2-4 climbs; 6-14 s between bouts. Measured: 93% of climbing frames have 2+ fish up together.
+- Larvae and fry stay grouped and hidden (owner): one shelter per tank (the biggest stone/wood/plant, kept 2.5-5 min); each
+  youngster has its own place under it, sits 5-12 px further back and is drawn behind the decoration (z-index 7 !important;
+  the fish CSS uses !important); first time in a tank it starts at the shelter.
+- Breeding Box (owner chose "new item"): bought once (120 coins), hangs on the Fry Tank front glass (two divs: back z40, front
+  z42; fish inside z41). 📦 button moves all young cory (<7 days) in/out; inside they do not hide, keep to the box floor,
+  sizeFor x1.2; at 7 days they are let out. With a box, the Main Tank EGGS button moves the clutch into the box
+  (`st.corySpawn.tank='box'`, eggs drawn on the box floor with the V17.81 development classes); hatched fry stay in the box.
+  Saved: `st.breedingBox86 {owned, fish:[ids]}` (default in ensureHealthState).
+
 ### Cory pectorals (V17.42 `pectoral()`, `window.CORYPECT_V1781`)
 Cory pectoral = thick bony serrated spine: no sculling. Held stiff, spread out-down while sitting (rest -.28 rad), pressed back at
 speed (fold +.14), slow small drift, a quick outward flick when a hop starts (speed jump > `kick`). Drawn as one rigid piece.

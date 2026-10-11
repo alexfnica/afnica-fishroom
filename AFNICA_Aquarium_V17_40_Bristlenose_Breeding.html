@@ -3475,7 +3475,9 @@ if(!Array.isArray(st.coryEggs))st.coryEggs=[];
 if(!Array.isArray(st.coryEggs81))st.coryEggs81=[];   /* V17.81 visible eggs of the main-tank spawn */
 if(st.coryRitual81===undefined)st.coryRitual81=null;   /* V17.81 spawning ritual due today {day,delay} */
 if(!st.coryCond81||typeof st.coryCond81!=='object')st.coryCond81={wc:null,food:[]};   /* V17.81 spawning triggers: day of the last main-tank water change, days live food was fed */
-if(!st.liveFood||typeof st.liveFood!=='object')st.liveFood={};   /* V17.82 live food portions in stock, by kind */
+if(!st.liveFood||typeof st.liveFood!=='object')st.liveFood={};
+if(!st.breedingBox86||typeof st.breedingBox86!=='object')st.breedingBox86={owned:false,fish:[]};   /* V17.86 breeding box in the Fry Tank */
+if(!Array.isArray(st.breedingBox86.fish))st.breedingBox86.fish=[];   /* V17.82 live food portions in stock, by kind */
 if(typeof st.tankHealthBreeder!=='number')st.tankHealthBreeder=100;
 if(typeof st.daysNoCleanBreeder!=='number')st.daysNoCleanBreeder=0;
 if(!st.daily.breeder)st.daily.breeder={feed:false,water:false,clean:false};
@@ -12241,13 +12243,13 @@ window.addEventListener('load',function(){
   if(show){
    if(!b){b=document.createElement('button');b.type='button';b.className='coryEggBtn81';b.onclick=e=>{e.stopPropagation();moveCoryEggsV1781();};tank.append(b);}
    const lb=tank.querySelector('.liveBtn82'),wb=tank.querySelector('.waferBtn43'),ref=lb||wb;b.style.left=((ref?ref.offsetLeft+ref.offsetWidth:100)+6)+'px';
-   const txt='🥚 EGGS ×'+st.coryEggs81.length+' → FRY TANK';if(b.textContent!==txt)b.textContent=txt;
+   const txt='🥚 EGGS ×'+st.coryEggs81.length+(st.breedingBox86&&st.breedingBox86.owned?' → BREEDING BOX':' → FRY TANK');if(b.textContent!==txt)b.textContent=txt;
   }else if(b)b.remove();
   if(sp&&sp.v81)document.querySelectorAll('.v8panel').forEach(p=>{const h=p.querySelector('.v8head b');if(!h||h.textContent.indexOf('CORYDORAS SPAWN')<0)return;
    const n=Math.max(1,sp.endDay-st.day),sp2=p.querySelector('.v8head span'),m=p.querySelector('.meta');
    const t1=n===1?'HATCHES TOMORROW':'HATCHES IN '+n+' DAYS';if(sp2&&sp2.textContent!==t1)sp2.textContent=t1;
    const g=(st.coryEggs81||[]).filter(e=>!e.b).length,bad=(st.coryEggs81||[]).length-g;
-   const t2=(sp.tank==='fry'?'The eggs are in the Fry Tank, safe from other fish. ':'Eggs on the glass and leaves - other fish may eat them. ')+g+' developing'+(bad?', '+bad+' not fertilized (white)':'')+'.';
+   const t2=(sp.tank==='box'?'The eggs are in the breeding box (Fry Tank), safe and easy to watch. ':sp.tank==='fry'?'The eggs are in the Fry Tank, safe from other fish. ':'Eggs on the glass and leaves - other fish may eat them. ')+g+' developing'+(bad?', '+bad+' not fertilized (white)':'')+'.';
    if(m&&m.textContent!==t2)m.textContent=t2;});
  }
  try{const _belly=window.femaleBellyV1743;window.femaleBellyV1743=function(f){
@@ -12264,6 +12266,7 @@ window.addEventListener('load',function(){
  };}catch(e){console.error('AFNICA V17.81 belly hook',e);}
  window.coryRitualV1781={start:()=>start(true),stop:()=>stop(),roll};
   window.coryLeafSpotV1781=tank=>leafSpot(tank);
+  window.coryEggClassV1781=e=>eggCls(e);
   window.coryRitualDebugV1781=()=>({R,ctl,TP,leafSpot:()=>leafSpot(tankEl()),huntNow:()=>{huntIn=0;},hunter:()=>hunter});
 })();
 </script>
@@ -12841,14 +12844,18 @@ window.addEventListener('load',function(){
  /* larva and fry: our own little locomotion (the V17.12 engine only draws them) */
  function young(s,t,dt,tank){
   const el=s.el,larva=s.age<=2,L=el.offsetWidth*s.scale;
-  const shh=HIDE.get(tank),under=shh&&shh.cover&&Math.abs(s.x-shh.x)<shh.hw+s.radius*.4;
+  const BX=window.breedBoxV1786?breedBoxV1786(tank,el.dataset.fishId):null;   /* V17.86: in the breeding box - bare, no hiding */
+  const shh=HIDE.get(tank),under=!BX&&shh&&shh.cover&&Math.abs(s.x-shh.x)<shh.hw+s.radius*.4;
   if(s.lift84==null)s.lift84=rnd(5,12);
   s.lb84=(s.lb84||0)+((under?s.lift84:0)-(s.lb84||0))*Math.min(1,dt*2);   /* under cover it sits a little further back: behind the stone/wood/leaves */
-  const base=s.base-s.lb84;
+  const base=BX?BX.floor:s.base-s.lb84;
+  const LO=BX?BX.l+L/2:s.radius,HI=BX?BX.r-L/2:s.w-s.radius;
   let F=s.fr84;
   if(F&&t-(F.seen||t)>.5)F=null;   /* stale (re-render, other tank): start from a rest where it is */
   if(!F){F=s.fr84={mode:'rest',until:t+rnd(.5,larva?6:2),x0:s.x,peck:0};}
   F.seen=t;
+  if(BX&&!s.inBox86){s.inBox86=1;s.placed84=1;if(s.sh84==null)s.sh84=rnd(-1,1);s.x=clamp(BX.cx+s.sh84*BX.hw,LO,HI);s.y=BX.floor;F.x0=s.x;}   /* put in the box */
+  else if(!BX&&s.inBox86){s.inBox86=0;s.placed84=0;s.y=s.base;}   /* let out */
   if(!s.placed84){s.placed84=1;const sh=shelter(tank,t);if(s.sh84==null)s.sh84=rnd(-1,1);s.x=clamp(sh.x+s.sh84*sh.hw,s.radius,s.w-s.radius);F.x0=s.x;}   /* first time in this tank: it is already with the group (it hatched here) */
   if(F.mode==='rest'){
    s.y+=(base-s.y)*Math.min(1,dt*3);
@@ -12862,17 +12869,17 @@ window.addEventListener('load',function(){
    delete el.dataset.quiver;
    if(t>F.until){   /* next move */
     let tx=null;
-    if(!larva&&window.coryWaferTargetV1743){try{const r=coryWaferTargetV1743(tank,s,t);if(r&&Number.isFinite(r.x))tx=r.x;}catch(e){}}   /* live food, wafers */
-    const sh=shelter(tank,t);
+    if(!BX&&!larva&&window.coryWaferTargetV1743){try{const r=coryWaferTargetV1743(tank,s,t);if(r&&Number.isFinite(r.x))tx=r.x;}catch(e){}}   /* live food, wafers */
+    const sh=BX?{x:BX.cx,hw:BX.hw}:shelter(tank,t);
     if(s.sh84==null)s.sh84=rnd(-1,1);   /* its own place in the group */
-    const home=clamp(sh.x+s.sh84*sh.hw,s.radius,s.w-s.radius);
+    const home=clamp(sh.x+s.sh84*sh.hw,LO,HI);
     let dir=tx!=null?Math.sign(tx-s.x)||f:(Math.random()<.72?f:-f);
     if(tx==null){
      if(Math.abs(s.x-home)>sh.hw*.5)dir=Math.sign(home-s.x)||f;                  /* back under cover */
      else if(Math.random()<.9&&((s.x+dir*L*.6)-sh.x)*dir>sh.hw)dir=-dir;        /* don't wander out (now and then one does) */
     }
-    const lo=s.radius,hi=s.w-s.radius;
-    if(s.x<lo+20)dir=1;if(s.x>hi-20)dir=-1;
+    const lo=LO,hi=HI,mg=BX?6:20;
+    if(s.x<lo+mg)dir=1;if(s.x>hi-mg)dir=-1;
     let D=larva?rnd(.15,.35)*L:rnd(.3,.9)*L;   /* a fry dart covers under a body length */
     if(tx!=null)D=Math.min(Math.abs(tx-s.x),L*1.2);
     else if(Math.abs(s.x-home)>sh.hw*.5)D=Math.min(Math.abs(home-s.x),L*(larva?.6:1.1));
@@ -12888,14 +12895,14 @@ window.addEventListener('load',function(){
   }
   /* dart: a hard start and a glide to a stop (larva: a jerky S-wriggle) */
   const p=clamp((t-F.t0)/F.dur,0,1),e=1-Math.pow(1-p,2);   /* quick start, glide to a stop */
-  s.x=clamp(F.x0+F.dir*F.D*e,s.radius,s.w-s.radius);
+  s.x=clamp(F.x0+F.dir*F.D*e,LO,HI);
   if(larva){s.y=base+1.2*Math.sin(p*Math.PI*6)*(1-p);s.angle=F.dir*(-4+11*Math.sin(t*2*Math.PI*9)*(1-p*.6));el.dataset.quiver='1';}
   else{s.y=base-2.2*Math.sin(Math.PI*p);s.angle+=(-6*F.dir*(1-p)-s.angle)*Math.min(1,dt*10);el.dataset.quiver=(.7*(1-p)).toFixed(2);}
   if(p>=1){F.mode='rest';F.until=t+(larva?rnd(4,12):rnd(.6,2.4));F.peckAt=0;delete el.dataset.quiver;}
  }
  try{const _fr=window.coryFrameV1783;window.coryFrameV1783=function(s,t,dt,tank,all){
   try{if(s.age<7){s.target=null;s.vx=s.vy=0;s.mode=s.age<=2?'yolk-rest':'fry';s.el.classList.remove('v1712DeepForage','v1712Rest');young(s,t,dt,tank);
-   const sh=HIDE.get(tank),z=sh&&sh.cover&&Math.abs(s.x-sh.x)<sh.hw+s.radius*.4?'7':'';if(s.el.style.zIndex!==z){if(z)s.el.style.setProperty('z-index',z,'important');else s.el.style.removeProperty('z-index');}   /* under the cover: behind plants, wood and stones */
+   const sh=HIDE.get(tank),z=s.inBox86?'41':sh&&sh.cover&&Math.abs(s.x-sh.x)<sh.hw+s.radius*.4?'7':'';   /* in the box: between its back and front panels */if(s.el.style.zIndex!==z){if(z)s.el.style.setProperty('z-index',z,'important');else s.el.style.removeProperty('z-index');}   /* under the cover: behind plants, wood and stones */
    return true;}}catch(e){console.error('AFNICA young cory',e);}
   return _fr?_fr.apply(this,arguments):false;
  };}catch(e){console.error('AFNICA V17.84 frame hook',e);}
@@ -12986,6 +12993,109 @@ window.addEventListener('load',function(){
   return _fr?_fr.apply(this,arguments):false;
  };}catch(e){console.error('AFNICA V17.85 hook',e);}
  window.glassSurfDebugV1785=()=>({G});
+})();
+</script>
+<style>
+/* ===== V17.86 BREEDING BOX ===== */
+.breedBox86{position:absolute;left:57%;top:7%;width:34%;height:42%;pointer-events:none}
+.breedBox86.back{z-index:40;border-radius:3px;background:linear-gradient(180deg,rgba(210,235,245,.10),rgba(190,225,240,.16));border:1.5px solid rgba(225,245,255,.42);box-shadow:inset 0 0 12px rgba(200,235,255,.12)}
+.breedBox86.back:after{content:"";position:absolute;left:4%;right:4%;bottom:6%;height:7%;background:repeating-linear-gradient(90deg,rgba(225,245,255,.28) 0 2px,transparent 2px 7px);border-top:1px solid rgba(225,245,255,.35)}   /* the slotted floor */
+.breedBox86.front{z-index:42;border-radius:3px;background:linear-gradient(115deg,rgba(255,255,255,.10) 0 18%,rgba(255,255,255,0) 30% 70%,rgba(255,255,255,.07) 82%);border:1.5px solid rgba(235,250,255,.55)}
+.breedBox86.front:before{content:"";position:absolute;left:-3px;right:-3px;top:-4px;height:6px;border-radius:3px;background:rgba(230,245,252,.75);box-shadow:0 1px 2px rgba(0,0,0,.25)}   /* the rim */
+.breedBox86.front:after{content:"";position:absolute;left:12%;right:12%;top:-22px;height:20px;border-left:3px solid rgba(230,245,252,.7);border-right:3px solid rgba(230,245,252,.7)}   /* clips over the tank edge */
+.breedBox86 .bbEggs{position:absolute;inset:0}
+.box86Btn{position:absolute;top:8px;z-index:60;padding:4px 9px;border-radius:14px;border:1px solid rgba(170,215,240,.6);background:rgba(20,40,55,.75);color:#dff2ff;font:700 11px sans-serif;cursor:pointer;backdrop-filter:blur(2px)}
+</style>
+<script>
+/* ===== V17.86 BREEDING BOX =====
+   Owner: young corydoras hide under the decoration (V17.84), "and you can see them better in a breeding box".
+   A Breeding Box is bought once in the Shop (120 coins) and hangs on the front glass of the Fry Tank: a clear box with a
+   slotted floor and clips over the tank edge. The 📦 button in the Fry Tank moves every young cory (larva and fry, under
+   7 days) into it, or lets them out again. In the box they do not hide (it is bare), they keep to its floor, and they are
+   drawn a little bigger (they are right at the front glass). The EGGS button of the Main Tank moves a clutch into the box
+   when you own one (safe from other fish, visible on its floor); the fry that hatch there stay in the box. At 7 days a
+   juvenile is too big and is let out by itself.
+   Saved: st.breedingBox86 {owned, fish:[ids]}; corydoras spawns can have st.corySpawn.tank 'box'. */
+(function(){
+ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+ const PRICE=120;
+ function B(){ensureHealthState();return st.breedingBox86;}
+ function inBox(id){try{const b=st.breedingBox86;return !!(b&&b.owned&&b.fish.includes(String(id)));}catch(e){return false;}}
+ /* rect of the box floor for a fish that is in it (used by the V17.84 young-cory motion) */
+ window.breedBoxV1786=function(tank,id){
+  if(!tank||tank.id!=='tank-fry'||!inBox(id))return null;
+  const el=tank.querySelector('.breedBox86.back');if(!el)return null;
+  const l=el.offsetLeft+6,r=el.offsetLeft+el.offsetWidth-6,floor=el.offsetTop+el.offsetHeight*.86;
+  return {l,r,cx:(l+r)/2,hw:(r-l)/2*.75,floor};
+ };
+ /* at the front glass: a little bigger */
+ try{const _sz=sizeFor;sizeFor=function(f){const v=_sz.apply(this,arguments);try{if(f&&inBox(f.id))return v*1.2;}catch(e){}return v;};}catch(e){}
+ /* shop */
+ window.buyBreedingBoxV1786=function(){const b=B();if(b.owned)return toast('You already have a Breeding Box');if(st.coins<PRICE)return toast('Not enough coins');
+  st.coins-=PRICE;b.owned=true;save();try{render('shop');}catch(e){}toast('📦 Breeding Box bought · it hangs in the Fry Tank');};
+ try{const _shop=shopHTML;shopHTML=function(){let h=_shop.apply(this,arguments);
+  try{const at=h.indexOf('<h3>GENERAL TREATMENT</h3>');if(at<0)return h;const cut=h.lastIndexOf('<div class="card"',at);if(cut<0)return h;
+   const own=!!(st.breedingBox86&&st.breedingBox86.owned);
+   const card='<div class="card" style="text-align:center"><div style="font-size:48px">📦</div><h3>BREEDING BOX</h3><div class="meta">A clear box that hangs on the front glass of the Fry Tank. Young corydoras hide under plants, stones and wood - in the box you can see them, and their eggs are safe from other fish.</div><h2 class="gold">🪙 '+PRICE+'</h2>'+(own?'<div class="meta">Owned · in the Fry Tank</div>':'<button class="btn green wide" onclick="buyBreedingBoxV1786()">BUY BREEDING BOX</button>')+'</div>';
+   return h.slice(0,cut)+card+h.slice(cut);}catch(e){console.error('AFNICA breeding box shop',e);return h;}};}catch(e){}
+ /* moving young cory in and out */
+ function young(){return (st.fry||[]).filter(f=>f&&!f.dead&&f.species==='cory'&&f.age<7);}
+ window.toggleBreedingBoxV1786=function(){
+  const b=B();if(!b.owned)return;
+  const y=young(),out=y.filter(f=>!b.fish.includes(String(f.id)));
+  if(out.length){out.forEach(f=>b.fish.push(String(f.id)));toast('📦 '+out.length+' young corydoras moved into the breeding box');}
+  else if(b.fish.length){const n=b.fish.length;b.fish=[];toast('📦 '+n+' young corydoras let out into the Fry Tank');}
+  else return toast('No young corydoras in the Fry Tank');
+  save();try{switchTankV8('fry');}catch(e){}
+ };
+ /* eggs into the box */
+ try{const _mv=window.moveCoryEggsV1781;window.moveCoryEggsV1781=function(){
+  const sp=st.corySpawn,b=st.breedingBox86;
+  if(sp&&sp.v81&&(sp.tank||'main')==='main'&&b&&b.owned){
+   if(window.coryRitualDebugV1781&&coryRitualDebugV1781().R)return toast('Wait until the corydoras have finished spawning');
+   sp.tank='box';st.log='🥚 Corydoras eggs moved to the breeding box.';save();return toast('🥚 Eggs rolled off the glass into the breeding box (Fry Tank) · safe and easy to watch');
+  }
+  return _mv?_mv.apply(this,arguments):undefined;};}catch(e){}
+ /* the clutch hatches in the box: the fry stay there */
+ try{const _fin=finishCorySpawnV172;finishCorySpawnV172=function(){
+  const sp=st.corySpawn,box=sp&&sp.tank==='box',before=new Set((st.fry||[]).map(f=>String(f.id)));
+  const r=_fin.apply(this,arguments);
+  try{if(box&&!st.corySpawn&&st.breedingBox86&&st.breedingBox86.owned){(st.fry||[]).forEach(f=>{if(f.species==='cory'&&!before.has(String(f.id))&&!st.breedingBox86.fish.includes(String(f.id)))st.breedingBox86.fish.push(String(f.id));});save();}}catch(e){}
+  return r;};}catch(e){console.error('AFNICA V17.86 hatch hook',e);}
+ /* the box itself, its eggs, the button; juveniles let out */
+ let last=0;
+ function frame(now){
+  try{
+   if(!document.hidden&&now-last>250){last=now;
+    const b=st.breedingBox86,tank=document.getElementById('tank-fry');
+    if(b&&b.owned){   /* too big for the box at 7 days, or gone */
+     const ok=new Set(young().map(f=>String(f.id))),n0=b.fish.length;b.fish=b.fish.filter(id=>ok.has(id));
+     if(b.fish.length<n0){const grown=(st.fry||[]).some(f=>n0&&f.species==='cory'&&f.age>=7);save();if(grown)try{toast('📦 Juvenile corydoras let out of the breeding box - they are too big now');}catch(e){}}
+    }
+    if(tank){
+     let bk=tank.querySelector('.breedBox86.back'),fr=tank.querySelector('.breedBox86.front');
+     if(b&&b.owned){
+      if(!bk){bk=document.createElement('div');bk.className='breedBox86 back';bk.innerHTML='<div class="bbEggs"></div>';tank.append(bk);}
+      if(!fr){fr=document.createElement('div');fr.className='breedBox86 front';tank.append(fr);}
+      /* eggs on the box floor */
+      const sp=st.corySpawn,E=sp&&sp.tank==='box'?(st.coryEggs81||[]):[],L=bk.querySelector('.bbEggs'),sig=E.length+'|'+st.day;
+      if(L.dataset.sig!==sig){L.dataset.sig=sig;L.innerHTML='';const W=bk.offsetWidth,Hh=bk.offsetHeight;
+       E.forEach((e,i)=>{const d=document.createElement('i');d.className=window.coryEggClassV1781?coryEggClassV1781(e):'coryEgg81';d.style.animation='none';
+        const n=Math.max(1,E.length),jx=((i*37)%7-3),jy=((i*53)%3)*1.2;d.style.left=(W*(.12+.76*(i+.5)/n)+jx)+'px';d.style.top=(Hh*.86-2-jy)+'px';L.append(d);});}   /* spread along the floor, where they were rolled in */
+      /* the button */
+      let btn=tank.querySelector('.box86Btn');
+      if(!btn){btn=document.createElement('button');btn.type='button';btn.className='box86Btn';btn.onclick=e=>{e.stopPropagation();toggleBreedingBoxV1786();};tank.append(btn);}
+      const ref=tank.querySelector('.liveBtn82')||tank.querySelector('.waferBtn43');btn.style.left=((ref?ref.offsetLeft+ref.offsetWidth:100)+6)+'px';
+      const y=young(),inN=b.fish.length,outN=y.length-inN,txt=outN>0?'📦 YOUNG CORY ×'+outN+' → BOX':inN?'📦 LET OUT ×'+inN:'📦 BOX';
+      if(btn.textContent!==txt)btn.textContent=txt;
+     }else{if(bk)bk.remove();if(fr)fr.remove();const btn=tank.querySelector('.box86Btn');if(btn)btn.remove();}
+    }
+   }
+  }catch(e){console.error('AFNICA breeding box',e);}
+  requestAnimationFrame(frame);
+ }
+ requestAnimationFrame(frame);
+ window.breedingBoxDebugV1786=()=>({box:st.breedingBox86});
 })();
 </script>
 </body></html>
