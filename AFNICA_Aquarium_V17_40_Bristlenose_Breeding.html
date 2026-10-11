@@ -11983,7 +11983,7 @@ window.addEventListener('load',function(){
     break;}
    case 'T':{   /* held still; she trembles in bursts; his turn eases a little */
     const k=smooth(R.t/R.holdT);
-    f.hold=true;m.hold=false;f.quiver=.3;m.quiver=.15;
+    f.hold=false;m.hold=false;f.quiver=.15;m.quiver=.15;   /* neither is a statue: the shader's gentle swim wave stays on */
     f.vx=f.vy=0;
     tpose(m,f,s,1,1-TP.relax*k,dt,8);
     /* he is not a statue: a slow small sway of his body and a gentle tail (the shader's swim wave stays on for him) */
@@ -11991,7 +11991,9 @@ window.addEventListener('load',function(){
     /* she shivers only in short spells, mostly while the eggs pass into her basket (the last seconds of the hold) */
     const late=smooth((R.t-(R.holdT-5))/2),spell=Math.pow(Math.max(0,Math.sin(R.t*1.7+.4)),6);
     const env=TP.trem*spell*(.25+.75*late);
-    f.jy=.18*env*Math.sin(R.t*2*Math.PI*9);f.ja=.3*env*Math.sin(R.t*2*Math.PI*7.3+1.1);
+    f.jy=.18*env*Math.sin(R.t*2*Math.PI*9)+.6*Math.sin(R.t*1.3+2);f.ja=.3*env*Math.sin(R.t*2*Math.PI*7.3+1.1)+.9*s*Math.sin(R.t*.8+1);   /* + her slow sway */
+    f.psi+=s*.035*Math.sin(R.t*1.1+2.4);
+    f.x+=s*1.6*Math.sin(R.t*.6)*dt;   /* small pushes forward and settling back onto him (his snout follows her flank) */
     bv=smooth((R.t-(R.holdT-4))/3.2);   /* the eggs appear in her basket */
     others.forEach((o2,i)=>{   /* the other male passes by and leaves them alone */
      if(R.t>R.holdT*.35&&!o2.pass)o2.pass={x:clamp(f.x-s*rnd(140,220),70,w-70)};
@@ -12000,14 +12002,14 @@ window.addEventListener('load',function(){
     if(R.t>=R.holdT){others.forEach(o2=>o2.pass=null);R.hk=1-TP.relax;f.jy=f.ja=0;setPhase('part');}
     break;}
    case 'part':{   /* he turns back to profile and swims off past her (behind her); she straightens and rests a moment */
-    f.hold=true;f.quiver=.2;bv=1;
+    f.hold=false;f.quiver=.1;bv=1;f.jy=.6*Math.sin(R.t*1.3);f.ja=0;
     const q=1-smooth(R.t/1.1);
     fpose(f,s,q);f.ang+=(TP.fang*s*q-f.ang)*Math.min(1,dt*3);
     if(R.t<1.1){mpose(m,s,R.hk*q);m.ang+=(TP.mang*s*R.hk*q-m.ang)*Math.min(1,dt*4);m.y+=(m.base-m.y)*Math.min(1,dt*2);}
     else{if(m.psi!=null){m.psi=null;m.face=s;}
      if(!m.away)m.away=clamp(f.x+s*rnd(150,190),70,w-70);swim(m,m.away,m.base,dt,{sp:55,hop:1,face:s});}
     others.forEach((o,i)=>idleMale(o,f,dt,tank,i));
-    if(R.t>2.4){m.away=null;f.psi=null;pickSite(tank,f);setPhase('carry');}
+    if(R.t>2.4){m.away=null;f.psi=null;f.jy=0;pickSite(tank,f);setPhase('carry');}
     break;}
    case 'carry':{   /* she takes the eggs to the glass or a leaf: along the sand, then up nose first */
     bv=1;
