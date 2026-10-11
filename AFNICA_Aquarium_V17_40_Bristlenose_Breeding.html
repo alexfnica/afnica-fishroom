@@ -12854,8 +12854,10 @@ window.addEventListener('load',function(){
   if(F&&t-(F.seen||t)>.5)F=null;   /* stale (re-render, other tank): start from a rest where it is */
   if(!F){F=s.fr84={mode:'rest',until:t+rnd(.5,larva?6:2),x0:s.x,peck:0};}
   F.seen=t;
-  if(BX&&!s.inBox86){s.inBox86=1;s.placed84=1;if(s.sh84==null)s.sh84=rnd(-1,1);s.x=clamp(BX.cx+s.sh84*BX.hw,LO,HI);s.y=BX.floor;F.x0=s.x;}   /* put in the box */
-  else if(!BX&&s.inBox86){s.inBox86=0;s.placed84=0;s.y=s.base;}   /* let out */
+  if(BX&&!s.inBox86){s.inBox86=1;s.placed84=1;if(s.sh84==null)s.sh84=rnd(-1,1);s.gl86={t0:t,x0:s.x,y0:s.y,x1:clamp(BX.cx+s.sh84*BX.hw,LO,HI),y1:BX.floor};}   /* lifted into the box (a gentle glide, no jump) */
+  else if(!BX&&s.inBox86){s.inBox86=0;const sh=shelter(tank,t);s.gl86={t0:t,x0:s.x,y0:s.y,x1:clamp(sh.x+(s.sh84||0)*sh.hw,s.radius,s.w-s.radius),y1:s.base-(s.lift84||0)};}   /* let out, back to the group */
+  if(s.gl86){const G8=s.gl86,du=G8.du||(G8.du=clamp(Math.hypot(G8.x1-G8.x0,G8.y1-G8.y0)/70,1.2,4.5)),p=clamp((t-G8.t0)/du,0,1),k=p*p*(3-2*p);s.x=G8.x0+(G8.x1-G8.x0)*k;s.y=G8.y0+(G8.y1-G8.y0)*k-14*Math.sin(Math.PI*p);s.angle+=(0-s.angle)*Math.min(1,dt*6);
+   if(p>=1){s.gl86=null;F.mode='rest';F.until=t+rnd(.5,2);F.x0=s.x;}return;}
   if(!s.placed84){s.placed84=1;const sh=shelter(tank,t);if(s.sh84==null)s.sh84=rnd(-1,1);s.x=clamp(sh.x+s.sh84*sh.hw,s.radius,s.w-s.radius);F.x0=s.x;}   /* first time in this tank: it is already with the group (it hatched here) */
   if(F.mode==='rest'){
    s.y+=(base-s.y)*Math.min(1,dt*3);
@@ -12901,7 +12903,8 @@ window.addEventListener('load',function(){
   if(p>=1){F.mode='rest';F.until=t+(larva?rnd(4,12):rnd(.6,2.4));F.peckAt=0;delete el.dataset.quiver;}
  }
  try{const _fr=window.coryFrameV1783;window.coryFrameV1783=function(s,t,dt,tank,all){
-  try{if(s.age<7){s.target=null;s.vx=s.vy=0;s.mode=s.age<=2?'yolk-rest':'fry';s.el.classList.remove('v1712DeepForage','v1712Rest');young(s,t,dt,tank);
+  try{if(s.age>=7&&(s.inBox86||s.placed84)){s.inBox86=0;s.placed84=0;s.fr84=null;s.gl86=null;s.el.style.removeProperty('z-index');}   /* grown out of the young stage: back to the normal layer */
+   if(s.age<7){s.target=null;s.vx=s.vy=0;s.mode=s.age<=2?'yolk-rest':'fry';s.el.classList.remove('v1712DeepForage','v1712Rest');young(s,t,dt,tank);
    const sh=HIDE.get(tank),z=s.inBox86?'41':sh&&sh.cover&&Math.abs(s.x-sh.x)<sh.hw+s.radius*.4?'7':'';   /* in the box: between its back and front panels */if(s.el.style.zIndex!==z){if(z)s.el.style.setProperty('z-index',z,'important');else s.el.style.removeProperty('z-index');}   /* under the cover: behind plants, wood and stones */
    return true;}}catch(e){console.error('AFNICA young cory',e);}
   return _fr?_fr.apply(this,arguments):false;
@@ -12924,7 +12927,7 @@ window.addEventListener('load',function(){
 (function(){
  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),smooth=t=>{t=clamp(t,0,1);return t*t*(3-2*t)},rnd=(a,b)=>a+Math.random()*(b-a);
  const UP=55,DOWN=48,OVER=.55,LAND=.45;   /* climb and descent speeds (px/s), pitch-over and landing pauses (s) */
- const G=new Map();   /* tank -> group bout */
+ const G=new WeakMap();   /* tank -> group bout */
  function ready(tank){
   try{const P=st.coryRitual81;if(!P||P.day!==st.day||st.corySpawn)return false;
    if(window.coryRitualDebugV1781&&coryRitualDebugV1781().R)return false;
@@ -12964,6 +12967,7 @@ window.addEventListener('load',function(){
    g=nb;G.set(tank,g);
    if(told!==st.day&&!(st.coryRitual81&&st.coryRitual81.surfTold)){told=st.day;try{st.coryRitual81.surfTold=1;st.log='🐟 The corydoras are glass surfing - they look ready to spawn.';toast('🐟 Corydoras glass surfing · a sign they are ready to spawn');}catch(e){}}
   }
+  if(g.mode==='climb'&&t-g.t0>g.cycles*g.CL+g.maxLag+.6||!g.slots.size){G.set(tank,{mode:'idle',next:t+rnd(6,14)});return false;}   /* bout over (or nobody left in it) */
   const sl=g.slots.get(s.el.dataset.fishId);if(!sl)return false;   /* joined the tank after the bout started: forages */
   if(t-(sl.seen||t)>.5){g.slots.delete(s.el.dataset.fishId);return false;}   /* we lost it for a while (dash, school): drop it from this bout */
   sl.seen=t;
@@ -12980,7 +12984,6 @@ window.addEventListener('load',function(){
    else if(u<g.U+OVER){const p=(u-g.U)/OVER;s.angle=f*(-68+120*smooth(p));s.y=top-2*Math.sin(Math.PI*p);}
    else if(u<g.U+OVER+g.D){const p=(u-g.U-OVER)/g.D;s.y=top+d*smooth(p);s.x=sl.x+Math.sin(t*5+sl.lag*9)*1.2;const lim=8+Math.max(0,base-s.y)*1.2;s.angle+=(f*Math.min(52,lim)-s.angle)*Math.min(1,dt*6);}
    else{s.y+=(base-s.y)*Math.min(1,dt*5);s.angle+=(0-s.angle)*Math.min(1,dt*6);}
-   if(t-g.t0>g.cycles*g.CL+g.maxLag+.6){G.set(tank,{mode:'idle',next:t+rnd(6,14)});}
   }
   s.vx=s.vy=0;s.target=null;s.mode='surf';s.el.classList.remove('v1712DeepForage','v1712Rest');
   return true;
@@ -12988,7 +12991,7 @@ window.addEventListener('load',function(){
  try{const _fr=window.coryFrameV1783;window.coryFrameV1783=function(s,t,dt,tank,all){
   try{
    if(s.age>=S.cory.adult&&ready(tank)){s.sx85=null;if(surf(s,t,dt,tank))return true;}
-   else{if(G.has(tank)&&!ready(tank))G.delete(tank);dt85=dt;if(s.mode==='surf'||s.sx85){if(exitFish(s,t))return true;}}
+   else{if(G.has(tank))G.delete(tank);dt85=dt;if(s.mode==='surf'||s.sx85){if(exitFish(s,t))return true;}}
   }catch(e){console.error('AFNICA cory glass surfing',e);}
   return _fr?_fr.apply(this,arguments):false;
  };}catch(e){console.error('AFNICA V17.85 hook',e);}
@@ -13024,10 +13027,14 @@ window.addEventListener('load',function(){
  /* rect of the box floor for a fish that is in it (used by the V17.84 young-cory motion) */
  window.breedBoxV1786=function(tank,id){
   if(!tank||tank.id!=='tank-fry'||!inBox(id))return null;
-  const el=tank.querySelector('.breedBox86.back');if(!el)return null;
+  let el=tank.querySelector('.breedBox86.back');if(!el){ensureBox(tank);el=tank.querySelector('.breedBox86.back');}if(!el)return null;
   const l=el.offsetLeft+6,r=el.offsetLeft+el.offsetWidth-6,floor=el.offsetTop+el.offsetHeight*.86;
   return {l,r,cx:(l+r)/2,hw:(r-l)/2*.75,floor};
  };
+ function ensureBox(tank){   /* also called from the motion code, so the box is there in the same frame as a re-render */
+  if(!tank.querySelector('.breedBox86.back')){const bk=document.createElement('div');bk.className='breedBox86 back';bk.innerHTML='<div class="bbEggs"></div>';tank.append(bk);}
+  if(!tank.querySelector('.breedBox86.front')){const fr=document.createElement('div');fr.className='breedBox86 front';tank.append(fr);}
+ }
  /* at the front glass: a little bigger */
  try{const _sz=sizeFor;sizeFor=function(f){const v=_sz.apply(this,arguments);try{if(f&&inBox(f.id))return v*1.2;}catch(e){}return v;};}catch(e){}
  /* shop */
@@ -13046,7 +13053,7 @@ window.addEventListener('load',function(){
   if(out.length){out.forEach(f=>b.fish.push(String(f.id)));toast('📦 '+out.length+' young corydoras moved into the breeding box');}
   else if(b.fish.length){const n=b.fish.length;b.fish=[];toast('📦 '+n+' young corydoras let out into the Fry Tank');}
   else return toast('No young corydoras in the Fry Tank');
-  save();try{switchTankV8('fry');}catch(e){}
+  save();   /* no re-render: that would redraw every fish at its default spot for a frame (the x1.2 size follows at the next render) */
  };
  /* eggs into the box */
  try{const _mv=window.moveCoryEggsV1781;window.moveCoryEggsV1781=function(){
@@ -13069,14 +13076,13 @@ window.addEventListener('load',function(){
    if(!document.hidden&&now-last>250){last=now;
     const b=st.breedingBox86,tank=document.getElementById('tank-fry');
     if(b&&b.owned){   /* too big for the box at 7 days, or gone */
-     const ok=new Set(young().map(f=>String(f.id))),n0=b.fish.length;b.fish=b.fish.filter(id=>ok.has(id));
-     if(b.fish.length<n0){const grown=(st.fry||[]).some(f=>n0&&f.species==='cory'&&f.age>=7);save();if(grown)try{toast('📦 Juvenile corydoras let out of the breeding box - they are too big now');}catch(e){}}
+     const ok=new Set(young().map(f=>String(f.id))),gone=b.fish.filter(id=>!ok.has(id));b.fish=b.fish.filter(id=>ok.has(id));
+     if(gone.length){const grown=(st.fry||[]).some(f=>gone.includes(String(f.id))&&!f.dead&&f.age>=7);save();if(grown)try{toast('📦 Juvenile corydoras let out of the breeding box - they are too big now');}catch(e){}}
     }
     if(tank){
      let bk=tank.querySelector('.breedBox86.back'),fr=tank.querySelector('.breedBox86.front');
      if(b&&b.owned){
-      if(!bk){bk=document.createElement('div');bk.className='breedBox86 back';bk.innerHTML='<div class="bbEggs"></div>';tank.append(bk);}
-      if(!fr){fr=document.createElement('div');fr.className='breedBox86 front';tank.append(fr);}
+      if(!bk||!fr){ensureBox(tank);bk=tank.querySelector('.breedBox86.back');fr=tank.querySelector('.breedBox86.front');}
       /* eggs on the box floor */
       const sp=st.corySpawn,E=sp&&sp.tank==='box'?(st.coryEggs81||[]):[],L=bk.querySelector('.bbEggs'),sig=E.length+'|'+st.day;
       if(L.dataset.sig!==sig){L.dataset.sig=sig;L.innerHTML='';const W=bk.offsetWidth,Hh=bk.offsetHeight;
