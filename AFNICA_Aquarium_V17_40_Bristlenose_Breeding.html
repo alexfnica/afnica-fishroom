@@ -12877,71 +12877,86 @@ window.addEventListener('load',function(){
 })();
 </script>
 <script>
-/* ===== V17.85 GLASS SURFING BEFORE SPAWNING =====
-   Owner: when adult and full-grown corydoras are ready to spawn, before the ritual, they swim up and down the front or
-   side glass again and again - the telltale sign. On a spawning day (st.coryRitual81 pending, V17.81), until the ritual
-   starts, every adult cory in the Main Tank does bouts of 2-4 climbs: nose up along the glass (front glass where it is,
-   or the nearest side glass), a pitch over at the top, head first back down, level out on the sand, again. Between
-   bouts it forages normally (4-12 s). The wait before the ritual is longer now (60-140 s of watching), so the sign shows.
-   Driven through the V17.83 per-frame hook; nothing is saved. */
+/* ===== V17.85 GLASS SURFING BEFORE SPAWNING (as a group) =====
+   Owner: when adult and full-grown corydoras are ready to spawn, before the ritual, they go up and down the front or side
+   glass again and again - AS A GROUP - the telltale sign. On a spawning day (st.coryRitual81 pending, V17.81), until the
+   ritual starts, the adult cory of the Main Tank gather at one spot of the front glass (side by side) or at a side glass
+   (in a tight bunch) and climb together: 2-4 climbs per bout on one shared rhythm, each fish a fraction of a second
+   behind the one before - nose up along the glass, a pitch over at the top, head first back down, level out on the sand,
+   again. Between bouts the group forages for 6-14 s. The wait before the ritual is 60-140 s of watching (V17.81 roll).
+   Driven through the V17.83 per-frame hook; nothing saved except a "told" flag on the pending ritual. */
 (function(){
  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),smooth=t=>{t=clamp(t,0,1);return t*t*(3-2*t)},rnd=(a,b)=>a+Math.random()*(b-a);
+ const UP=55,DOWN=48,OVER=.55,LAND=.45;   /* climb and descent speeds (px/s), pitch-over and landing pauses (s) */
+ const G=new Map();   /* tank -> group bout */
  function ready(tank){
   try{const P=st.coryRitual81;if(!P||P.day!==st.day||st.corySpawn)return false;
    if(window.coryRitualDebugV1781&&coryRitualDebugV1781().R)return false;
    return tank.id==='tank-main'&&!tank.matches('.waterChanging,.persistentWaterActive');}catch(e){return false;}
  }
+ function adultsIn(tank){return [...tank.querySelectorAll('.modelFish[data-species="cory"]:not(.deadFish):not(.coryBreeding)')].filter(el=>{const f=(st.fish||[]).find(x=>String(x.id)===el.dataset.fishId);return f&&f.age>=S.cory.adult;});}
+ function newBout(tank,t,s){
+  const els=adultsIn(tank);if(!els.length)return null;
+  const tr=tank.getBoundingClientRect(),xs=els.map(el=>{const r=el.getBoundingClientRect();return r.left+r.width/2-tr.left;});
+  const cx=xs.reduce((a,b)=>a+b,0)/xs.length,w=tank.clientWidth,body=els[0].offsetWidth*s.scale,H=tank.clientHeight;
+  const side=Math.random()<.3,order=els.map((el,i)=>({id:el.dataset.fishId,x:xs[i]})).sort((a,b)=>a.x-b.x);
+  const wallX=cx<w/2?s.radius+2:w-s.radius-2,n=order.length,slots=new Map();
+  const lags=order.map((_,i)=>i).sort(()=>Math.random()-.5);
+  order.forEach((o,i)=>{
+   const x=side?clamp(wallX+(cx<w/2?1:-1)*(i%3)*6,s.radius,w-s.radius):clamp(cx+(i-(n-1)/2)*body*.48,s.radius,w-s.radius);
+   slots.set(o.id,{x,lag:lags[i]*rnd(.18,.32),dtop:rnd(-14,14)});
+  });
+  const top=Math.max(els[0].offsetHeight*s.scale/2+14,H*rnd(.12,.3));
+  return {mode:'gather',t0:t,slots,top,cycles:2+Math.floor(Math.random()*3),side};
+ }
  let told=-1;
+ function exitFish(s,t){   /* the bout ended under it (ritual started): glide down from where it is */
+  let X=s.sx85;if(!X){if(s.y>=s.base-3)return false;X=s.sx85={t0:t,y0:s.y};}
+  const d=Math.max(10,s.base-X.y0),p=clamp((t-X.t0)/(d/DOWN),0,1),f=s.face<0?-1:1;
+  s.y=X.y0+d*smooth(p);const lim=8+Math.max(0,s.base-s.y)*1.2;s.angle+=(f*Math.min(52,lim)*(1-p)-s.angle)*Math.min(1,dt85*6);
+  if(p>=1){s.sx85=null;return false;}
+  s.vx=s.vy=0;s.target=null;s.mode='surf';return true;
+ }
+ let dt85=.016;
  function surf(s,t,dt,tank){
-  let Q=s.sf85;
-  if(Q&&t-(Q.seen||t)>.5){   /* we lost the fish for a while (ritual, air dash, school, other tank): pick up from where it is now */
-   Q=s.sf85=s.y<s.base-3?{mode:'down',t0:t,y0:s.y,x:s.x,cycles:0,top:s.y}:{mode:'idle',next:t+rnd(2,6)};
-  }
-  if(!Q)Q=s.sf85={mode:'idle',next:t+rnd(.5,6)};
-  Q.seen=t;
-  const f=s.face<0?-1:1,H=tank.clientHeight,top=Math.max(s.el.offsetHeight*s.scale/2+14,H*rnd(.12,.18));
-  if(Q.mode==='idle'){
-   if(t<Q.next)return false;
-   const side=Math.random()<.3,w=s.w;
-   Q.x=side?(s.x<w/2?s.radius+2:w-s.radius-2):clamp(s.x,s.radius,w-s.radius);
-   Q.cycles=2+Math.floor(Math.random()*3);Q.top=top+rnd(0,H*.25);Q.mode=Math.abs(Q.x-s.x)>4?'go':'up';Q.t0=t;Q.y0=s.y;
+  dt85=dt;
+  let g=G.get(tank);
+  if(!g||g.mode==='idle'){
+   if(!g){g={mode:'idle',next:t+rnd(.5,4)};G.set(tank,g);}
+   if(t<g.next)return false;
+   const nb=newBout(tank,t,s);if(!nb){g.next=t+3;return false;}
+   g=nb;G.set(tank,g);
    if(told!==st.day&&!(st.coryRitual81&&st.coryRitual81.surfTold)){told=st.day;try{st.coryRitual81.surfTold=1;st.log='🐟 The corydoras are glass surfing - they look ready to spawn.';toast('🐟 Corydoras glass surfing · a sign they are ready to spawn');}catch(e){}}
   }
-  if(Q.mode==='go'){   /* to the spot on the glass, along the sand */
-   const dx=Q.x-s.x,v=Math.min(45,Math.abs(dx)*2)*Math.sign(dx);s.x+=v*dt;if(Math.abs(v)>2)s.face+=(Math.sign(v)-s.face)*Math.min(1,dt*4.6);
-   s.y+=(s.base-s.y)*Math.min(1,dt*3);s.angle+=(0-s.angle)*Math.min(1,dt*5);
-   if(Math.abs(dx)<3){Q.mode='up';Q.t0=t;Q.y0=s.y;}
-  }else if(Q.mode==='up'){   /* nose up, climbing the glass */
-   const d=Math.max(20,Q.y0-Q.top),dur=d/55,p=clamp((t-Q.t0)/dur,0,1);
-   s.y=Q.y0-d*smooth(p);s.x=Q.x+Math.sin(t*5)*1.2;
-   s.angle+=(-68*f*smooth(Math.min(1,p*4))-s.angle)*Math.min(1,dt*7);
-   if(p>=1){Q.mode='over';Q.t0=t;}
-  }else if(Q.mode==='over'){   /* at the top it pitches over, head first down */
-   const p=clamp((t-Q.t0)/.55,0,1);s.angle=f*(-68+120*smooth(p));s.y=Q.top-2*Math.sin(Math.PI*p);
-   if(p>=1){Q.mode='down';Q.t0=t;Q.y0=s.y;}
-  }else if(Q.mode==='down'){
-   const d=Math.max(10,s.base-Q.y0),dur=d/48,p=clamp((t-Q.t0)/dur,0,1);
-   s.y=Q.y0+d*smooth(p);s.x=Q.x+Math.sin(t*5)*1.2;
-   const lim=8+Math.max(0,s.base-s.y)*1.2;s.angle+=(f*Math.min(52,lim)-s.angle)*Math.min(1,dt*6);   /* levels out before the sand */
-   if(p>=1){Q.cycles--;Q.mode='land';Q.t0=t;}
-  }else if(Q.mode==='land'){
-   s.angle+=(0-s.angle)*Math.min(1,dt*6);s.y+=(s.base-s.y)*Math.min(1,dt*4);
-   if(t-Q.t0>rnd(.3,.6)){if(Q.cycles>0){Q.mode='up';Q.t0=t;Q.y0=s.y;Q.top=top+rnd(0,H*.25);}else{Q.mode='idle';Q.next=t+rnd(4,12);return false;}}
+  const sl=g.slots.get(s.el.dataset.fishId);if(!sl)return false;   /* joined the tank after the bout started: forages */
+  if(t-(sl.seen||t)>.5){g.slots.delete(s.el.dataset.fishId);return false;}   /* we lost it for a while (dash, school): drop it from this bout */
+  sl.seen=t;
+  const f=s.face<0?-1:1,base=s.base,top=g.top+sl.dtop,d=Math.max(20,base-top);
+  if(g.mode==='gather'){   /* everybody to his place on the glass, along the sand */
+   const dx=sl.x-s.x,v=Math.min(48,Math.abs(dx)*2.2)*Math.sign(dx);s.x+=v*dt;if(Math.abs(v)>2)s.face+=(Math.sign(v)-s.face)*Math.min(1,dt*4.6);
+   s.y+=(base-s.y)*Math.min(1,dt*3);s.angle+=(0-s.angle)*Math.min(1,dt*5);
+   sl.at=Math.abs(dx)<3;
+   if([...g.slots.values()].every(q=>q.at)||t-g.t0>7){g.mode='climb';g.t0=t+.35;g.U=Math.max(20,base-g.top)/UP;g.D=Math.max(10,base-g.top)/DOWN;g.CL=g.U+OVER+g.D+LAND;g.maxLag=Math.max(...[...g.slots.values()].map(q=>q.lag));}
+  }else{   /* one shared rhythm, each fish a little behind the one before */
+   const T=t-g.t0-sl.lag,c=Math.floor(T/g.CL),u=T-c*g.CL;
+   if(T<0||c>=g.cycles){s.y+=(base-s.y)*Math.min(1,dt*4);s.angle+=(0-s.angle)*Math.min(1,dt*6);s.x+=(sl.x-s.x)*Math.min(1,dt*2);}
+   else if(u<g.U){const p=u/g.U;s.y=base-d*smooth(p);s.x=sl.x+Math.sin(t*5+sl.lag*9)*1.2;s.angle+=(-68*f*smooth(Math.min(1,p*4))-s.angle)*Math.min(1,dt*7);}
+   else if(u<g.U+OVER){const p=(u-g.U)/OVER;s.angle=f*(-68+120*smooth(p));s.y=top-2*Math.sin(Math.PI*p);}
+   else if(u<g.U+OVER+g.D){const p=(u-g.U-OVER)/g.D;s.y=top+d*smooth(p);s.x=sl.x+Math.sin(t*5+sl.lag*9)*1.2;const lim=8+Math.max(0,base-s.y)*1.2;s.angle+=(f*Math.min(52,lim)-s.angle)*Math.min(1,dt*6);}
+   else{s.y+=(base-s.y)*Math.min(1,dt*5);s.angle+=(0-s.angle)*Math.min(1,dt*6);}
+   if(t-g.t0>g.cycles*g.CL+g.maxLag+.6){G.set(tank,{mode:'idle',next:t+rnd(6,14)});}
   }
   s.vx=s.vy=0;s.target=null;s.mode='surf';s.el.classList.remove('v1712DeepForage','v1712Rest');
   return true;
  }
  try{const _fr=window.coryFrameV1783;window.coryFrameV1783=function(s,t,dt,tank,all){
   try{
-   if(s.age>=S.cory.adult&&ready(tank)){if(surf(s,t,dt,tank))return true;}
-   else if(s.sf85){   /* no longer due: finish the climb (pitch over where it is, glide down), then stop */
-    const Q=s.sf85;Q.cycles=0;
-    if(Q.mode==='idle'||Q.mode==='go'||t-(Q.seen||t)>.5)s.sf85=null;   /* stale: nothing to finish */
-    else{if(Q.mode==='up'){Q.mode='over';Q.t0=t;Q.top=s.y;}if(surf(s,t,dt,tank))return true;s.sf85=null;}
-   }
+   if(s.age>=S.cory.adult&&ready(tank)){s.sx85=null;if(surf(s,t,dt,tank))return true;}
+   else{if(G.has(tank)&&!ready(tank))G.delete(tank);dt85=dt;if(s.mode==='surf'||s.sx85){if(exitFish(s,t))return true;}}
   }catch(e){console.error('AFNICA cory glass surfing',e);}
   return _fr?_fr.apply(this,arguments):false;
  };}catch(e){console.error('AFNICA V17.85 hook',e);}
+ window.glassSurfDebugV1785=()=>({G});
 })();
 </script>
 </body></html>
