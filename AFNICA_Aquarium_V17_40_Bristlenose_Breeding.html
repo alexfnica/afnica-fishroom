@@ -11758,6 +11758,7 @@ window.addEventListener('load',function(){
   let tgt=o.ang!=null?o.ang:0;
   if(o.ang==null){const s=Math.hypot(c.vx,c.vy);if(s>6){const ph=c.face>0?Math.atan2(c.vy,c.vx):Math.atan2(-c.vy,-c.vx);tgt=clamp(ph*180/Math.PI,-72,72)*Math.min(1,s/35);}
    if(c.y>c.base-6&&tgt*sg(c)<0)tgt*=.35;}                                /* along the sand: stay level */
+  if(tgt*sg(c)>0){const lim=8+Math.max(0,c.base-c.y)*1.2;if(Math.abs(tgt)>lim)tgt=sg(c)*lim;}   /* coming down: level out before the sand, never nose into it */
   c.ang+=(tgt-c.ang)*Math.min(1,dt*(o.angK||5));
   return d;
  }
@@ -11982,11 +11983,15 @@ window.addEventListener('load',function(){
     break;}
    case 'T':{   /* held still; she trembles in bursts; his turn eases a little */
     const k=smooth(R.t/R.holdT);
-    f.hold=m.hold=true;f.quiver=m.quiver=.3;
+    f.hold=true;m.hold=false;f.quiver=.3;m.quiver=.15;
     f.vx=f.vy=0;
     tpose(m,f,s,1,1-TP.relax*k,dt,8);
-    const env=TP.trem*(.35+.65*Math.pow(Math.max(0,Math.sin(R.t*1.1+.4)),3));   /* a steady faint shiver, stronger bursts every few seconds */
-    f.jy=.45*env*Math.sin(R.t*2*Math.PI*10.5);f.ja=.8*env*Math.sin(R.t*2*Math.PI*8.3+1.1);
+    /* he is not a statue: a slow small sway of his body and a gentle tail (the shader's swim wave stays on for him) */
+    m.psi+=s*.05*Math.sin(R.t*1.5+.7);m.ang+=1.2*s*Math.sin(R.t*1.1)*dt;m.y+=.35*Math.sin(R.t*1.9)*dt*2;
+    /* she shivers only in short spells, mostly while the eggs pass into her basket (the last seconds of the hold) */
+    const late=smooth((R.t-(R.holdT-5))/2),spell=Math.pow(Math.max(0,Math.sin(R.t*1.7+.4)),6);
+    const env=TP.trem*spell*(.25+.75*late);
+    f.jy=.18*env*Math.sin(R.t*2*Math.PI*9);f.ja=.3*env*Math.sin(R.t*2*Math.PI*7.3+1.1);
     bv=smooth((R.t-(R.holdT-4))/3.2);   /* the eggs appear in her basket */
     others.forEach((o2,i)=>{   /* the other male passes by and leaves them alone */
      if(R.t>R.holdT*.35&&!o2.pass)o2.pass={x:clamp(f.x-s*rnd(140,220),70,w-70)};
