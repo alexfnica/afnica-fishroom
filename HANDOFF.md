@@ -19,6 +19,12 @@ Successive rounds alternate males. Eggs: 5 px, translucent white with a pale yel
 `st.corySpawn={startDay,endDay:day+1,count:75% of eggs,v81:true}` is created at the first egg; `finishCorySpawnV172` (wrapped) hatches
 them next day and clears `st.coryEggs81`. The old PNG `.coryEggCluster` is hidden for v81 spawns.
 
+**T in 3D (second pass):** the male in the T is drawn by the V17.75 3D shader (`data-m3/psi/bank/thk/still` on the cory element; the
+generic GL branch in V17.42 now passes `bank` and a thickness `thk` for cory only, default .12 there, .075 used here - more than ~.1 splits
+the two flanks into a ring). He arrives in profile, turns his head toward us and toward her (`psi` from heading to PI/2+s*d0), holds,
+opens to d1 (the V; more than ~.65 starts to look like a face-to-face stare), then turns back to profile and the flat sprite takes over.
+`TP` = {d0,d1,bank,thk,dx,dy,z}.
+
 **Measured (headless, 2M+1F, 3 full rituals):** no console errors, 0 backward-swimming frames, max step 4 px/frame (female), 6.8 (males in
 the glass chase), re-render mid-T and tank switch OK (pauses), hatch -> fry OK. aquarium-reviewer: no blockers.
 

@@ -8327,7 +8327,7 @@ let BEND=0,SIG=0,SFL=0,SWRG=null;   /* SWRG (V17.75): [u,v] sword root of a swor
    const th=Math.max(-1.6,Math.min(1.6,b))/1.6*MAXDEG*Math.PI/180;
    gl.uniform2f(loc.uCanvas,c.width,c.height);gl.uniform1f(loc.uW,r.W);gl.uniform1f(loc.uH,r.H);gl.uniform1f(loc.uPad,r.pad);
    gl.uniform1f(loc.uHinge,HINGE);gl.uniform1f(loc.uK,th/(HINGE*r.W));gl.uniform1f(loc.uD,.75*r.W);
-   gl.uniform1f(loc.uPh,ph);gl.uniform1f(loc.uAmp,.035);gl.uniform1f(loc.uGono,gn||0);gl.uniform1f(loc.uFlare,fl||0);gl.uniform1f(loc.uSw,sp==='xipho'?1:0);{const SR=sp==='xipho'?swordRoot(r):[0,1];gl.uniform1f(loc.uSR,SR[0]);gl.uniform1f(loc.uSV,SR[1]);const xm=SR[0]>0?(r.x1+SR[0]*r.W)/2:(r.x1+r.x0)/2;gl.uniform1f(loc.uM3,o3?1:0);gl.uniform1f(loc.uXm,xm);if(o3){gl.uniform1f(loc.uOx,r.W/2+(xm-r.W/2)*Math.cos(o3.psi));gl.uniform1f(loc.uKap,o3.kap||0);gl.uniform1f(loc.uPsi,o3.psi);gl.uniform1f(loc.uSide,o3.side||1);gl.uniform1f(loc.uAmp3,o3.amp==null?.05:o3.amp);gl.uniform1f(loc.uBank,o3.bank||0);gl.uniform1f(loc.uD3,3*r.W);if(sp!=='xipho'){gl.uniform1f(loc.uSV,.5);}const bF=r.x1-xm,bB=(SR[0]>0?SR[0]*r.W:r.x0+.3*(r.x1-r.x0))-xm;gl.uniform1f(loc.uBm,(bF+bB)/2);gl.uniform1f(loc.uBl,Math.max(1,(bF-bB)/2));gl.uniform1f(loc.uThk,.055);}gl.uniform1f(loc.uLay,0);gl.uniform1f(loc.uPit,o3?Math.max(-.3,Math.min(.3,o3.pit||0)):0);gl.uniform1f(loc.uVk,o3&&o3.vk!==0?o3.vk/(r.W*.35):0);gl.uniform1f(loc.uKf,o3&&o3.kf!=null?o3.kf:1);   /* kf: how much the head half bends, relative to the tail half */   /* vk: total curl of the rear, radians */}   /* V17.74: a swordtail flares only the dorsal - the tail (and the sword) stay as they are */const FP=FLAREP[sp]||FLAREP.xipho;gl.uniform4f(loc.uFD,FP[0][0],FP[0][1],FP[0][2],FP[0][3]);gl.uniform4f(loc.uFB,FP[1][0],FP[1][1],FP[1][2],FP[1][3]);gl.uniform1i(loc.uTex,0);
+   gl.uniform1f(loc.uPh,ph);gl.uniform1f(loc.uAmp,.035);gl.uniform1f(loc.uGono,gn||0);gl.uniform1f(loc.uFlare,fl||0);gl.uniform1f(loc.uSw,sp==='xipho'?1:0);{const SR=sp==='xipho'?swordRoot(r):[0,1];gl.uniform1f(loc.uSR,SR[0]);gl.uniform1f(loc.uSV,SR[1]);const xm=SR[0]>0?(r.x1+SR[0]*r.W)/2:(r.x1+r.x0)/2;gl.uniform1f(loc.uM3,o3?1:0);gl.uniform1f(loc.uXm,xm);if(o3){gl.uniform1f(loc.uOx,r.W/2+(xm-r.W/2)*Math.cos(o3.psi));gl.uniform1f(loc.uKap,o3.kap||0);gl.uniform1f(loc.uPsi,o3.psi);gl.uniform1f(loc.uSide,o3.side||1);gl.uniform1f(loc.uAmp3,o3.amp==null?.05:o3.amp);gl.uniform1f(loc.uBank,o3.bank||0);gl.uniform1f(loc.uD3,3*r.W);if(sp!=='xipho'){gl.uniform1f(loc.uSV,.5);}const bF=r.x1-xm,bB=(SR[0]>0?SR[0]*r.W:r.x0+.3*(r.x1-r.x0))-xm;gl.uniform1f(loc.uBm,(bF+bB)/2);gl.uniform1f(loc.uBl,Math.max(1,(bF-bB)/2));gl.uniform1f(loc.uThk,o3.thk||.055);}gl.uniform1f(loc.uLay,0);gl.uniform1f(loc.uPit,o3?Math.max(-.3,Math.min(.3,o3.pit||0)):0);gl.uniform1f(loc.uVk,o3&&o3.vk!==0?o3.vk/(r.W*.35):0);gl.uniform1f(loc.uKf,o3&&o3.kf!=null?o3.kf:1);   /* kf: how much the head half bends, relative to the tail half */   /* vk: total curl of the rear, radians */}   /* V17.74: a swordtail flares only the dorsal - the tail (and the sword) stay as they are */const FP=FLAREP[sp]||FLAREP.xipho;gl.uniform4f(loc.uFD,FP[0][0],FP[0][1],FP[0][2],FP[0][3]);gl.uniform4f(loc.uFB,FP[1][0],FP[1][1],FP[1][2],FP[1][3]);gl.uniform1i(loc.uTex,0);
    if(o3){gl.uniform1f(loc.uLay,1);gl.drawElements(gl.TRIANGLES,GLB.n,gl.UNSIGNED_SHORT,0);gl.uniform1f(loc.uLay,-1);}   /* V17.75: two flanks, body thickness between them */
    gl.drawElements(gl.TRIANGLES,GLB.n,gl.UNSIGNED_SHORT,0);
    const g=c.getContext('2d');g.clearRect(0,0,c.width,c.height);g.globalAlpha=1;g.drawImage(cv,0,cv.height-c.height,c.width,c.height,0,0,c.width,c.height);
@@ -8831,7 +8831,7 @@ let BEND=0,SIG=0,SFL=0,SWRG=null;   /* SWRG (V17.75): [u,v] sword root of a swor
        draw(c,rr,s.ph,(rush?.07:dig?.012:(.02+.035*sp)*s.cfg.a)*(1+(s.cfg.e?1.2:2.2)*turn)*(shim?.3:wk1?1.8:1),dig?.2:rush?0:1-sp,shim?.15:dig?.3:rush?.2:1,dig?.010*jab+.004*Math.sin(s.ph*1.3):0,0,0,shim?shim*1.4:wk1?.7:0,+s.fe.dataset.belly||0);const MW=/^(xipho|guppy|molly|platy)\|(adult|full)_m/.test(c.dataset.wk||"");   /* V17.63: adult and full-grown males, any tail form */
        s.gl=false;if(MW){s.fl=(s.fl||0)+((+s.fe.dataset.flare||0)-(s.fl||0))*Math.min(1,dt*5);const o3=s.fe.dataset.m3==='1'?{psi:+s.fe.dataset.psi||0,kap:+s.fe.dataset.kap||0,side:+s.fe.dataset.side||1,amp:.03+.08*sp+.05*(+s.fe.dataset.quiver||0),bank:+s.fe.dataset.bank||0,pit:+s.fe.dataset.pit||0,vk:+s.fe.dataset.vk||0,kf:s.fe.dataset.kf!=null?+s.fe.dataset.kf:1}:null;s.o3=!!o3;if(o3&&s.fe.dataset.still!=='1'){const sk=o3.kap*o3.side+(.55*sp+.08)*Math.sin(s.ph+1.3)/(rr.W*.6);o3.side=sk>=0?1:-1;o3.kap=Math.abs(sk);}else if(o3)o3.amp=.004;   /* data-still: a held pose (the courtship hook) - no swim wave, no tail beat */   /* V17.75 swimming: the whole body flexes with the tail beat */if(Math.abs(s.bd)>.03||s.fl>.02||o3){const bb=s.bd+.1*Math.sin(s.ph*.45)*Math.min(1,Math.abs(s.bd)*1.5);if(/^molly\|/.test(c.dataset.wk))s.gl=glBent(c,rr,o3?0:bb,s.ph,0,s.fl*(.55+.6*(+s.fe.dataset.dfin||.6)),"molly",o3);else if(/^xipho\|(adult|full)_m$/.test(c.dataset.wk)){s.gl=glBent(c,rr,o3?0:bb,s.ph,0,s.fl,"xipho",o3);if(!s.gl&&Math.abs(s.bd)>.03){bentDraw(c,rr,bb);s.gl=true;}}}const gsp=window.gonoKeyV1773?gonoKeyV1773(c.dataset.wk):c.dataset.wk.split("|")[0],gL=(+s.fe.dataset.gonoLen||1)*((window.GONO_V1744[gsp]||{}).len||0);   /* V17.63 per-fish rod length */
        if(+s.fe.dataset.gono>.01)drawGono(c,rr,+s.fe.dataset.gono,gL,s.fe.dataset.gonoOver==="1",gsp);else if(+s.fe.dataset.gonoLen>1.2)drawGono(c,rr,.12,gL*.5,false,gsp);}   /* a long lyretail gonopodium shows even at rest */
-      if(!s.gl&&s.fe.dataset.m3==='1'){const ds=s.fe.dataset,o3g={psi:+ds.psi||0,kap:+ds.kap||0,side:+ds.side||1,amp:.03+.08*sp,bank:0,pit:+ds.pit||0};s.gl=glBent(c,rr,0,s.ph,0,0,/^xipho\|(adult|full)_m$/.test(c.dataset.wk||'')?'xipho':'gen',o3g);s.o3=s.gl;}   /* V17.75 3D turns of every livebearer / neon */
+      if(!s.gl&&s.fe.dataset.m3==='1'){const ds=s.fe.dataset,cy=ds.species==='cory',o3g={psi:+ds.psi||0,kap:+ds.kap||0,side:+ds.side||1,amp:cy&&ds.still==='1'?.004:.03+.08*sp,bank:cy?+ds.bank||0:0,pit:+ds.pit||0,thk:cy?+ds.thk||.12:0};   /* V17.81: a cory is a round-bodied fish (thicker) and may lie on its side (spawning T) */s.gl=glBent(c,rr,0,s.ph,0,0,/^xipho\|(adult|full)_m$/.test(c.dataset.wk||'')?'xipho':'gen',o3g);s.o3=s.gl;}   /* V17.75 3D turns of every livebearer / neon */
       if(window.finGrowV1763&&!s.gl)finGrowV1763(c,rr,s);s.gl=false;   /* V17.75: the bigger dorsal is painted onto the FLAT sprite only - over a bent or 3D fish it landed in the wrong place */   /* V17.63 bigger dorsal with age, long anal fin */
        if(!s.o3){pectoral(c,rr,s,dt,dig?.0:sp);breathe(c,rr,s,dt,sp);}s.o3=false;if(s.shF>.02&&window.shimFilmV1767)shimFilmV1767(c,s.shF);   /* V17.67 faint white film while shimmying */   /* V17.55 pectorals, V17.53 gills and mouth */WEXP=2.3;BEND=0;SIG=0;SFL=0;TBR=1;SWRG=null;                                               // back to the default for everything else (Ancistrus etc.)
      }catch(e){s.bad=true;console.error('AFNICA fin motion (fish)',e);}         // one bad fish must not stop the others
@@ -11672,8 +11672,10 @@ window.addEventListener('load',function(){
  const BASKET=[.52,.90];      /* clasped pelvic fins, fractions of the fish box (facing right) */
  const SNOUT=[.95,.70];       /* her snout tip */
  const FLANK=[.60,.55];       /* his flank just behind the pectoral */
- const TP={f0:-.08,f1:-.24,a0:-8,a1:-14,dx:10,dy:-4,z:32};   /* T pose of the male, beside her snout and nearly facing us: turn (0 = head-on; minus = his head toward her)
-    and tilt at the start/end of the hold (the T opens into a V, heads together), offset from her snout, drawn in front of her */
+ const TP={f0:-.08,f1:-.08,a0:0,a1:0,dx:12,dy:-4,z:32,d0:.42,d1:.6,bank:.3,thk:.075};   /* T pose of the male, beside her snout, drawn in 3D (V17.75 shader):
+    yaw PI/2 = facing us, turned d0 (start of the hold) to d1 (end: the T opens into a V, heads together) toward her, banked
+    (lying slightly on his side); f/a/dx/dy place him (flat-sprite geometry), drawn in front of her */
+ const yawT=(s,d)=>Math.PI/2+s*d,head=s=>s>0?0:Math.PI;   /* her side: s = the way she faces */
  const ctl=new Map();         /* fish id -> controlled state */
  let R=null,last=now(),prevW=null,prevDay=null;
 
@@ -11706,7 +11708,7 @@ window.addEventListener('load',function(){
   el.classList.remove('coryBreeding','coryRitual81');
   el.style.removeProperty('z-index');
   const b=el.querySelector('.coryBasket81');if(b)b.remove();
-  delete el.dataset.quiver;
+  delete el.dataset.quiver;['m3','psi','kap','pit','bank','thk','still'].forEach(k=>delete el.dataset[k]);c.psi=null;
   setTimeout(()=>{delete el.dataset.coryFace;delete el.dataset.coryAng;},300);
  }
  function fs(c){return .28+.72*Math.abs(c.face);}                       /* projected length: narrow mid-turn, never a card */
@@ -11740,13 +11742,15 @@ window.addEventListener('load',function(){
  function draw(c,tank){
   const el=c.el;if(!el)return;
   c.x=clamp(c.x,18,tank.clientWidth-18);c.y=clamp(c.y,c.H*c.sc/2+8,c.base+2);
-  const sx=sg(c)*fs(c);
+  const g3=c.psi!=null;   /* 3D yaw through the V17.75 shader: the element stays unmirrored, the GL draw turns the body */
+  const sx=g3?1:sg(c)*fs(c);
   const props={animation:'none',transition:'none',left:(c.x-c.W/2)+'px',top:(c.y-c.H/2)+'px',right:'auto',bottom:'auto','transform-origin':'center',translate:'none',rotate:'none',transform:`rotate(${c.ang.toFixed(2)}deg) scale(${c.sc}) scaleX(${sx.toFixed(4)})`,'z-index':String(c.z)};
   for(const [k,v] of Object.entries(props))el.style.setProperty(k,v,'important');
   el.dataset.coryFace=c.face.toFixed(4);el.dataset.coryAng=c.ang.toFixed(2);
   el.dataset.coryMotion='spawn';el.dataset.coryJab='0';
   el.dataset.turn=c.hold?'0':(1-Math.abs(c.face)).toFixed(2);
   if(c.quiver>0)el.dataset.quiver=c.quiver.toFixed(2);else delete el.dataset.quiver;
+  if(g3){el.dataset.m3='1';el.dataset.psi=c.psi.toFixed(3);el.dataset.kap='0';el.dataset.pit=(c.pit||0).toFixed(3);el.dataset.bank=(c.bank||0).toFixed(3);el.dataset.thk=(c.thk||.12).toFixed(3);el.dataset.still=c.hold?'1':'0';}else if(el.dataset.m3){['m3','psi','kap','pit','bank','thk','still'].forEach(k=>delete el.dataset[k]);}
  }
  /* the egg basket between her clasped pelvic fins */
  function basket(c,v,n){
@@ -11936,6 +11940,7 @@ window.addEventListener('load',function(){
      const k=smooth((R.t-R.cutB)/1.3);
      turnTo(m,s*(1-(1-TP.f0)*k),dt,6);
      m.ang+=(-TP.a0*s*k-m.ang)*Math.min(1,dt*4);
+     m.psi=head(s)+(yawT(s,TP.d0)-head(s))*k;m.bank=TP.bank*s*k;m.thk=TP.thk;
      const o=offAt(m,FLANK[0],FLANK[1],m.ang,m.face);
      const tx=sn.x-o.x+s*TP.dx;
      if((tx-m.x)*s>0||k>.95)ease(m,tx,Math.min(m.base-1,sn.y-o.y+TP.dy),dt,3+6*k);else ease(m,m.x,Math.min(m.base-1,sn.y-o.y+TP.dy),dt,3+6*k);   /* settles forward only */
@@ -11948,7 +11953,7 @@ window.addEventListener('load',function(){
     f.hold=m.hold=true;f.quiver=m.quiver=.35;
     f.vx=f.vy=0;f.ang+=(3*s-f.ang)*Math.min(1,dt*2);
     f.face=s;
-    m.face=s*(TP.f0+(TP.f1-TP.f0)*k);m.ang=-(TP.a0+(TP.a1-TP.a0)*k)*s;m.z=TP.z;
+    m.face=s*(TP.f0+(TP.f1-TP.f0)*k);m.ang=-(TP.a0+(TP.a1-TP.a0)*k)*s;m.z=TP.z;m.psi=yawT(s,TP.d0+(TP.d1-TP.d0)*k);m.bank=TP.bank*s;m.thk=TP.thk;
     const sn=pt(f,SNOUT[0],SNOUT[1]),o=offAt(m,FLANK[0],FLANK[1],m.ang,m.face);
     ease(m,sn.x-o.x+s*TP.dx,Math.min(m.base-1,sn.y-o.y+TP.dy),dt,8);
     bv=smooth((R.t-(R.holdT-4))/3.2);   /* the eggs appear in her basket */
@@ -11962,8 +11967,9 @@ window.addEventListener('load',function(){
     f.hold=true;f.quiver=.2;bv=1;
     swim(f,f.x,f.base,dt,{sp:4,face:s});
     const gx=clamp(f.x+s*rnd(150,190),70,w-70);
-    if(R.t<.9){turnTo(m,s,dt,3.2);m.ang+=(0-m.ang)*Math.min(1,dt*4);}
-    else{if(!m.away)m.away=gx;swim(m,m.away,m.base,dt,{sp:55,hop:1,face:s});}
+    if(R.t<1.1){turnTo(m,s,dt,3.2);m.ang+=(0-m.ang)*Math.min(1,dt*4);if(m.psi!=null){if(m.psi0==null)m.psi0=m.psi;const q=smooth(R.t/1.1);m.psi=m.psi0+(head(s)-m.psi0)*q;m.bank=TP.bank*s*(1-q);}}
+    else if(m.psi!=null){m.psi=null;m.psi0=null;m.face=s;}
+    if(R.t>=1.1){if(!m.away)m.away=gx;swim(m,m.away,m.base,dt,{sp:55,hop:1,face:s});}
     others.forEach((o,i)=>idleMale(o,f,dt,tank,i));
     if(R.t>2.4){m.away=null;pickSite(tank,f);setPhase('carry');}
     break;}
