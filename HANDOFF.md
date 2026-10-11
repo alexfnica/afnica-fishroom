@@ -60,7 +60,11 @@ Owner asked for everything from the idea list plus a smaller adult stage:
 - **Spawning extras (V17.81):** female eats one of her eggs (30%, only her first 2 spawns, `f.spawns81`); eggs on driftwood/stones
   (`hardSpot`, kind 'w', layer `.hard` z 14); soft stridulation clicks during courtship (WebAudio, only with sound on).
 - Test hooks: `coryLifeDebugV1783()` -> {startRest, perchNow, scare}.
-- Measured: no console errors; group spread 700 -> 280 px; max step 3.1 px/frame outside V17.12's own air dash.
+- Measured: no console errors; group spread 700 -> 280 px; max step 1.7 px/frame outside V17.12's own air dash.
+- Reviewer pass fixed: no size jump on the adult day (juvenile growth now ends at .82); per-frame DOM queries cached; one perch try
+  per tank every 2-5 min (leaf search is costly); wink/barbel timing in real time; lock flag cleared when the fright ends; belly
+  during 'eat'; air-dash factor uses the lower of V17.66 and health (no double counting). Note: existing adult cory younger than
+  full-grown age shrink once to the young-adult size on the first load (owner asked for the smaller adult stage).
 
 ### Cory pectorals (V17.42 `pectoral()`, `window.CORYPECT_V1781`)
 Cory pectoral = thick bony serrated spine: no sculling. Held stiff, spread out-down while sitting (rest -.28 rad), pressed back at

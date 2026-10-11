@@ -12254,7 +12254,7 @@ window.addEventListener('load',function(){
   try{
    if(!f||f.species!=='cory'||f.sex!=='F'||f.dead||!(f.age>=S.cory.adult)||!(st.fish||[]).includes(f))return b;
    let carry=0;
-   if(R&&R.fem===f.id){const per=1/Math.max(1,R.rounds),inRound=R.phase==='lay'?(R.laid||0)/Math.max(1,R.eggsThisRound):['leave','rest'].includes(R.phase)?1:0;carry=Math.max(.15,1-per*(R.round+inRound));}   /* she slims down round by round */
+   if(R&&R.fem===f.id){const per=1/Math.max(1,R.rounds),inRound=R.phase==='lay'?(R.laid||0)/Math.max(1,R.eggsThisRound):['leave','rest','eat'].includes(R.phase)?1:0;carry=Math.max(.15,1-per*(R.round+inRound));}   /* she slims down round by round */
    else if(st.coryRitual81&&st.coryRitual81.day===st.day)carry=1;   /* spawning today: full of eggs */
    else if(!st.corySpawn){const C=st.coryCond81||{};if((C.food||[]).some(x=>x>=st.day-3)||C.wc===st.day||C.wc===st.day-1)carry=.55;}   /* conditioned: filling up */
    if(b<0&&!(R&&R.fem===f.id))return b;   /* just spawned: drawn in */
@@ -12263,7 +12263,6 @@ window.addEventListener('load',function(){
  };}catch(e){console.error('AFNICA V17.81 belly hook',e);}
  window.coryRitualV1781={start:()=>start(true),stop:()=>stop(),roll};
   window.coryLeafSpotV1781=tank=>leafSpot(tank);
-  window.coryRitualActiveV1781=()=>!!R;
   window.coryRitualDebugV1781=()=>({R,ctl,TP,leafSpot:()=>leafSpot(tankEl()),huntNow:()=>{huntIn=0;},hunter:()=>hunter});
 })();
 </script>
@@ -12575,7 +12574,10 @@ window.addEventListener('load',function(){
  const AD=()=>S.cory.adult,FULL=()=>Math.round(2.2*S.cory.adult);
  /* ---- A: young adult -> full grown ---- */
  try{const _sz=sizeFor;sizeFor=function(f){let v=_sz.apply(this,arguments);
-  try{if(f&&f.species==='cory'&&f.age>=AD())v*=.82+.18*smooth((f.age-AD())/(FULL()-AD()));}catch(e){}return v;};}catch(e){console.error('AFNICA V17.83 size',e);}
+  try{if(f&&f.species==='cory'&&f.age>=7){const a=AD();
+   if(f.age>=a)v*=.82+.18*smooth((f.age-a)/(FULL()-a));
+   else{const p=(f.age-7)/(a-7);v*=(.54+.28*p)/(.54+.46*p);}}   /* the juvenile growth now ends at the young-adult size: no jump on the adult day */
+  }catch(e){}return v;};}catch(e){console.error('AFNICA V17.83 size',e);}
  window.coryFullGrownV1783=f=>!!(f&&f.species==='cory'&&f.age>=FULL());
 
  /* ---- shared helpers ---- */
@@ -12583,16 +12585,23 @@ window.addEventListener('load',function(){
  let forcePerch=false;
  function tkey(tank){return tank.dataset.tank||tank.id;}
  function nowS(){return performance.now()/1000;}
- function coryEls(tank){return [...tank.querySelectorAll('.modelFish[data-species="cory"]:not(.deadFish)')].filter(el=>['juvenile','adult','mature'].includes(el.dataset.lifeStage));}
- function covers(tank){   /* x of wood, rocks and plants: places a shy cory hides by */
+ const elCache=new WeakMap();
+ function coryEls(tank){   /* cached for the frame: called for every cory */
+  const n=performance.now(),c=elCache.get(tank);if(c&&n-c.t<30)return c.els;
+  const els=[...tank.querySelectorAll('.modelFish[data-species="cory"]:not(.deadFish)')].filter(el=>['juvenile','adult','mature'].includes(el.dataset.lifeStage));
+  elCache.set(tank,{t:n,els});return els;
+ }
+ const covCache=new WeakMap();
+ function covers(tank){   /* x of wood, rocks and plants: places a shy cory hides by (re-measured every few seconds) */
+  const n=performance.now(),c=covCache.get(tank);if(c&&n-c.t<4000)return c.out;
   const tr=tank.getBoundingClientRect(),out=[];
   tank.querySelectorAll('.v171Wood img,.v171Rocks img,.v175SubstrateAsset').forEach(im=>{const r=im.getBoundingClientRect();if(r.width>4)out.push(clamp((r.left+r.right)/2-tr.left,70,tank.clientWidth-70));});
-  return out.length?out:[tank.clientWidth*.2,tank.clientWidth*.8];
+  const res=out.length?out:[tank.clientWidth*.2,tank.clientWidth*.8];covCache.set(tank,{t:n,out:res});return res;
  }
  function water(tank){return tank.matches('.waterChanging,.persistentWaterActive');}
  function grp(tank,t){
   const k=tkey(tank);let g=G.get(k);
-  if(!g){g={patch:null,rest:null,restNext:t+rnd(60,150),scaredUntil:0,perching:null};G.set(k,g);}
+  if(!g){g={patch:null,rest:null,restNext:t+rnd(60,150),scaredUntil:0,perching:null,perchNext:t+rnd(60,180)};G.set(k,g);}
   const els=coryEls(tank).filter(el=>!el.classList.contains('coryBreeding'));g.n=els.length;
   const w=tank.clientWidth;
   if(!g.patch||t>g.patch.until){   /* the feeding spot drifts along the bottom */
@@ -12674,10 +12683,10 @@ window.addEventListener('load',function(){
     s.vx=s.vy=0;s.mode='perch';s.target=null;el.classList.remove('v1712DeepForage','v1712Rest');
     return true;
    }
-   if(s.age>=AD()&&s.mode!=='dash'&&!g.perching&&g.n>=1&&(Math.random()<dt/200||forcePerch)&&window.coryLeafSpotV1781){forcePerch=false;   /* about every few minutes */
+   if(s.age>=AD()&&s.mode!=='dash'&&!g.perching&&g.n>=1&&(t>g.perchNext||forcePerch)&&window.coryLeafSpotV1781){forcePerch=false;g.perchNext=t+rnd(120,300);   /* one try per tank every 2-5 minutes (the leaf search is not cheap) */   /* about every few minutes */
     const sp=coryLeafSpotV1781(tank);
     if(sp){const H=el.offsetHeight*s.scale,y1=sp.y-H*.28;if(y1>H/2+10&&y1<s.base-25){
-     s.perch83={ph:'up',t0:t,seen:t,dur:clamp(Math.hypot(sp.x-s.x,y1-s.y)/45,1.8,4),hold:rnd(15,40),x0:s.x,y0:s.y,x1:clamp(sp.x,s.radius,s.w-s.radius),y1};
+     s.perch83={ph:'up',t0:t,seen:t,dur:clamp(Math.hypot(sp.x-s.x,y1-s.y)/30,2.5,5.5),hold:rnd(15,40),x0:s.x,y0:s.y,x1:clamp(sp.x,s.radius,s.w-s.radius),y1};
      g.perching=s.id;setTimeout(()=>{if(g.perching===s.id)g.perching=null;},70000);return true;}}
    }
    /* 4: resting together - turn to face the same way */
@@ -12690,23 +12699,24 @@ window.addEventListener('load',function(){
  };
  /* ---- 7: poor water -> more air dashes ---- */
  try{if(window.o2DashMulV1766){const _o2=o2DashMulV1766;window.o2DashMulV1766=o2DashMulV1766=function(tank){let m=_o2.apply(this,arguments);
-  try{const k=String(tank&&tank.id||'').replace(/^tank-/,'');const h=tankHealthFor(k);if(h<50)m*=.5;else if(h<70)m*=.75;}catch(e){}return m;};}}catch(e){console.error('AFNICA V17.83 dash hook',e);}
+  try{const k=String(tank&&tank.id||'').replace(/^tank-/,'');const h=tankHealthFor(k);m=Math.min(m,h<50?.5:h<70?.75:1);}catch(e){}return m;};}}   /* the lower of the two, not both */catch(e){console.error('AFNICA V17.83 dash hook',e);}
 
  /* ---- 2/3/5/6/10: looks, drawn every frame after the fin-motion layer ---- */
  const GEO={'cory|adult_m':{eye:[209,68,6.4],bar:[[232.5,84,246,99],[237.5,82.5,254,94]],cut:[234,87]},
             'cory|juvenile':{eye:[183,47,6.8],bar:[[205,63.5,214,86],[209.5,62.5,222,85]],cut:[208,66]}};
  const cst=new WeakMap();
  function fishById(id){for(const a of [st.fish,st.fry,st.breederTank])for(const f of a||[])if(String(f.id)===String(id))return f;return null;}
+ let fdt=.016;
  function paint(c,el,t,f){
   const g=GEO[c.dataset.wk];if(!g)return;
   const D=window.curlDebugV1744&&curlDebugV1744(),r=D&&D.cache.get(c.dataset.wk);if(!r)return;
-  if(el.dataset.m3==='1'||el.classList.contains('deadFish'))return;
+  if(el.dataset.m3==='1'||el.classList.contains('deadFish')||Math.abs(+el.dataset.bend||0)>.03)return;
   const pad=(c.height-r.H)/2,x=c.getContext('2d');
   let S2=cst.get(c);if(!S2){S2={wink:t+rnd(3,15),wp:-1,ph:Math.random()*6};cst.set(c,S2);}
   const dig=el.classList.contains('v1712DeepForage'),wear=clamp(+(f&&f.barbel83)||0,0,1);
   /* 5/6: barbels - the photo's ones are cut away and drawn again so they can move and wear down */
   x.save();x.globalCompositeOperation='destination-out';x.fillRect(g.cut[0],g.cut[1]+pad,c.width-g.cut[0],c.height-g.cut[1]-pad);x.restore();
-  S2.ph+=(dig?7:2.2)*.016;
+  S2.ph+=(dig?7:2.2)*fdt;
   x.save();x.lineCap='round';
   g.bar.forEach((b,i)=>{
    const L=1-.78*wear,sw=Math.sin(S2.ph+i*1.7)*(dig?2.2:1.2),dn=dig?3:0;
@@ -12718,7 +12728,7 @@ window.addEventListener('load',function(){
   x.restore();
   /* 3: the wink - the eye rolls down: a pale crescent sweeps over the pupil and back */
   if(S2.wp<0&&t>S2.wink){S2.wp=0;}
-  if(S2.wp>=0){S2.wp+=.016/.42;const p=S2.wp;
+  if(S2.wp>=0){S2.wp+=fdt/.42;const p=S2.wp;
    if(p>=1){S2.wp=-1;S2.wink=t+rnd(el.classList.contains('v1712Rest')?4:8,el.classList.contains('v1712Rest')?12:25);}
    else{const [ex,ey,er]=g.eye,cov=Math.sin(Math.PI*p);
     x.save();x.beginPath();x.arc(ex,ey+pad,er,0,6.283);x.clip();
@@ -12752,12 +12762,13 @@ window.addEventListener('load',function(){
  }
  let last=performance.now();
  function frame(now){
-  const t=now/1000;last=now;
+  const t=now/1000;fdt=Math.min(.05,Math.max(0,(now-last)/1000));last=now;
   try{
    if(!document.hidden){
     document.querySelectorAll('.tank canvas.realFishAsset[data-wk^="cory|"]').forEach(c=>{const el=c.closest('.modelFish');if(el)paint(c,el,t,fishById(el.dataset.fishId));});
     document.querySelectorAll('.tank').forEach(tank=>puffs(tank,t));
-    if(now-colT>1000){colT=now;colours();}
+    if(now-colT>1000){colT=now;colours();
+     document.querySelectorAll('.tank .modelFish[data-lock]').forEach(el=>{const tk=el.closest('.tank'),g=tk&&G.get(tkey(tk));if(!g||t>g.scaredUntil)delete el.dataset.lock;});}
    }
   }catch(e){console.error('AFNICA cory looks',e);}
   requestAnimationFrame(frame);
