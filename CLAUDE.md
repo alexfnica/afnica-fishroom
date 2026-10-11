@@ -67,7 +67,7 @@ See `HANDOFF.md` in the repo root for where the last session stopped and what co
 
 ## Working rules (from the owner)
 
-- **Talk to the owner in Romanian.** Code, comments and commit messages stay in English.
+- **Everything in English** (owner, 2026-10-11): chat replies, clip captions, in-game text, code, comments and commit messages.
 - **Commit only when the owner asks, and push only when they say push.** No commit per change.
 - **After every edit to the game HTML, run the syntax check:** `python assets_blender/syntax_check_node.py` (Node.js), or on the owner's laptop `D:/Blender/5.2/python/bin/python.exe assets_blender/syntax_check.py` (headless Chrome). Expect `with syntax errors 0`.
 - **Inside the long one-line functions use `/* */` comments, never `//`.** A `//` there comments out the rest of the line (this once broke a whole block).

@@ -12,7 +12,7 @@ what the owner wants, ready-made test scenes, how to measure, the 3D fish system
 - **The sword is a rigid straight ray**, never bent; a swordtail's flare raises only the dorsal (tail and sword stay).
 - **Fins and gonopodium must line up**: measure contact (gonopodium tip on the vent ≤ 5 px, nip snout on the flank ≤ 5 px).
 - Fights: same species only; liked: 3D carousel spin, tail-beating on a tight head-to-tail circle, fast nip + C-start flee, counter-bite, burst pursuit. Rejected: snout-to-snout lock (removed for xipho), trembling tails, downward J curl in courtship ("horrendous").
-- Talk Romanian, code/comments/commits English; commit only when asked, push only on "push".
+- Everything in English (chat, clip captions, game text, code, commits); commit only when asked, push only on "push".
 
 ## 2. Test scene in the Browser pane (never touch the real save)
 

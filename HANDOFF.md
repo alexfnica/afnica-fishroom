@@ -102,4 +102,4 @@ Headless Chromium through Playwright (`/opt/pw-browsers/chromium-1194/chrome-lin
 - Then, as before: molly fight and courtship.
 
 ## Owner preferences learned this session
-Talk Romanian; do not repeat the same frames over and over; show a COMPLETE clip, never cut-offs; the female must not tilt ("does not exist"); no tail trembling; measure instead of guessing; he pays for credits, so batch work and verify before showing. Commit and push only when he asks.
+Talk English (changed 2026-10-11, was Romanian); do not repeat the same frames over and over; show a COMPLETE clip, never cut-offs; the female must not tilt ("does not exist"); no tail trembling; measure instead of guessing; he pays for credits, so batch work and verify before showing. Commit and push only when he asks.
