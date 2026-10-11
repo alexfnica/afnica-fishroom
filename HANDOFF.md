@@ -21,6 +21,18 @@
 - Note for the owner (literature): most sources describe the female's mouth at the male's vent/flank and the male clasping her
   barbels with his pectoral spine; implemented the owner's version (male snout on her middle). Swapping is a TP change.
 
+### Second pass (owner: items 1-7 "do everything that would help")
+1 male pectoral spine locked against her in the T (`clasp()`, svg.coryClasp81 over the tank, z 33);
+2 'clean' phase: her mouth rubs the spot 1.6 s (site `cs` = snout on the spot), then she slides up and lays;
+3 belly: `femaleBellyV1743` wrapped - conditioned (live food 3 days / water change) .55, spawning today 1, during the ritual
+  shrinks round by round; after the ritual `condBirthDay` = today (drawn in, recovers in 3 days);
+4 predation: every 40-90 s of watching, a random livebearer is sent (wrapped `waferTargetV1743`, eat radius 16 px) to eat one
+  egg; button "EGGS ×n → FRY TANK" (`moveCoryEggsV1781`) sets `st.corySpawn.tank='fry'` (eggs render there, safe);
+5 incubation 3-4 days (`endDay`), egg {d: day laid, b: unfertilized ~20%}; classes e81s1 (amber) / e81s2 (dark + eye spots) /
+  e81b1 (chalk white) / e81b2 (fungus halo) - NOT .s1/.s2, the game has global classes with those names; count = good eggs;
+  zero good eggs -> nothing hatches; the spawn panel text is rewritten live (days left, good/bad counts);
+6 up to 4 males; 7 bouts: `R.breaks` (rounds 3-6, a 40-90 s break of normal life after round ~half), phase 'break'.
+
 ### Cory pectorals (V17.42 `pectoral()`, `window.CORYPECT_V1781`)
 Cory pectoral = thick bony serrated spine: no sculling. Held stiff, spread out-down while sitting (rest -.28 rad), pressed back at
 speed (fold +.14), slow small drift, a quick outward flick when a hop starts (speed jump > `kick`). Drawn as one rigid piece.
