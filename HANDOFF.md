@@ -1,38 +1,40 @@
 # Handoff — where work stopped (2026-10-11, cloud session)
 
-## Latest topic: CORYDORAS SPAWNING RITUAL (V17.81, NOT committed yet — owner has to see it first)
+## Latest topic: CORYDORAS SPAWNING (V17.81) + LIVE FOOD (V17.82) — on branch main-kdhfm5, not merged; owner reviewing
 
-New block `V17.81 CORYDORAS SPAWNING RITUAL` at the very end of the game HTML (style + IIFE), plus:
-- two defaults in `ensureHealthState`: `st.coryEggs81=[]` (visible eggs `{x,y,k}`, fractions of the tank, k `g` glass / `l` leaf), `st.coryRitual81=null` (`{day}` = ritual due today);
-- V17.12 cory engine, `coryBreeding` branch: reads `data-cory-face`/`data-cory-ang` into its own state and postpones its air dash 20-60 s, so the hand-back is smooth.
+### V17.81 spawning ritual (end of the game HTML)
+- **Trigger (owner: "sometimes, the NEXT day"):** a finished main-tank water change is stored in `st.coryCond81.wc`; live food fed
+  in the main tank pushes the day into `st.coryCond81.food`. At each day change (`nextDay` wrapped -> `roll()`): chance
+  1-(1-w)(1-f), w=.5 if water change yesterday, f=.25 per live feeding in the last 3 days (max .65). Measured: live food only ~24%,
+  WC + 2 feeds ~70%. Success sets `st.coryRitual81={day,delay}`; the ritual starts after the Main Tank has been watched `delay`
+  (20-90) s. The OLD path (`startCorySpawnV172`, instant fry when Next Day closed a running water change) is replaced: it now only
+  records the water change.
+- **Phases:** nudge -> chase (sand bursts / up the glass) -> cut -> T -> part -> carry -> lay -> leave -> rest, 3-5 rounds, eggs in
+  `st.coryEggs81`, hatch next day via `st.corySpawn{v81}` and the wrapped `finishCorySpawnV172`.
+- **T pose (owner's correction + his clip `Panda_Corydora_spawning.mp4`):** the MALE presses his snout into the middle of HER flank
+  (low, `TP.fu/fv`), his body angled into the tank (3D yaw `md` .75 from profile, nose a little up), drawn in front of her. She bends
+  only slightly (3D `fpit/fkap/fvk`, `fang`) and TREMBLES in bursts (`trem`: ~10 Hz, <0.5 px / 0.8 deg). Both drawn through the
+  V17.75 shader (`data-m3/psi/kap/side/vk/kf/bank/thk/still` on the cory element; V17.42's generic GL branch passes bank/thk/vk/kf
+  for cory only). **Keep the 3D turn <= ~45 deg from profile:** the shader draws two flat flanks; a round cory turned nearer head-on
+  shows them crossing (double dorsal, two masks, hollow ring head-on) - this was the "asset error when he turns" the owner saw.
+  `kap` in the data attribute is curvature per sprite px (c.kap radians / (canvas width*.55)).
+- Note for the owner (literature): most sources describe the female's mouth at the male's vent/flank and the male clasping her
+  barbels with his pectoral spine; implemented the owner's version (male snout on her middle). Swapping is a TP change.
 
-**Trigger:** a Main Tank water change that finishes in real time (not one closed by Next Day) with >=1 healthy adult cory male + 1 female
-and no `st.corySpawn`. Runs only while the Main Tank is shown (the clock pauses elsewhere). The old path (`startCorySpawnV172`, >=4 cory,
-only when Next Day closes an active water change) is untouched.
+### Cory pectorals (V17.42 `pectoral()`, `window.CORYPECT_V1781`)
+Cory pectoral = thick bony serrated spine: no sculling. Held stiff, spread out-down while sitting (rest -.28 rad), pressed back at
+speed (fold +.14), slow small drift, a quick outward flick when a hop starts (speed jump > `kick`). Drawn as one rigid piece.
 
-**Phases per round** (3-5 rounds, ~40 s each): nudge (male snout on her flank, forward nudges only) -> chase (sand bursts or up/down the
-front glass, male follows her own path with a 0.38 s lag) -> cut (he arrives beside her snout and turns toward us) -> T (10-17 s, still,
-fins only; male beside her snout nearly head-on, head toward her, drawn in front; `TP` opens it into a V with heads together; eggs fade
-into her pelvic basket in the last 4 s) -> part -> carry (to the egg column on the front glass, or once per ritual a plant leaf found by
-sampling the plant picture alpha, not behind wood/rocks) -> lay (nose up 3.5 s, 2-4 eggs dropped at the basket) -> leave -> rest.
-Successive rounds alternate males. Eggs: 5 px, translucent white with a pale yellow core, column on the glass (z 41) or on the leaf (z 9).
-`st.corySpawn={startDay,endDay:day+1,count:75% of eggs,v81:true}` is created at the first egg; `finishCorySpawnV172` (wrapped) hatches
-them next day and clears `st.coryEggs81`. The old PNG `.coryEggCluster` is hidden for v81 spawns.
+### V17.82 live food (end of file)
+Shop card LIVE FOOD (tubifex 60, blackworms 70, baby brine shrimp 50, banana worms 40, daphnia 50; 3 portions each) -> `st.liveFood`.
+Tank button "LIVE ×n" next to WAFER opens a menu; a portion counts as the day's feeding (hunger 0, +.6 waste) and calls
+`coryLiveFoodV1781`. Items are drawn on a per-tank canvas (z 28): tubifex sink fast as a clump, bury heads and wave tails; blackworms
+crawl; BBS jerk in mid-water; banana worms drift down; daphnia hop. Swimmers hunt via the wrapped `waferTargetV1743` (bite pause
+0.7-1.4 s, full after 5-9 bites for 40-70 s, only ~35% bother with worms on the sand); cory via wrapped `coryWaferTargetV1743` /
+`coryWaferNearV1743` and eat with their low snout. Neons (school preset) do not hunt it yet. Items are not saved.
 
-**T in 3D (second pass):** the male in the T is drawn by the V17.75 3D shader (`data-m3/psi/bank/thk/still` on the cory element; the
-generic GL branch in V17.42 now passes `bank` and a thickness `thk` for cory only, default .12 there, .075 used here - more than ~.1 splits
-the two flanks into a ring). He arrives in profile, turns his head toward us and toward her (`psi` from heading to PI/2+s*d0), holds,
-opens to d1 (the V; more than ~.65 starts to look like a face-to-face stare), then turns back to profile and the flat sprite takes over.
-`TP` = {d0,d1,bank,thk,dx,dy,z}.
-
-**Measured (headless, 2M+1F, 3 full rituals):** no console errors, 0 backward-swimming frames, max step 4 px/frame (female), 6.8 (males in
-the glass chase), re-render mid-T and tank switch OK (pauses), hatch -> fry OK. aquarium-reviewer: no blockers.
-
-**Test hooks (flag):** `coryRitualV1781.start()` forces a ritual (refused while an old non-v81 spawn exists), `coryRitualDebugV1781()`
-returns `{R,ctl,TP,leafSpot}`; `TP` = the male T pose (f0/f1 turn, a0/a1 tilt, dx/dy offset, z).
-
-**Open / ask the owner:** does the T read well (2D sprite only, no 3D cory shader); carry to a far site can take ~14 s; hatch stays
-"next day" like before (real: 3-5 days); the 2-3 cory case now spawns (old path needed 4).
+### Test hooks (flag)
+`coryRitualV1781.start()/stop()/roll()`, `coryRitualDebugV1781()` -> {R,ctl,TP}, `liveFoodDebugV1782()`.
 
 ---
 

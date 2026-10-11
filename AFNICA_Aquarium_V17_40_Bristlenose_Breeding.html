@@ -3473,7 +3473,9 @@ if(st.corySpawn===undefined)st.corySpawn=null;
 if(st.coryBreederEggs===undefined)st.coryBreederEggs=false;
 if(!Array.isArray(st.coryEggs))st.coryEggs=[];
 if(!Array.isArray(st.coryEggs81))st.coryEggs81=[];   /* V17.81 visible eggs of the main-tank spawn */
-if(st.coryRitual81===undefined)st.coryRitual81=null;   /* V17.81 spawning ritual due today {day} */
+if(st.coryRitual81===undefined)st.coryRitual81=null;   /* V17.81 spawning ritual due today {day,delay} */
+if(!st.coryCond81||typeof st.coryCond81!=='object')st.coryCond81={wc:null,food:[]};   /* V17.81 spawning triggers: day of the last main-tank water change, days live food was fed */
+if(!st.liveFood||typeof st.liveFood!=='object')st.liveFood={};   /* V17.82 live food portions in stock, by kind */
 if(typeof st.tankHealthBreeder!=='number')st.tankHealthBreeder=100;
 if(typeof st.daysNoCleanBreeder!=='number')st.daysNoCleanBreeder=0;
 if(!st.daily.breeder)st.daily.breeder={feed:false,water:false,clean:false};
@@ -8431,6 +8433,7 @@ let BEND=0,SIG=0,SFL=0,SWRG=null;   /* SWRG (V17.75): [u,v] sword root of a swor
   const PECT={molly:{m:[0.673, 0.793, 0.545, 0.714],f:[0.651, 0.793, 0.488, 0.66]},xipho:{m:[.70,.83,.43,.59],f:[.77,.86,.49,.63]},
    guppy:{m:[0.666, 0.805, 0.376, 0.589],f:[0.636, 0.765, 0.415, 0.64]},platy:{m:[.745,.805,.48,.62],f:[.745,.815,.47,.63]},neon:{m:[.765,.815,.48,.65],f:[.765,.815,.48,.65]},
    cory:{m:[.58,.70,.76,.95],f:[.58,.70,.76,.95]},anc:{m:[.55,.75,.5,.65],f:[.6,.8,.53,.68],walk:true}};   // anc: rests with the fins flat and still, works them as it crawls
+  window.CORYPECT_V1781={rest:-.28,fold:.14,drift:.04,flick:-.12,kick:2.2,edge:.25};   /* V17.81 stiff cory pectoral, radians: minus = spread out and down (propping on the sand), plus = pressed back along the flank */
   PECT.molly.j=[.6,.69,.38,.55];PECT.xipho.j=[.68,.78,.45,.6];window.PECT_V1755=PECT;                // juveniles: own sprites
   function pectPatch(r,box,sp,wk){
    if(r.pec&&r.pec.box===box)return r.pec;
@@ -8571,6 +8574,20 @@ let BEND=0,SIG=0,SFL=0,SWRG=null;   /* SWRG (V17.75): [u,v] sword root of a swor
    if(/fry|newborn/.test(st1))return;
    const box=(window.PECTWK_V1773&&PECTWK_V1773[c.dataset.wk])||(st1.startsWith('juvenile')&&P.j?P.j:(/_f|female/.test(st1)||st1==='120')?P.f:P.m),K=pectPatch(r,box,parts[0],c.dataset.wk),g=c.getContext('2d'),pad=r.pad;
    if(!K)return;   /* the fin image is still loading */
+   if(parts[0]==='cory'){try{   /* V17.81: a corydoras pectoral is a thick, bony, serrated spine with the fin behind it - it does not scull.
+     It is held stiff: spread out and a little down while the fish sits on the sand (it props the body), pressed back along
+     the flank at speed; it only shifts slowly now and then, as one piece, with a small quick flick when a hop starts. */
+    const C=window.CORYPECT_V1781,h=Math.min(.1,dt||.016),v=Math.max(0,sp||0);
+    const fold=Math.max(0,Math.min(1,(v-.25)/.45));
+    s.cpf=(s.cpf==null?fold:s.cpf+(fold-s.cpf)*Math.min(1,h*1.6));
+    const dv=(v-(s.cpv==null?v:s.cpv))/h;s.cpv=v;if(dv>C.kick&&!(s.ctw>0))s.ctw=1;s.ctw=Math.max(0,(s.ctw||0)-h*3);
+    const now=performance.now()/1000;if(s.pseed==null)s.pseed=Math.random()*100;
+    const drift=C.drift*Math.sin(now*.31+s.pseed)*Math.sin(now*.77+s.pseed*1.3);
+    const ang=C.rest*(1-s.cpf)+C.fold*s.cpf+drift*(1-s.cpf)+(s.ctw>0?C.flick*Math.sin(Math.PI*(1-s.ctw)):0);
+    const nar=1-C.edge*s.cpf,ca=Math.max(0,Math.min(1,(Math.abs(ang)-.01)/.07));
+    if(ca>.02){g.save();g.globalCompositeOperation='source-atop';g.globalAlpha=ca;g.drawImage(K.I,K.bx,pad+K.by);g.restore();}
+    g.save();g.translate(K.px,pad+K.py);g.rotate(ang);g.scale(nar,1);g.translate(-K.px,-(pad+K.py));g.drawImage(K.F,K.bx,pad+K.by);g.restore();
+   }catch(e){console.error('AFNICA cory pectoral',e);}return;}
    const fast=Math.max(0,Math.min(1,((sp||0)-.35)/.5));                         // 0 = hovering/slow, 1 = full speed: folded
    s.pf=(s.pf==null?fast:s.pf+(fast-s.pf)*Math.min(1,dt*3));
    const now=performance.now()/1000;if(s.pseed==null)s.pseed=Math.random()*100;
@@ -8831,7 +8848,7 @@ let BEND=0,SIG=0,SFL=0,SWRG=null;   /* SWRG (V17.75): [u,v] sword root of a swor
        draw(c,rr,s.ph,(rush?.07:dig?.012:(.02+.035*sp)*s.cfg.a)*(1+(s.cfg.e?1.2:2.2)*turn)*(shim?.3:wk1?1.8:1),dig?.2:rush?0:1-sp,shim?.15:dig?.3:rush?.2:1,dig?.010*jab+.004*Math.sin(s.ph*1.3):0,0,0,shim?shim*1.4:wk1?.7:0,+s.fe.dataset.belly||0);const MW=/^(xipho|guppy|molly|platy)\|(adult|full)_m/.test(c.dataset.wk||"");   /* V17.63: adult and full-grown males, any tail form */
        s.gl=false;if(MW){s.fl=(s.fl||0)+((+s.fe.dataset.flare||0)-(s.fl||0))*Math.min(1,dt*5);const o3=s.fe.dataset.m3==='1'?{psi:+s.fe.dataset.psi||0,kap:+s.fe.dataset.kap||0,side:+s.fe.dataset.side||1,amp:.03+.08*sp+.05*(+s.fe.dataset.quiver||0),bank:+s.fe.dataset.bank||0,pit:+s.fe.dataset.pit||0,vk:+s.fe.dataset.vk||0,kf:s.fe.dataset.kf!=null?+s.fe.dataset.kf:1}:null;s.o3=!!o3;if(o3&&s.fe.dataset.still!=='1'){const sk=o3.kap*o3.side+(.55*sp+.08)*Math.sin(s.ph+1.3)/(rr.W*.6);o3.side=sk>=0?1:-1;o3.kap=Math.abs(sk);}else if(o3)o3.amp=.004;   /* data-still: a held pose (the courtship hook) - no swim wave, no tail beat */   /* V17.75 swimming: the whole body flexes with the tail beat */if(Math.abs(s.bd)>.03||s.fl>.02||o3){const bb=s.bd+.1*Math.sin(s.ph*.45)*Math.min(1,Math.abs(s.bd)*1.5);if(/^molly\|/.test(c.dataset.wk))s.gl=glBent(c,rr,o3?0:bb,s.ph,0,s.fl*(.55+.6*(+s.fe.dataset.dfin||.6)),"molly",o3);else if(/^xipho\|(adult|full)_m$/.test(c.dataset.wk)){s.gl=glBent(c,rr,o3?0:bb,s.ph,0,s.fl,"xipho",o3);if(!s.gl&&Math.abs(s.bd)>.03){bentDraw(c,rr,bb);s.gl=true;}}}const gsp=window.gonoKeyV1773?gonoKeyV1773(c.dataset.wk):c.dataset.wk.split("|")[0],gL=(+s.fe.dataset.gonoLen||1)*((window.GONO_V1744[gsp]||{}).len||0);   /* V17.63 per-fish rod length */
        if(+s.fe.dataset.gono>.01)drawGono(c,rr,+s.fe.dataset.gono,gL,s.fe.dataset.gonoOver==="1",gsp);else if(+s.fe.dataset.gonoLen>1.2)drawGono(c,rr,.12,gL*.5,false,gsp);}   /* a long lyretail gonopodium shows even at rest */
-      if(!s.gl&&s.fe.dataset.m3==='1'){const ds=s.fe.dataset,cy=ds.species==='cory',o3g={psi:+ds.psi||0,kap:+ds.kap||0,side:+ds.side||1,amp:cy&&ds.still==='1'?.004:.03+.08*sp,bank:cy?+ds.bank||0:0,pit:+ds.pit||0,thk:cy?+ds.thk||.12:0};   /* V17.81: a cory is a round-bodied fish (thicker) and may lie on its side (spawning T) */s.gl=glBent(c,rr,0,s.ph,0,0,/^xipho\|(adult|full)_m$/.test(c.dataset.wk||'')?'xipho':'gen',o3g);s.o3=s.gl;}   /* V17.75 3D turns of every livebearer / neon */
+      if(!s.gl&&s.fe.dataset.m3==='1'){const ds=s.fe.dataset,cy=ds.species==='cory',o3g={psi:+ds.psi||0,kap:+ds.kap||0,side:+ds.side||1,amp:cy&&ds.still==='1'?.004:.03+.08*sp,bank:cy?+ds.bank||0:0,pit:+ds.pit||0,thk:cy?+ds.thk||.12:0};if(cy){o3g.vk=+ds.vk||0;o3g.kf=ds.kf!=null?+ds.kf:1;}   /* V17.81: a cory is a round-bodied fish (thicker) and may lie on its side (spawning T) */s.gl=glBent(c,rr,0,s.ph,0,0,/^xipho\|(adult|full)_m$/.test(c.dataset.wk||'')?'xipho':'gen',o3g);s.o3=s.gl;}   /* V17.75 3D turns of every livebearer / neon */
       if(window.finGrowV1763&&!s.gl)finGrowV1763(c,rr,s);s.gl=false;   /* V17.75: the bigger dorsal is painted onto the FLAT sprite only - over a bent or 3D fish it landed in the wrong place */   /* V17.63 bigger dorsal with age, long anal fin */
        if(!s.o3){pectoral(c,rr,s,dt,dig?.0:sp);breathe(c,rr,s,dt,sp);}s.o3=false;if(s.shF>.02&&window.shimFilmV1767)shimFilmV1767(c,s.shF);   /* V17.67 faint white film while shimmying */   /* V17.55 pectorals, V17.53 gills and mouth */WEXP=2.3;BEND=0;SIG=0;SFL=0;TBR=1;SWRG=null;                                               // back to the default for everything else (Ancistrus etc.)
      }catch(e){s.bad=true;console.error('AFNICA fin motion (fish)',e);}         // one bad fish must not stop the others
@@ -11650,8 +11667,11 @@ window.addEventListener('load',function(){
 </style>
 <script>
 /* ===== V17.81 CORYDORAS SPAWNING RITUAL (main tank) =====
-   After a fresh water change in the Main Tank, adult panda corydoras (at least one male and one female, healthy) spawn
-   the way real ones do (reference clip: males crowd the female and nudge her flanks, chase her along the sand and up the
+   Adult panda corydoras in the Main Tank (at least one male and one female, healthy) sometimes spawn THE DAY AFTER a
+   water change (the cool fresh water is the classic trigger) or after being fed live food (tubifex, blackworms, baby
+   brine shrimp... - V17.82): at each day change the chance is 1-(1-w)(1-f), w = .5 if the main tank had a water change
+   the day before, f = .25 per live-food feeding in the last 3 days (max .65). The ritual then starts after the player has
+   watched the Main Tank for a short while (20-90 s) that day. They spawn the way real ones do (reference clip: males crowd the female and nudge her flanks, chase her along the sand and up the
    front glass, then the T-position):
    - NUDGE: the males crowd her, snouts on her flank.
    - CHASE: she runs in short bursts along the sand or up and down the front glass, the male right behind her.
@@ -11671,13 +11691,16 @@ window.addEventListener('load',function(){
  const now=()=>performance.now()/1000;
  const BASKET=[.52,.90];      /* clasped pelvic fins, fractions of the fish box (facing right) */
  const SNOUT=[.95,.70];       /* her snout tip */
- const FLANK=[.60,.55];       /* his flank just behind the pectoral */
- const TP={f0:-.08,f1:-.08,a0:0,a1:0,dx:12,dy:-4,z:32,d0:.42,d1:.6,bank:.3,thk:.075};   /* T pose of the male, beside her snout, drawn in 3D (V17.75 shader):
-    yaw PI/2 = facing us, turned d0 (start of the hold) to d1 (end: the T opens into a V, heads together) toward her, banked
-    (lying slightly on his side); f/a/dx/dy place him (flat-sprite geometry), drawn in front of her */
- const yawT=(s,d)=>Math.PI/2+s*d,head=s=>s>0?0:Math.PI;   /* her side: s = the way she faces */
+ const TP={fu:.50,fv:.85,md:.75,mang:-8,dx:0,dy:0,fang:7,fpit:.08,fkap:.25,fvk:.12,fkf:.6,side:1,thk:.075,relax:.4,trem:1,mz:32};
+ /* T pose (owner's direction + clip): the male comes up behind her and presses his snout into the middle of her flank,
+    low (fu,fv on her body); his body points away into the tank (turned md radians from profile, away from us, nose down
+    mang degrees), drawn behind her. She bends only a little (fang degrees nose down, fpit/fkap/fvk in the 3D shader, kf =
+    how much of the bend is in the front half) and trembles in bursts (trem). relax: how much his turn eases by the end.
+    Both are drawn in 3D but kept near profile - the V17.75 shader draws a fish as two flat flanks, which on a round cory
+    cross when it is turned more than ~45 deg (double dorsal, two masks, a hollow ring head-on). */
+ const head=s=>s>0?0:Math.PI;
  const ctl=new Map();         /* fish id -> controlled state */
- let R=null,last=now(),prevW=null,prevDay=null;
+ let R=null,last=now(),prevW=null,prevDay=null,waited=0;
 
  function tankEl(){return document.getElementById('tank-main');}
  function adults(){try{return (st.fish||[]).filter(f=>f&&!f.dead&&!f.disease&&f.species==='cory'&&f.age>=S.cory.adult&&!(f.health<70));}catch(e){return [];}}
@@ -11708,7 +11731,7 @@ window.addEventListener('load',function(){
   el.classList.remove('coryBreeding','coryRitual81');
   el.style.removeProperty('z-index');
   const b=el.querySelector('.coryBasket81');if(b)b.remove();
-  delete el.dataset.quiver;['m3','psi','kap','pit','bank','thk','still'].forEach(k=>delete el.dataset[k]);c.psi=null;
+  delete el.dataset.quiver;['m3','psi','kap','pit','bank','thk','still','side','vk','kf'].forEach(k=>delete el.dataset[k]);c.psi=null;
   setTimeout(()=>{delete el.dataset.coryFace;delete el.dataset.coryAng;},300);
  }
  function fs(c){return .28+.72*Math.abs(c.face);}                       /* projected length: narrow mid-turn, never a card */
@@ -11744,13 +11767,15 @@ window.addEventListener('load',function(){
   c.x=clamp(c.x,18,tank.clientWidth-18);c.y=clamp(c.y,c.H*c.sc/2+8,c.base+2);
   const g3=c.psi!=null;   /* 3D yaw through the V17.75 shader: the element stays unmirrored, the GL draw turns the body */
   const sx=g3?1:sg(c)*fs(c);
-  const props={animation:'none',transition:'none',left:(c.x-c.W/2)+'px',top:(c.y-c.H/2)+'px',right:'auto',bottom:'auto','transform-origin':'center',translate:'none',rotate:'none',transform:`rotate(${c.ang.toFixed(2)}deg) scale(${c.sc}) scaleX(${sx.toFixed(4)})`,'z-index':String(c.z)};
+  const jy=c.jy||0,ja=c.ja||0;   /* her trembling in the T */
+  const props={animation:'none',transition:'none',left:(c.x-c.W/2)+'px',top:(c.y-c.H/2+jy)+'px',right:'auto',bottom:'auto','transform-origin':'center',translate:'none',rotate:'none',transform:`rotate(${(c.ang+ja).toFixed(2)}deg) scale(${c.sc}) scaleX(${sx.toFixed(4)})`,'z-index':String(c.z)};
   for(const [k,v] of Object.entries(props))el.style.setProperty(k,v,'important');
   el.dataset.coryFace=c.face.toFixed(4);el.dataset.coryAng=c.ang.toFixed(2);
   el.dataset.coryMotion='spawn';el.dataset.coryJab='0';
   el.dataset.turn=c.hold?'0':(1-Math.abs(c.face)).toFixed(2);
   if(c.quiver>0)el.dataset.quiver=c.quiver.toFixed(2);else delete el.dataset.quiver;
-  if(g3){el.dataset.m3='1';el.dataset.psi=c.psi.toFixed(3);el.dataset.kap='0';el.dataset.pit=(c.pit||0).toFixed(3);el.dataset.bank=(c.bank||0).toFixed(3);el.dataset.thk=(c.thk||.12).toFixed(3);el.dataset.still=c.hold?'1':'0';}else if(el.dataset.m3){['m3','psi','kap','pit','bank','thk','still'].forEach(k=>delete el.dataset[k]);}
+  if(g3){el.dataset.m3='1';el.dataset.psi=c.psi.toFixed(3);const cv=el.querySelector('canvas.realFishAsset');el.dataset.kap=((c.kap||0)/((cv&&cv.width||260)*.55)).toFixed(5);   /* c.kap = total bend in radians; the shader wants curvature per sprite px */
+  el.dataset.side=String(c.side||1);el.dataset.vk=(c.vk||0).toFixed(3);el.dataset.kf=String(c.kf==null?1:c.kf);el.dataset.pit=(c.pit||0).toFixed(3);el.dataset.bank=(c.bank||0).toFixed(3);el.dataset.thk=(c.thk||.12).toFixed(3);el.dataset.still=c.hold?'1':'0';}else if(el.dataset.m3){['m3','psi','kap','pit','bank','thk','still','side','vk','kf'].forEach(k=>delete el.dataset[k]);}
  }
  /* the egg basket between her clasped pelvic fins */
  function basket(c,v,n){
@@ -11758,13 +11783,14 @@ window.addEventListener('load',function(){
   if(v<=.001){if(b)b.remove();return;}
   if(!b||+b.dataset.n!==n){
    if(!b){b=document.createElement('div');b.className='coryBasket81';el.append(b);}
-   b.dataset.n=n;b.style.left=(BASKET[0]*100)+'%';b.style.top=(BASKET[1]*100)+'%';
+   b.dataset.n=n;b.style.top=(BASKET[1]*100)+'%';
    const E=[[7.5,4.6],[5.1,4.1],[9.9,4.1],[7.5,2.5]].slice(0,clamp(n,1,4));
    b.innerHTML='<svg viewBox="0 0 15 10"><defs><radialGradient id="ce81" cx=".5" cy=".55" r=".5"><stop offset=".26" stop-color="#f0d17e"/><stop offset=".4" stop-color="#f6e3b2"/><stop offset=".62" stop-color="#fff8e2" stop-opacity=".7"/><stop offset=".85" stop-color="#fff" stop-opacity=".85"/><stop offset="1" stop-color="#fff" stop-opacity=".35"/></radialGradient></defs>'+
     '<path d="M2.2 .6 C1.6 3.6 3.2 7.2 6.4 8.6 C5.6 6 4.6 3.4 2.2 .6Z" fill="#efe3d6" fill-opacity=".62" stroke="#cdb9a6" stroke-opacity=".5" stroke-width=".3"/>'+
     E.map(e=>'<circle cx="'+e[0]+'" cy="'+e[1]+'" r="1.75" fill="url(#ce81)" stroke="#fff" stroke-opacity=".35" stroke-width=".2"/>').join('')+
     '<path d="M12.8 .6 C13.4 3.6 11.8 7.2 8.6 8.6 C9.4 6 10.4 3.4 12.8 .6Z" fill="#efe3d6" fill-opacity=".72" stroke="#cdb9a6" stroke-opacity=".55" stroke-width=".3"/></svg>';
   }
+  b.style.left=((c.psi!=null&&sg(c)<0?1-BASKET[0]:BASKET[0])*100)+'%';   /* a 3D-drawn fish is not mirrored: her belly side is the GL's */
   b.style.setProperty('--b',v.toFixed(3));
  }
  function basketPt(tank,c){
@@ -11862,6 +11888,18 @@ window.addEventListener('load',function(){
   setPhase('nudge');
  }
  function setPhase(p){R.phase=p;R.t=0;}
+ /* the hook: a = 0 (straight, swimming) .. 1 (full T pose); shader values only, drawn near profile */
+ function fpose(f,s,a){f.face=s;f.psi=a>.001?head(s):null;f.pit=TP.fpit*a;f.vk=TP.fvk*a;f.kap=TP.fkap*a;f.side=TP.side;f.kf=TP.fkf;f.thk=TP.thk;}
+ function mpose(m,s,a){m.face=s;m.z=a>.001?TP.mz:30;m.psi=a>.001?(s>0?-TP.md*a:Math.PI+TP.md*a):null;m.pit=0;m.vk=0;m.kap=0;m.thk=TP.thk;}
+ function mAt(m,f,s,a){   /* where his centre goes so that his snout is on the middle of her flank */
+  const p=pt(f,TP.fu,TP.fv),o=offAt(m,SNOUT[0],SNOUT[1],TP.mang*s*a,s*Math.cos(TP.md*a));
+  return {x:p.x-o.x+s*TP.dx,y:Math.min(m.base+1,p.y-o.y+TP.dy)};
+ }
+ function tpose(m,f,s,a,am,dt,k){   /* a: her bend, am: his turn */
+  fpose(f,s,a);f.ang+=(TP.fang*s*a-f.ang)*Math.min(1,dt*3);
+  mpose(m,s,am);m.ang+=(TP.mang*s*am-m.ang)*Math.min(1,dt*4);
+  const p=mAt(m,f,s,am);ease(m,p.x,p.y,dt,k);
+ }
  function lagged(lag){
   const h=R.hist,t=R.T-lag;if(!h.length)return null;
   for(let i=h.length-1;i>0;i--)if(h[i-1].t<=t){const a=h[i-1],b=h[i],k=clamp((t-a.t)/Math.max(1e-3,b.t-a.t),0,1);return {x:a.x+(b.x-a.x)*k,y:a.y+(b.y-a.y)*k,s:b.s};}
@@ -11887,16 +11925,17 @@ window.addEventListener('load',function(){
    if(tank)eggs(tank);
    watch();
    if(!R){if(st.coryRitual81&&tank&&document.visibilityState==='visible'&&!tank.matches('.waterChanging,.persistentWaterActive')){
-     if(st.coryRitual81.day!==st.day||st.corySpawn||!adults().some(f=>f.sex==='M')||!adults().some(f=>f.sex==='F'))st.coryRitual81=null;else start(false);}
+     if(st.coryRitual81.day!==st.day||st.corySpawn||!adults().some(f=>f.sex==='M')||!adults().some(f=>f.sex==='F'))st.coryRitual81=null;
+     else{waited+=dt;if(waited>=(st.coryRitual81.delay||0))start(false);}}
    }
    else if(tank&&document.visibilityState==='visible')step(tank,dt);
   }catch(e){console.error('AFNICA cory spawning ritual',e);try{stop();}catch(_){} }
   requestAnimationFrame(frame);
  }
- function watch(){   /* a finished Main Tank water change (not one closed by the day change) starts the ritual */
+ function watch(){   /* a finished Main Tank water change is remembered: the corydoras may spawn the next day */
   let w=null;try{w=st.waterChanges&&st.waterChanges.main;}catch(e){}
   const act=!!w;
-  if(prevW===true&&!act&&prevDay===st.day&&!st.corySpawn&&!R){st.coryRitual81={day:st.day};}
+  if(prevW===true&&!act&&prevDay===st.day){ensureHealthState();st.coryCond81.wc=st.day;}
   prevW=act;prevDay=st.day;
  }
  function step(tank,dt){
@@ -11928,50 +11967,42 @@ window.addEventListener('load',function(){
     others.forEach((o,i)=>follow(o,f,dt,.9+i*.4,f.W*f.sc*.12+o.W*o.sc*.5,8));
     if(R.t>14)setPhase('cut');
     break;}
-   case 'cut':{   /* he overtakes and turns across her head */
+   case 'cut':{   /* he comes up behind her and puts his snout on the middle of her flank; she stops */
     swim(f,f.x+s*2,f.base,dt,{sp:10,face:s,acc:3});
-    const sn=pt(f,SNOUT[0],SNOUT[1]);
     if(!R.cutB){
-     const o=offAt(m,FLANK[0],FLANK[1],-5*s,s*TP.f0);
-     const tx=sn.x-o.x+s*TP.dx,ty=Math.min(m.base,sn.y-o.y+TP.dy);
-     const d=swim(m,tx,ty,dt,{sp:150,acc:5,face:s,k:2.4});
-     if(d<9||R.t>3.2){R.cutB=R.t;m.z=TP.z;}
+     const p=mAt(m,f,s,0);
+     const d=swim(m,p.x,p.y,dt,{sp:120,acc:5,face:s,k:2.4});
+     if(d<5||R.t>3.2)R.cutB=R.t;
     }else{
-     const k=smooth((R.t-R.cutB)/1.3);
-     turnTo(m,s*(1-(1-TP.f0)*k),dt,6);
-     m.ang+=(-TP.a0*s*k-m.ang)*Math.min(1,dt*4);
-     m.psi=head(s)+(yawT(s,TP.d0)-head(s))*k;m.bank=TP.bank*s*k;m.thk=TP.thk;
-     const o=offAt(m,FLANK[0],FLANK[1],m.ang,m.face);
-     const tx=sn.x-o.x+s*TP.dx;
-     if((tx-m.x)*s>0||k>.95)ease(m,tx,Math.min(m.base-1,sn.y-o.y+TP.dy),dt,3+6*k);else ease(m,m.x,Math.min(m.base-1,sn.y-o.y+TP.dy),dt,3+6*k);   /* settles forward only */
-     if(R.t-R.cutB>1.6){R.cutB=null;R.holdT=R.round===0?rnd(14,17):rnd(9,13);setPhase('T');}
+     const k=smooth((R.t-R.cutB)/1.6);
+     tpose(m,f,s,k,k,dt,4+6*k);
+     if(R.t-R.cutB>1.8){R.cutB=null;R.holdT=R.round===0?rnd(14,17):rnd(9,13);setPhase('T');}
     }
     others.forEach((o,i)=>idleMale(o,f,dt,tank,i));
     break;}
-   case 'T':{   /* held still; fins only; the T slowly opens into an oblique V */
+   case 'T':{   /* held still; she trembles in bursts; his turn eases a little */
     const k=smooth(R.t/R.holdT);
-    f.hold=m.hold=true;f.quiver=m.quiver=.35;
-    f.vx=f.vy=0;f.ang+=(3*s-f.ang)*Math.min(1,dt*2);
-    f.face=s;
-    m.face=s*(TP.f0+(TP.f1-TP.f0)*k);m.ang=-(TP.a0+(TP.a1-TP.a0)*k)*s;m.z=TP.z;m.psi=yawT(s,TP.d0+(TP.d1-TP.d0)*k);m.bank=TP.bank*s;m.thk=TP.thk;
-    const sn=pt(f,SNOUT[0],SNOUT[1]),o=offAt(m,FLANK[0],FLANK[1],m.ang,m.face);
-    ease(m,sn.x-o.x+s*TP.dx,Math.min(m.base-1,sn.y-o.y+TP.dy),dt,8);
+    f.hold=m.hold=true;f.quiver=m.quiver=.3;
+    f.vx=f.vy=0;
+    tpose(m,f,s,1,1-TP.relax*k,dt,8);
+    const env=TP.trem*(.35+.65*Math.pow(Math.max(0,Math.sin(R.t*1.1+.4)),3));   /* a steady faint shiver, stronger bursts every few seconds */
+    f.jy=.45*env*Math.sin(R.t*2*Math.PI*10.5);f.ja=.8*env*Math.sin(R.t*2*Math.PI*8.3+1.1);
     bv=smooth((R.t-(R.holdT-4))/3.2);   /* the eggs appear in her basket */
     others.forEach((o2,i)=>{   /* the other male passes by and leaves them alone */
      if(R.t>R.holdT*.35&&!o2.pass)o2.pass={x:clamp(f.x-s*rnd(140,220),70,w-70)};
      if(o2.pass)swim(o2,o2.pass.x,o2.base,dt,{sp:30,hop:1});else idleMale(o2,f,dt,tank,i);
     });
-    if(R.t>=R.holdT){others.forEach(o2=>o2.pass=null);setPhase('part');}
+    if(R.t>=R.holdT){others.forEach(o2=>o2.pass=null);R.hk=1-TP.relax;f.jy=f.ja=0;setPhase('part');}
     break;}
-   case 'part':{   /* he finishes his turn and swims off past her head; she stays a moment */
+   case 'part':{   /* he turns back to profile and swims off past her (behind her); she straightens and rests a moment */
     f.hold=true;f.quiver=.2;bv=1;
-    swim(f,f.x,f.base,dt,{sp:4,face:s});
-    const gx=clamp(f.x+s*rnd(150,190),70,w-70);
-    if(R.t<1.1){turnTo(m,s,dt,3.2);m.ang+=(0-m.ang)*Math.min(1,dt*4);if(m.psi!=null){if(m.psi0==null)m.psi0=m.psi;const q=smooth(R.t/1.1);m.psi=m.psi0+(head(s)-m.psi0)*q;m.bank=TP.bank*s*(1-q);}}
-    else if(m.psi!=null){m.psi=null;m.psi0=null;m.face=s;}
-    if(R.t>=1.1){if(!m.away)m.away=gx;swim(m,m.away,m.base,dt,{sp:55,hop:1,face:s});}
+    const q=1-smooth(R.t/1.1);
+    fpose(f,s,q);f.ang+=(TP.fang*s*q-f.ang)*Math.min(1,dt*3);
+    if(R.t<1.1){mpose(m,s,R.hk*q);m.ang+=(TP.mang*s*R.hk*q-m.ang)*Math.min(1,dt*4);m.y+=(m.base-m.y)*Math.min(1,dt*2);}
+    else{if(m.psi!=null){m.psi=null;m.face=s;}
+     if(!m.away)m.away=clamp(f.x+s*rnd(150,190),70,w-70);swim(m,m.away,m.base,dt,{sp:55,hop:1,face:s});}
     others.forEach((o,i)=>idleMale(o,f,dt,tank,i));
-    if(R.t>2.4){m.away=null;pickSite(tank,f);setPhase('carry');}
+    if(R.t>2.4){m.away=null;f.psi=null;pickSite(tank,f);setPhase('carry');}
     break;}
    case 'carry':{   /* she takes the eggs to the glass or a leaf: along the sand, then up nose first */
     bv=1;
@@ -12036,10 +12067,298 @@ window.addEventListener('load',function(){
  }
  requestAnimationFrame(frame);
 
+ /* the day change decides whether they spawn today */
+ function roll(){
+  ensureHealthState();const C=st.coryCond81,d=st.day;
+  C.food=(C.food||[]).filter(x=>x>=d-3);
+  waited=0;
+  if(st.corySpawn||R)return;
+  const a=adults();if(!a.some(f=>f.sex==='M')||!a.some(f=>f.sex==='F'))return;
+  const w=C.wc===d-1?.5:0,n=C.food.filter(x=>x<d).length,fp=Math.min(.65,.25*n),p=1-(1-w)*(1-fp);
+  if(p>0&&Math.random()<p){st.coryRitual81={day:d,delay:Math.round(rnd(20,90))};st.coryCond81.food=C.food.filter(x=>x>=d);try{save();}catch(e){}}
+ }
+ try{const _nd=nextDay;nextDay=function(){const r=_nd.apply(this,arguments);try{roll();}catch(e){console.error('AFNICA cory spawn roll',e);}return r;};}catch(e){console.error('AFNICA V17.81 day hook',e);}
+ /* the old path (a water change still running at the day change hatched fry at once) now only counts as a water change */
+ try{startCorySpawnV172=function(){try{ensureHealthState();st.coryCond81.wc=st.day;}catch(e){}return false;};}catch(e){}
+ window.coryLiveFoodV1781=function(key){try{if(key!=='main')return;ensureHealthState();st.coryCond81.food.push(st.day);}catch(e){}};
+
  /* hatching clears the eggs */
  try{const _fin=finishCorySpawnV172;finishCorySpawnV172=function(){const r=_fin.apply(this,arguments);try{if(!st.corySpawn)st.coryEggs81=[];}catch(e){}return r;};}catch(e){console.error('AFNICA V17.81 hatch hook',e);}
- window.coryRitualV1781={start:()=>start(true),stop:()=>stop()};
+ window.coryRitualV1781={start:()=>start(true),stop:()=>stop(),roll};
   window.coryRitualDebugV1781=()=>({R,ctl,TP,leafSpot:()=>leafSpot(tankEl())});
+})();
+</script>
+<style>
+/* ===== V17.82 LIVE FOOD ===== */
+.liveFoodCanvas82{position:absolute;left:0;top:0;pointer-events:none;z-index:28}
+.liveBtn82{position:absolute;top:8px;z-index:60;padding:4px 9px;border-radius:14px;border:1px solid rgba(230,120,90,.55);background:rgba(52,24,20,.72);color:#ffd9c8;font:700 11px sans-serif;cursor:pointer;backdrop-filter:blur(2px)}
+.liveMenu82{position:absolute;top:36px;z-index:61;min-width:190px;padding:6px;border-radius:12px;border:1px solid rgba(230,140,110,.45);background:rgba(16,22,30,.94);color:#f3e6df;font:600 12px sans-serif;box-shadow:0 6px 18px rgba(0,0,0,.45)}
+.liveMenu82 button{display:flex;width:100%;justify-content:space-between;gap:10px;margin:2px 0;padding:6px 8px;border:0;border-radius:8px;background:rgba(255,255,255,.06);color:inherit;font:inherit;cursor:pointer;text-align:left}
+.liveMenu82 button:hover{background:rgba(255,160,120,.18)}
+.liveMenu82 button[disabled]{opacity:.45;cursor:default}
+.liveMenu82 small{display:block;margin:4px 4px 2px;color:#b9a69d;font-weight:500}
+.liveShop82 .liveRow82{display:flex;align-items:center;gap:10px;margin-top:8px;padding:8px;border:1px solid #e0907033;border-radius:10px;background:#1d1513}
+.liveShop82 .liveRow82 b{display:block;font-size:13px}
+.liveShop82 .liveRow82 small{display:block;color:#c8b3a8;font-size:10px;line-height:1.35}
+.liveShop82 .liveRow82 .ic{font-size:26px}
+.liveShop82 .liveRow82 .txt{flex:1;text-align:left}
+.liveShop82 .liveRow82 button{white-space:nowrap}
+</style>
+<script>
+/* ===== V17.82 LIVE FOOD =====
+   Live foods bought in the Shop (portions) and dropped into a tank with the LIVE button:
+   - Tubifex: a clump of thin red worms; it sinks, breaks up on the sand, and the worms bury their heads and wave their tails.
+   - Blackworms: thicker dark red-brown worms that writhe and crawl over the sand.
+   - Baby brine shrimp: a cloud of tiny orange nauplii that jerk about in mid-water and slowly settle.
+   - Banana worms: tiny white threads that drift down wriggling and lie on the sand.
+   - Daphnia: water fleas that hop up in little jerks and sink again.
+   Every fish hunts them (the V17.43 wafer hooks: coryWaferTargetV1743 for corydoras, waferTargetV1743 for the V16 swimmers);
+   a fish whose mouth reaches a food item eats it. A portion counts as the tank's feeding for the day (hunger reset, a little
+   waste). Live food in the Main Tank conditions the corydoras: they may spawn the next day (coryLiveFoodV1781, V17.81).
+   Food items live only in memory (a reload clears what is left in the water); stock is st.liveFood {kind: portions}. */
+(function(){
+ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),rnd=(a,b)=>a+Math.random()*(b-a);
+ const LF=window.LIVE_FOOD_V1782={
+  tubifex:{name:'Tubifex',icon:'🪱',price:60,pack:3,n:14,desc:'A clump of thin red worms. They bury their heads in the sand and wave their tails - corydoras dig them out.'},
+  blackworms:{name:'Blackworms',icon:'🪱',price:70,pack:3,n:10,desc:'Thick, lively worms that crawl over the bottom. The best conditioning food for corydoras.'},
+  bbs:{name:'Baby Brine Shrimp',icon:'🦐',price:50,pack:3,n:46,desc:'Freshly hatched orange nauplii that jerk about in the water. Every fish chases them; perfect for fry.'},
+  banana:{name:'Banana Worms',icon:'🧵',price:40,pack:3,n:34,desc:'Tiny white nematodes that sink wriggling. A first food for fry; bottom fish pick them off the sand.'},
+  daphnia:{name:'Daphnia',icon:'🫧',price:50,pack:3,n:20,desc:'Water fleas that hop through the water. Livebearers love hunting them.'}
+ };
+ const ORDER=['tubifex','blackworms','bbs','banana','daphnia'];
+ const FOOD={};   /* tank key -> [items] */
+ let uid=0;
+ function stock(k){try{return (st.liveFood&&st.liveFood[k])||0;}catch(e){return 0;}}
+ /* ---- shop ---- */
+ window.buyLiveFoodV1782=function(k){
+  const d=LF[k];if(!d)return;ensureHealthState();
+  if(st.coins<d.price)return toast('Not enough coins');
+  st.coins-=d.price;st.liveFood[k]=(st.liveFood[k]||0)+d.pack;save();
+  try{render('shop');}catch(e){}
+  toast(d.icon+' Bought '+d.pack+' portions of '+d.name);
+ };
+ try{
+  const _shop=shopHTML;
+  shopHTML=function(){
+   let h=_shop.apply(this,arguments);
+   try{
+    const at=h.indexOf('<h3>GENERAL TREATMENT</h3>');if(at<0)return h;
+    const cut=h.lastIndexOf('<div class="card"',at);if(cut<0)return h;
+    const rows=ORDER.map(k=>{const d=LF[k];return '<div class="liveRow82"><div class="ic">'+d.icon+'</div><div class="txt"><b>'+d.name+'</b><small>'+d.desc+'</small><small>In stock: '+stock(k)+' portions</small></div><button class="btn green small" onclick="buyLiveFoodV1782(\''+k+'\')">🪙 '+d.price+' · '+d.pack+'×</button></div>';}).join('');
+    const card='<div class="card liveShop82" style="text-align:center"><div style="font-size:48px">🪱</div><h3>LIVE FOOD</h3><div class="meta">Live prey the fish hunt for real. It feeds the tank for the day, and corydoras fed live food often spawn the next day.</div>'+rows+'</div>';
+    return h.slice(0,cut)+card+h.slice(cut);
+   }catch(e){console.error('AFNICA live food shop',e);return h;}
+  };
+ }catch(e){console.error('AFNICA V17.82 shop hook',e);}
+ /* ---- tank geometry ---- */
+ function tankOf(key){return document.getElementById('tank-'+key);}
+ function keyOf(tank){return String(tank.id||'').replace(/^tank-/,'');}
+ function sandTop(tank){const fl=tank.querySelector('.floor');return fl?fl.offsetTop+6:tank.clientHeight-58;}
+ /* ---- dropping a portion ---- */
+ window.dropLiveFoodV1782=function(key,k){
+  const d=LF[k],tank=tankOf(key);if(!d||!tank)return;
+  if(!(stock(k)>0))return toast('No '+d.name+' left · buy some in the Shop');
+  ensureHealthState();st.liveFood[k]--;
+  try{
+   const arr=tankArrayV14(key)||[];
+   arr.forEach(f=>{if(!f.dead){f.hungerDays=0;f.careReport='Fed live '+d.name.toLowerCase()+' · hunger reset';}});
+   const dl=dailyFor(key);if(dl)dl.feed=true;
+   st.tankWaste[key]=Math.min(10,wasteForV13(key)+.6);
+  }catch(e){console.error('AFNICA live food feeding',e);}
+  try{if(window.coryLiveFoodV1781)coryLiveFoodV1781(key);}catch(e){}
+  st.log=d.name+' fed to the '+(key==='fry'?'Fry Tank':key==='breeder'?'Breeder Tank':'Main Tank')+'.';
+  save();
+  const w=tank.clientWidth,x0=w*rnd(.25,.75),list=(FOOD[key]=FOOD[key]||[]);
+  for(let i=0;i<d.n;i++)list.push(make(k,tank,x0));
+  toast(d.icon+' '+d.name+' in the tank · '+stock(k)+' portions left');
+  closeMenu();updateBtns();
+  try{refreshV8FeedUI(key);}catch(e){}
+ };
+ function make(k,tank,x0){
+  const it={id:++uid,k,ph:rnd(0,6.28),born:performance.now()/1000,landed:false,eaten:false,fade:1};
+  if(k==='tubifex'||k==='blackworms'){
+   const bw=k==='blackworms';
+   Object.assign(it,{x:x0+rnd(-8,8),y:rnd(-6,8),vx:rnd(-10,10),vy:rnd(85,115),len:bw?rnd(15,22):rnd(10,15),th:bw?1.9:1.2,
+    col:bw?['#3b1712','#5c2318','#2a100c'][Math.floor(rnd(0,3))]:['#b8231b','#c9342a','#a3201a'][Math.floor(rnd(0,3))],ang:rnd(-.6,.6),spread:rnd(0,1),life:rnd(120,170),crawl:bw?rnd(-4,4):0,up:!bw});
+  }else if(k==='banana'){
+   Object.assign(it,{x:x0+rnd(-60,60),y:rnd(4,20),vx:0,vy:rnd(10,16),len:rnd(3.5,5.5),th:.8,col:'rgba(246,242,228,.92)',ang:rnd(0,6.28),life:rnd(110,150)});
+  }else if(k==='bbs'){
+   Object.assign(it,{x:x0+rnd(-55,55),y:rnd(10,40),vx:rnd(-6,6),vy:rnd(-4,6),r:rnd(1.1,1.5),hopAt:0,life:rnd(110,150)});
+  }else{   /* daphnia */
+   Object.assign(it,{x:x0+rnd(-60,60),y:rnd(14,60),vx:rnd(-6,6),vy:0,r:rnd(1.8,2.4),hopAt:0,life:rnd(130,170)});
+  }
+  return it;
+ }
+ /* ---- motion ---- */
+ function step(tank,list,dt,t){
+  const w=tank.clientWidth,top=sandTop(tank),H=tank.clientHeight;
+  for(let i=list.length-1;i>=0;i--){
+   const it=list[i];
+   if(it.eaten){list.splice(i,1);continue;}
+   const age=t-it.born;
+   if(age>it.life){it.fade-=dt/4;if(it.fade<=0){list.splice(i,1);continue;}}   /* buried / settled out of sight */
+   it.ph+=dt*(it.k==='bbs'?9:it.k==='daphnia'?5:it.k==='banana'?7:3.4);
+   if(it.k==='tubifex'||it.k==='blackworms'){
+    if(!it.landed){it.vx*=1-dt*.8;it.x+=it.vx*dt*it.spread+Math.sin(it.ph)*4*dt;it.y+=it.vy*dt;
+     const gy=top+it.spread*9;if(it.y>=gy){it.y=gy;it.landed=true;it.landT=t;}}
+    else{if(it.crawl){it.x+=it.crawl*dt*(.5+.5*Math.sin(it.ph*.4));if(Math.random()<dt*.15)it.crawl=-it.crawl;}}
+   }else if(it.k==='banana'){
+    if(!it.landed){it.y+=it.vy*dt;it.x+=Math.sin(it.ph*.7)*5*dt;it.ang+=Math.sin(it.ph)*dt*2;const gy=top+(it.id%7);if(it.y>=gy){it.y=gy;it.landed=true;}}
+   }else if(it.k==='bbs'){   /* jerky little swimmers, drifting slowly down */
+    if(t>it.hopAt){it.vx+=rnd(-22,22);it.vy+=rnd(-20,14);it.hopAt=t+rnd(.15,.5);}
+    it.vx*=1-dt*3;it.vy*=1-dt*3;it.y+=(it.vy+4)*dt;it.x+=it.vx*dt;
+    if(it.y>top-2){it.y=top-2;it.vy=-Math.abs(it.vy);}
+   }else{   /* daphnia: a hop up, then sinking */
+    if(t>it.hopAt){it.vy=-rnd(26,40);it.vx+=rnd(-10,10);it.hopAt=t+rnd(.5,1.1);}
+    it.vy+=dt*60;it.vy=Math.min(it.vy,12);it.vx*=1-dt*1.5;it.y+=it.vy*dt;it.x+=it.vx*dt;
+    if(it.y>top-3){it.y=top-3;it.vy=-8;}
+   }
+   it.x=clamp(it.x,6,w-6);if(it.y<6&&it.k!=='tubifex'&&it.k!=='blackworms')it.y=6;
+  }
+ }
+ /* ---- drawing ---- */
+ function canvasOf(tank){
+  let c=tank.querySelector('canvas.liveFoodCanvas82');
+  const w=tank.clientWidth,h=tank.clientHeight,dpr=Math.min(2,window.devicePixelRatio||1);
+  if(!c){c=document.createElement('canvas');c.className='liveFoodCanvas82';tank.append(c);}
+  if(c.width!==Math.round(w*dpr)||c.height!==Math.round(h*dpr)){c.width=Math.round(w*dpr);c.height=Math.round(h*dpr);c.style.width=w+'px';c.style.height=h+'px';}
+  const g=c.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);return {c,g,w,h};
+ }
+ function worm(g,it,t){
+  /* a wriggling worm: a chain of points with a travelling wave; tubifex stand up from the sand and wave */
+  const n=7,seg=it.len/(n-1),pts=[];
+  let a=it.landed?(it.up?-Math.PI/2+.5*Math.sin(it.ph*.6+it.id):it.ang):it.ang+Math.PI/2*.3*Math.sin(it.ph*.5);
+  let x=it.x,y=it.y;
+  const amp=it.landed?(it.up?.55:.75):.5;
+  for(let i=0;i<n;i++){
+   pts.push([x,y]);
+   const bend=amp*Math.sin(it.ph*1.6-i*.9)*(it.up?(i/n):1);
+   const aa=a+bend;x+=Math.cos(aa)*seg;y+=Math.sin(aa)*seg;
+  }
+  if(it.landed&&it.up){   /* head buried: the first third is under the sand surface */
+   const dy=it.len*.28;for(const p of pts)p[1]+=dy;
+  }
+  g.strokeStyle=it.col;g.lineWidth=it.th;g.lineCap='round';g.lineJoin='round';
+  g.beginPath();g.moveTo(pts[0][0],pts[0][1]);
+  for(let i=1;i<pts.length-1;i++){const mx=(pts[i][0]+pts[i+1][0])/2,my=(pts[i][1]+pts[i+1][1])/2;g.quadraticCurveTo(pts[i][0],pts[i][1],mx,my);}
+  g.lineTo(pts[n-1][0],pts[n-1][1]);g.stroke();
+  if(it.k==='blackworms'){g.strokeStyle='rgba(255,170,140,.18)';g.lineWidth=.6;g.stroke();}   /* a faint sheen */
+  it.pts=pts;
+ }
+ function draw(tank,list,t){
+  const {g,w,h}=canvasOf(tank);g.clearRect(0,0,w,h);
+  if(!list||!list.length)return;
+  const top=sandTop(tank);
+  for(const it of list){
+   g.globalAlpha=clamp(it.fade,0,1);
+   if(it.k==='tubifex'||it.k==='blackworms'){
+    if(it.landed&&it.up){g.save();g.beginPath();g.rect(0,0,w,it.y+.5);g.clip();worm(g,it,t);g.restore();}   /* the buried head is hidden by the sand */
+    else worm(g,it,t);
+   }else if(it.k==='banana'){
+    const a=it.ang+Math.sin(it.ph)*.6,dx=Math.cos(a)*it.len/2,dy=Math.sin(a)*it.len/2,bx=-Math.sin(a)*Math.sin(it.ph*1.3)*1.2,by=Math.cos(a)*Math.sin(it.ph*1.3)*1.2;
+    g.strokeStyle=it.col;g.lineWidth=it.th;g.lineCap='round';g.beginPath();g.moveTo(it.x-dx,it.y-dy);g.quadraticCurveTo(it.x+bx,it.y+by,it.x+dx,it.y+dy);g.stroke();
+   }else if(it.k==='bbs'){
+    const gr=g.createRadialGradient(it.x,it.y,0,it.x,it.y,it.r*1.6);gr.addColorStop(0,'#ffc070');gr.addColorStop(.5,'#ff8a24');gr.addColorStop(1,'rgba(255,120,30,0)');
+    g.fillStyle=gr;g.beginPath();g.arc(it.x,it.y,it.r*1.6,0,6.283);g.fill();
+   }else{
+    g.fillStyle='rgba(214,160,104,.55)';g.beginPath();g.ellipse(it.x,it.y,it.r,it.r*1.25,.3*Math.sin(it.ph),0,6.283);g.fill();
+    g.fillStyle='rgba(40,25,20,.85)';g.beginPath();g.arc(it.x+it.r*.35,it.y-it.r*.55,.55,0,6.283);g.fill();
+    g.strokeStyle='rgba(230,200,160,.5)';g.lineWidth=.5;g.beginPath();g.moveTo(it.x,it.y-it.r);g.lineTo(it.x-it.r*1.3,it.y-it.r*1.6-Math.sin(it.ph*4));g.stroke();   /* the swimming antenna */
+   }
+  }
+  g.globalAlpha=1;
+ }
+ /* ---- who eats what ---- */
+ function near(list,x,y,r,pred){let best=null,bd=r;for(const it of list){if(it.eaten||(pred&&!pred(it)))continue;const d=Math.hypot(it.x-x,it.y-y);if(d<bd){bd=d;best=it;}}return best;}
+ /* V16 swimmers (livebearers, fry): head for the nearest food item, eat it when the head reaches it */
+ const _wt=window.waferTargetV1743;
+ window.waferTargetV1743=function(el,state,now){
+  try{
+   const tank=el.closest('.tank'),list=tank&&FOOD[keyOf(tank)];
+   if(list&&list.length&&state.preset&&!el.classList.contains('v13Critical')&&!el.classList.contains('deadFish')&&el.dataset.species!=='anc'&&el.dataset.species!=='cory'){
+    const fw=Math.max(48,95*(state.scale||1)),fh=Math.max(26,44*(state.scale||1)),hf=state.facing>0?.85:.15;
+    const hx=state.x+hf*fw,hy=state.y+fh/2;
+    if(state.lfFirst==null){state.lfFirst=now+rnd(200,1200);state.lfBottom=Math.random()<.35;}   /* a moment to notice it; only some bother with worms on the sand */
+    if(now>=state.lfFirst&&!(now<(state.lfFull||0))){
+     const top=sandTop(tank),ok=x=>x.fade>.5&&(state.lfBottom||!(x.landed&&x.y>top-12));
+     let it=state.lfIt&&!state.lfIt.eaten&&list.includes(state.lfIt)&&ok(state.lfIt)?state.lfIt:null;
+     if(!it||now-(state.lfScan||0)>600){state.lfScan=now;it=near(list,hx,hy,1e9,ok)||it;state.lfIt=it;}
+     if(it){
+      if(Math.hypot(it.x-hx,it.y-hy)<10){
+       if(now>=(state.lfBite||0)){it.eaten=true;state.lfIt=null;state.lfBite=now+rnd(700,1400);   /* swallow, then a pause before the next bite */
+        state.lfN=(state.lfN||0)+1;if(state.lfN>=(state.lfMax||(state.lfMax=Math.round(rnd(5,9))))){state.lfN=0;state.lfMax=0;state.lfFull=now+rnd(40000,70000);}}   /* full for a while */
+       return {x:it.x-hf*fw,y:it.y-fh/2,hover:true};}
+      else{state.wafLow=it.y>sandTop(tank)-30?80:0;return {x:it.x-hf*fw,y:it.y-fh/2};}
+     }
+    }
+   }else if(state)state.lfFirst=null;
+  }catch(e){console.error('AFNICA live food (swimmers)',e);}
+  return _wt?_wt.apply(this,arguments):null;
+ };
+ /* corydoras (V17.12): hop to food on or near the bottom and dig at it */
+ const _ct=window.coryWaferTargetV1743,_cn=window.coryWaferNearV1743;
+ window.coryWaferTargetV1743=function(tank,s,t){
+  try{
+   const list=FOOD[keyOf(tank)];
+   if(list&&list.length&&s.age>=7){
+    const top=sandTop(tank),it=near(list,s.x,s.y,1e9,x=>x.y>top-40&&x.fade>.5);
+    if(it){const dir=it.x>=s.x?1:-1,mo=s.el.offsetWidth*s.scale*.42;return {x:it.x-dir*mo};}
+   }
+  }catch(e){console.error('AFNICA live food (cory)',e);}
+  return _ct?_ct.apply(this,arguments):null;
+ };
+ window.coryWaferNearV1743=function(s){
+  try{const tank=s.el&&s.el.closest('.tank'),list=tank&&FOOD[keyOf(tank)];
+   if(list&&list.length){const mx=s.x+(s.face<0?-1:1)*s.el.offsetWidth*s.scale*.42;if(near(list,mx,s.y,40))return true;}
+  }catch(e){}
+  return _cn?_cn.apply(this,arguments):false;
+ };
+ function corysEat(tank,list){   /* a cory mouth (low, at the snout) on a food item eats it */
+  const tr=tank.getBoundingClientRect();
+  tank.querySelectorAll('.modelFish[data-species="cory"]:not(.deadFish),.modelFish[data-species="anc"]:not(.deadFish)').forEach(el=>{
+   const r=el.getBoundingClientRect();if(!r.width)return;
+   const m=/scaleX\(([-\d.e]+)\)/.exec(el.style.transform||''),f=m&&+m[1]<0?-1:1;
+   const mx=r.left+r.width/2-tr.left+f*r.width*.4,my=r.top+r.height*.72-tr.top;
+   const n=performance.now();if(n<(+el.dataset.lfBite||0))return;
+   const it=near(list,mx,my,9);if(it){it.eaten=true;el.dataset.lfBite=n+rnd(450,900);}
+  });
+ }
+ /* ---- tank buttons ---- */
+ function closeMenu(){document.querySelectorAll('.liveMenu82').forEach(m=>m.remove());}
+ function updateBtns(){const n=ORDER.reduce((a,k)=>a+stock(k),0);document.querySelectorAll('.liveBtn82').forEach(b=>{b.textContent='🪱 LIVE ×'+n;});}
+ function openMenu(tank,key,btn){
+  closeMenu();
+  const m=document.createElement('div');m.className='liveMenu82';m.style.left=btn.offsetLeft+'px';
+  m.innerHTML=ORDER.map(k=>{const d=LF[k],n=stock(k);return '<button type="button" data-k="'+k+'"'+(n?'':' disabled')+'><span>'+d.icon+' '+d.name+'</span><span>×'+n+'</span></button>';}).join('')+(ORDER.some(k=>stock(k))?'':'<small>No live food yet · buy it in the Shop</small>');
+  m.addEventListener('click',e=>{e.stopPropagation();const b=e.target.closest('button[data-k]');if(b&&!b.disabled)dropLiveFoodV1782(key,b.dataset.k);});
+  tank.append(m);
+ }
+ document.addEventListener('click',e=>{if(!e.target.closest('.liveMenu82,.liveBtn82'))closeMenu();},true);
+ /* ---- loop ---- */
+ let last=performance.now();
+ function frame(now){
+  const dt=Math.min(.05,(now-last)/1000);last=now;const t=now/1000;
+  try{
+   if(!document.hidden){
+    document.querySelectorAll('.tank').forEach(tank=>{
+     const key=keyOf(tank);if(!key)return;
+     if(!tank.querySelector('.liveBtn82')){
+      const b=document.createElement('button');b.className='liveBtn82';b.type='button';
+      const wb=tank.querySelector('.waferBtn43');b.style.left=((wb?wb.offsetLeft+wb.offsetWidth:100)+6)+'px';
+      b.onclick=e=>{e.stopPropagation();if(tank.querySelector('.liveMenu82'))closeMenu();else openMenu(tank,key,b);};
+      tank.appendChild(b);updateBtns();
+     }
+     const list=FOOD[key];
+     if(list&&list.length){step(tank,list,dt,t);corysEat(tank,list);}
+     if(list&&list.length||tank.querySelector('canvas.liveFoodCanvas82'))draw(tank,list,t);
+     if(list&&!list.length){delete FOOD[key];const c=tank.querySelector('canvas.liveFoodCanvas82');if(c)c.remove();}
+    });
+   }
+  }catch(e){console.error('AFNICA live food',e);}
+  requestAnimationFrame(frame);
+ }
+ requestAnimationFrame(frame);
+ window.liveFoodDebugV1782=()=>({FOOD,LF});
 })();
 </script>
 </body></html>
