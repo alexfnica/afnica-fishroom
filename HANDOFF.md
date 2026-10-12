@@ -1,6 +1,23 @@
-# Handoff — where work stopped (2026-10-11, cloud session)
+# Handoff — where work stopped (2026-10-12, cloud session)
 
-## Latest topic: CORYDORAS SPAWNING (V17.81) + LIVE FOOD (V17.82) — on branch main-kdhfm5, not merged; owner reviewing
+## Latest: CORYDORAS PHOTO MODELS (V17.87) + PHOTO BREEDING BOX (V17.88) — merged to main 2026-10-12
+
+### V17.87 corydoras photos (end of file)
+- Every cory stage is now a Gemini photo, cut out with `assets_blender/cut_translucent_np.py` (cut-outs in
+  `assets_blender/incoming/cory_*_gemini_cut.png`): larva 0-2, fry 3-6, juvenile 7-13, adult 14-30 (`cory|adultM87`,
+  `cory|adultF87`), full grown 31+ (`cory|fullM87`, `cory|fullF87`; `coryFullGrownV1783`).
+- Per sprite: `PECTWK_V1773[key]` pectoral box, V17.83 `GEO[key]` (eye, drawn barbels with width `w` / opacity `a`, cut).
+  Photo females are not height-stretched (CSS `:has([data-wk=...])`). V17.81 `BASKET=[.58,.86]`, `SNOUT=[.97,.60]`.
+- To swap a photo: cut it to 260 px wide, re-measure eye/barbels/pectoral on a 4x grid, update the constants.
+- Seen once, not reproduced: a thin dark horizontal line near a full-grown female's dorsal fin.
+
+### V17.88 photo breeding box (end of file)
+- Gemini photo cut by `assets_blender/cut_breeding_box.py` (difference matting + hand-set solid regions for the white
+  rim/hooks/grate) into BACK (inside, grate; behind fish) and FRONT (rim, hooks, edges) layers on the V17.86 elements.
+- Box keeps the photo aspect, `top:-3px` so the hooks run over the tank rim. `window.boxGeoV1788={l,r,floor:.89}` tells
+  V17.86 where the grate and walls are (fish floor and eggs).
+
+## Earlier topic: CORYDORAS SPAWNING (V17.81) + LIVE FOOD (V17.82)
 
 ### V17.81 spawning ritual (end of the game HTML)
 - **Trigger (owner: "sometimes, the NEXT day"):** a finished main-tank water change is stored in `st.coryCond81.wc`; live food fed
