@@ -107,30 +107,43 @@ def take_c_hungry():
 
 # ------------------------------------------------------------------ 6-8: the breeding box on the tank rim, eggs, larvae, fry
 FRYBLEED = _tk.FULLBLEED.replace('#tank-main', '#tank-fry')
-def take_c_box():
+def box_game(ages, eggs):
+    """the Fry Tank, full bleed, with the breeding box on the rim holding these young cory (ages) and a clutch"""
     c = _tk.open_game(VW, VH, _tk.DSF)
+    c.js(_tk.CAM_JS); c.js('window.__afHourOverride=12;' + NOLIVE + HIDEUI + '1')
+    c.js("(()=>{const mk=(age,i)=>T.fish('cory',i%%2?'M':'F',age,{id:'yb'+i,name:'yb'+i});st.fry.length=0;%s.forEach((a,i)=>st.fry.push(mk(a,i)));"
+         "st.coins=999;buyBreedingBoxV1786();st.breedingBox86.fish=st.fry.map(f=>String(f.id));"
+         "st.corySpawn=%d?{startDay:st.day,endDay:st.day+3,count:%d,v81:true,tank:'box'}:null;st.coryEggs81=[];for(let i=0;i<%d;i++)st.coryEggs81.push({x:.5,y:.5,k:'g',d:st.day,b:0});"
+         "T.show('fry');T.clean();return 1})()" % (json.dumps(ages), eggs, eggs, eggs))
+    c.js(FRYBLEED); advance(c, .3); c.js(FRYBLEED); advance(c, 4)
+    return c
+BOX = "CAM.sel('#tank-fry .breedBox86.back')"
+def young_cam(c, age): 
+    fid = c.js("(()=>{const f=st.fry.find(f=>f.age===%d);return f?String(f.id):null})()" % age)
+    return lambda i: c.js("CAM.sel('#tank-fry [data-fish-id=\"%s\"]')" % fid)
+
+def take_c_box():
+    # the nursery right after the eggs went in: the clutch on the grate and day-1 larvae (yolk sacs), nothing else
+    c = box_game([1, 1, 1, 1, 1], 12)
     try:
-        c.js(_tk.CAM_JS); c.js('window.__afHourOverride=12;' + NOLIVE + HIDEUI + '1')
-        c.js("(()=>{const mk=(age,i)=>T.fish('cory',i%2?'M':'F',age,{id:'yb'+i,name:'yb'+i});st.fry.length=0;[1,1,1,4,4,4].forEach((a,i)=>st.fry.push(mk(a,i)));"
-             "st.coins=999;buyBreedingBoxV1786();st.breedingBox86.fish=st.fry.map(f=>String(f.id));"
-             "st.corySpawn={startDay:st.day,endDay:st.day+3,count:10,v81:true,tank:'box'};st.coryEggs81=[];for(let i=0;i<10;i++)st.coryEggs81.push({x:.5,y:.5,k:'g',d:st.day,b:0});"
-             "T.show('fry');T.clean();return 1})()")
-        c.js(FRYBLEED); advance(c, .3); c.js(FRYBLEED); advance(c, 4)
-        box = "CAM.sel('#tank-fry .breedBox86.back')"
-        def tilt(i):                                  # from the hooks on the rim down to the eggs and young on the grate
-            b = c.js(box)
+        def tilt(i):                                  # from the hooks on the rim down to the eggs and larvae on the grate
+            b = c.js(BOX)
             if not b: return full(i, 2.4)
-            u = min(1, i / 75.0); u = u * u * (3 - 2 * u); z = 2.9 + .5 * u
+            u = min(1, i / 90.0); u = u * u * (3 - 2 * u); z = 2.9 + .5 * u
             return full(i, z, b['x'], b['y'] - b['h'] * .32 + b['h'] * .62 * u)
         run(c, 'c_box', 6, fixed=tilt)
         def floor(i):                                 # along the grate, slowly
-            b = c.js(box)
+            b = c.js(BOX)
             if not b: return full(i, 2.4)
             return full(i, 5.2, b['x'] - b['w'] * .26 + b['w'] * .3 * i / 180, b['y'] + b['h'] * .32)
         run(c, 'c_nursery', 6, fixed=floor)
-        for name, age in (('c_larva', 1), ('c_fry', 4)):
-            fid = c.js("(()=>{const f=st.fry.find(f=>f.age===%d);return f?String(f.id):null})()" % age)
-            run(c, name, 4, target=lambda i: c.js("CAM.sel('#tank-fry [data-fish-id=\"%s\"]')" % fid), cam=Cam(tau=.5), zoom=7.0)
+        run(c, 'c_larva', 4, target=young_cam(c, 1), cam=Cam(tau=.5), zoom=7.0)
+    finally: c.close()
+
+def take_c_frybox():
+    # a few days later: the fry in the box (their own take, so no older young sit in front of the larvae)
+    c = box_game([4, 4, 4, 4], 0)
+    try: run(c, 'c_fry', 4, target=young_cam(c, 4), cam=Cam(tau=.5), zoom=7.0)
     finally: c.close()
 
 # ------------------------------------------------------------------ growth montage (juvenile, adult, full grown) + the ending

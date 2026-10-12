@@ -279,7 +279,8 @@ window.renderFrame = async function (fi) {
     if (t < L.t0 || t >= L.t1) continue; const li = await img(ROOT + L.src); if (!li) continue;
     const lt = t - L.t0;
     if (L.splash) {
-      const a = clamp(lt / .25); g.save(); g.globalAlpha = a; g.fillStyle = L.bg || '#fff'; g.fillRect(0, 0, W, H);
+      const fin = L.fin == null ? .25 : L.fin, a = (fin ? clamp(lt / fin) : 1) * (L.fout ? 1 - eIn(clamp((t - (L.t1 - L.fout)) / L.fout)) : 1);   // fin 0: fully on from its first frame (an opening splash)
+      g.save(); g.globalAlpha = a; g.fillStyle = L.bg || '#fff'; g.fillRect(0, 0, W, H);
       const z = lerp(1.06, 1.0, eOut(lt / 1.6)), w = L.w * z, h = w * li.height / li.width;
       g.drawImage(li, (W - w) / 2, L.y - h / 2, w, h); g.restore(); continue;
     }
