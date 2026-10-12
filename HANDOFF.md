@@ -1,4 +1,107 @@
-# Handoff — where work stopped (2026-10-12, cloud session)
+# Handoff — where work stopped (2026-10-12)
+
+## Latest: BRISTLENOSE LIFE (V17.89, end of the game HTML) — not committed yet, waiting for the owner's feedback on the clips
+
+Reference: Foisy Aquatics, youtube.com/watch?v=QqU5RsqYAOI (mostly longfin albino / super red; behaviour only, the game keeps
+the wild-type sprites; 2:39-4:03, 5:03-5:15, 7:24-7:42 are a zebra pleco L046, ignored). Not in the video (do not invent):
+rasping close-up, bristle display, male-vs-male chases, wigglers. Owner said "do all" for the 6 points:
+1 **Fanning:** male lies head-in with the tail ~24 px OUT of the cave mouth; slow sweeps (0.38-0.52 s) with 0.55-1.25 s
+  holds drive the V17.42 fin canvas (`data-fan-ph89/fan-amp89`). Before: 1.75 Hz wiggle clipped to a circle.
+2 **Spawning visit:** she walks in HEAD FIRST (old code backed her in), goes deeper, turns hidden inside, lies facing out
+  a little lower than him; both drawn during male-approach/male-enter/trapped/laying (were invisible); his tail churns
+  (fast irregular sweeps); she pushes 9 px to the mouth every 4-9 s and settles back slowly (<0.2 px/frame).
+3 **Young:** 65% of their bouts are still clings of 6-16 s; hops go toward the group's centre (max 3 body lengths); wall
+  trips every 7th step instead of 3rd. On a wafer: per-fish distance factor `s.pileK` (heads-in overlapping pile), they eat
+  at 0.5x their size (`WAFERS_V1743[].eaten`) and stay twice as long. Fry leaving the cave (V17.43 canvas) settle in a loose
+  group and hold 3-8 s.
+4 **Glass:** after a new grazing patch, 55% chance of a 5-14 s still hold (no pectoral steps, mouth still); otherwise a
+  continuous glide at ~11 px/s (no stroke gating). Turn on the sand 0.55 s (`ancTurnSecV1789`, was 1 s).
+5 **Brood glimpse:** `canvas.ancBrood89` (z 43, clipped to the mouth hole) draws the clutch in the mouth: bright orange
+  grape clump, darker with eye spots after 55%, fungus white; yolk stage = twitching wrigglers. Breeder tank only.
+6 **Guarding:** cycle fan (18-40 s) -> deeper -> hidden flip -> head + bristles in the entrance (8-16 s) -> leaves head first
+  -> turns outside (0.55 s) -> walks back in head first. Never backwards. Main tank (readiness days) and breeder (eggs/yolk).
+- Bug fixed in passing: the V17.40 breeder choreography never set `position:absolute` on the fish, so after
+  `renderV103Breeder()` re-created an element (e.g. starting a breeding) that fish was laid out ~40 px too low.
+- Hooks (one-liners in old code): `ancPostV1789` (anc main loop, before `el.title=`), `ancTurnSecV1789`, `ancYoungTxV1789`,
+  young rest choice, `s.steps%(s.young?7:3)`, `ancGlideV1789`, fin canvas `fanPh89`. No new `st` fields (all runtime).
+- Measured (headless rig, fake clock): male cycle max 1.1 px/frame, 0 backward frames; female 1.4 px/frame, 1 borderline
+  frame; young cluster spread ~100-230 px, 56-74% still; glass holds 5.6-10 s, glide 10-11 px/s; no console errors.
+- Test hooks: `ancDebugV1789().DBG` {force, fan, guard} (fixed bout lengths, test only).
+- Clips: `AFNICA_Anc89_{fan,spawn,young,emerge,turn,glass,brood}.mp4` in the repo root (review only, untracked).
+  Rig: `assets_blender/trailer/anc_rig.py` + `takes_anc89.py <fan|spawn|young|emerge|glass|brood|mainready> [--film]`
+  (landscape 960x540, breeder via `renderV103Breeder`, caption follows the camera), encoder `encode_plain.py` (no audio).
+  **Use a different `AF_PORT` for every rig running at the same time** - two rigs on 9333 attach to the same Chrome.
+- aquarium-reviewer pass: no blocking bugs; fixed: live-sibling filter (`s.seen89`, old motion states are never deleted),
+  dead male skipped, `.ancBrood89` removed when the dad is gone, eggs canvas redrawn only on change (wrigglers ~15 fps).
+  Not changed: `st.ancClutch2` brood is not drawn (the dad's cycle follows `st.ancClutch` only, as before);
+  `ancTurnSecV1789` shortens every anc turn (wall/wafer too).
+- **Owner corrections, round 2 (2026-10-12), all done:**
+  - Eggs belong at the BACK of the cave: no clump in the mouth any more; `.ancBrood89` is only a faint glint at the far
+    end of the opening, behind the male (owner chose "faint glint"); INSPECT CAVE still shows the clump.
+  - Cave clipping: the old rim mask (ellipse 22x20 at 32,46) was bigger/lower than the painted opening, so fish showed
+    over the wooden lip. CSS override `.ancCaveRim` mask = ellipse 20x15 at 33,41 (measured: opening x 10-56, y 24-58 of
+    the 160x77 cave); fish centre line `caveGeo().cy = T+43`; `.ancCaveShade89` (z 45) darkens the opening toward the back.
+  - Pleco fins: ref. 10:02.85 / 10:03.85 / 0:57.3 / 0:59.4 - pectorals and pelvics are flat horizontal plates, they don't
+    scull. Hook in V17.42 `pectoral()` -> `ancPectV1789`: erases the sprite's hanging pectoral + pelvic below a belly line,
+    covers the part over the belly with sampled belly colour, redraws the same fin pixels rotated flat and squashed; small
+    fore-aft row while crawling. Polygons per sprite record in `PFIN` ('anc|0|38' male, 'anc|120|38' female, 260x152
+    records only). Sprites themselves unchanged.
+  - Sand gait (owner chose burst-glide-stop; the clip has no sand-walking footage): `ancSandSpeedV1789` replaces the
+    constant 24 px/s slide in 'move', 'toWall' and the cave approach: peak in 0.15 s (~0.3 BL per bout, peak ~124 px/s
+    for an adult), exponential glide, dead stop 0.4-1.6 s. Measured: 0 backward frames, max 4.1 px/frame at burst peaks.
+  - Reviewer round 2 fixed: fin cache (`r.pfc89`, was rebuilt every frame), size guard, erase limited to the fin bbox,
+    gait returns 0 when blocked. Clips re-filmed: fan, spawn, brood, young, sand (`AFNICA_Anc89_sand.mp4` new);
+    comparison stills `AFNICA_Anc89_compare*.jpg`.
+- **Round 3 - new cave (owner: "still corruption at the cave, change the cave if needed"):** the 3/4 driftwood log
+  (`ancCaveMarkupV1728` PNG) is replaced at runtime by a terracotta tube seen from the side (`caveSVG()` in V17.89, SVG
+  with clay noise, algae film, contact shadow; like the clay caves at 0:39 / 2:08 of the ref. clip). `window.ancCaveMarkupV1728`
+  now returns the SVG; existing caves are swapped by `useCave()`. Back layer z 42 = tube + dark inside; rim z 45 = same
+  tube, CSS mask cuts only the mouth interior (ellipse 6.3x18.4 at 17.6,48). Fish inside are fully hidden except what is
+  in the mouth or sticks out. Constants: `MOUTH`, `caveGeo().cy = T+50`, in-tube clip T+28..T+69, x L+10..L+154.
+  Texts "driftwood cave" -> "breeding cave". The old PNG is still in the file (line ~3367) but unused.
+- **Round 4 - photo cave:** the SVG tube is replaced by the owner's Gemini photo (`assets_blender/incoming/anc_cave_photo.jpg`),
+  cut by `assets_blender/cut_anc_cave.py` -> `incoming/anc_cave_cut.png` (320x135, 2x; floor shadow kept as alpha),
+  embedded as `CAVEIMG89`, shown 160x67.5 at the bottom of the 160x77 cave box. Mouth interior (measured on the photo by
+  hand; the auto-detection also caught the shaded underside): centre 13.8,42, radii 7.6x23.5 -> rim mask ellipse 7.2x23,
+  `caveGeo().cy = T+46`, in-tube clip x L+8..L+156, y T+18..T+70. Fish that are not using the cave pass BEHIND it (z 41);
+  a fish facing into the mouth with its tail still outside is drawn under the rim (z 44) so it really goes in.
+- **Round 5 - sand gait from a new reference** (youtube.com/watch?v=ILotQrXzuu0, wild-type bristlenose: 4-22 s barely
+  moves on wood, 26-29 s slow smooth crawl ~0.15-0.2 BL/s over a root onto sand, head pressed down, 28.6-30 s rasps in
+  place; no bursts). `ancSandSpeedV1789` = slow crawl 0.2 BL/s (young 0.32) with ease-in and braking; trips > 1.3 BL =
+  a low swim (~0.75 BL/s, lifted 6 px via `translate`, only while mode 'move'); head-down tilt 2.4 deg while rasping
+  (`rotate`); fins row 0.12/0.07; sand turn back to 1 s. Old bug fixed: the male walked to the cave doorway BACKWARDS
+  when the cave was on his left (cave branch `turn(s,1,dt)`). Fry emerge from the photo-cave mouth (L+10, T+52).
+  Only the dad / fish in cave-approach/enter go under the rim; everyone else passes behind the tube (z 41).
+  Reviewer round 3 done (fixes applied). Measured: male 1.1 px/frame max, 4 backward frames (the doorway pivot);
+  female still 49% of sand frames, 'detach' wall descent is old code. Clip `AFNICA_Anc89_sand.mp4` re-filmed.
+- **Gills (owner: "bristlenose don't have gills like the other fish, in the same place"):** V17.53 `breathe()` drew the
+  usual mid-head gill-cover arch for anc. `BRS.anc.low=1` now draws only a short faint slit low on the side, right above
+  the pectoral base (no operculum flap). Male fin erase line lowered at the head end (`belly` 198,85) - it was cutting a
+  notch under the chin.
+- **Cave as obstacle (owner screenshots: fish behind the tube looked skewered):** no fish passes behind or through the
+  tube any more. A trip that really crosses it (move target / toWall / the male's walk to the doorway from the far side)
+  swims OVER it: `s.ovl89` lift profile (rises 48 px ahead, belly ~4 px over the tube top, tilt <= 14 deg), rate-limited
+  70 px/s (max ~2.3 px/frame); the trip is flagged as a swim in `ancSandSpeedV1789`. A grazing/wandering fish stops at the
+  tube's edge; a move target on the tube is moved to the near side. (A "crawl over it" version looked wrong in profile.)
+- **Fanning tail (owner: "the up-down tail beat is not ok", "faster"):** the vertical wave is off while fanning
+  (`fanAmp89` .006); the caudal fin is redrawn narrower/wider about the tail base (turning toward / away from the viewer =
+  a sideways stroke seen from the side), strokes 0.2-0.28 s with 0.18-0.55 s holds (spawning churn 0.12-0.2 s).
+- **3D bristlenose (owner chose "the game's 3D shader" over Unity/Blender):** the anc side canvas now renders through
+  V17.42 `glBent` (M3 two-flank shader) via `anc3dV1789` (hook in the anc tick, `c.dataset.gl89` = 1 when used; switch
+  `window.ANC3D_V1789=false` for the old flat path). Texture = the sprite with the fins baked flat (`bake3d`,
+  `flatFins`). Fanning = real sideways tail bend (kap from the beat, side flips), crawling = small lateral wave.
+  Turns: yaw <= 0.5 rad + a brief narrowing while the side switches (`turn3V1789`) - beyond ~30 deg the shader's far
+  flank shows through the head (same limit as the cory note). Fanning beat now continuous and smooth, 2.3 Hz (spawning
+  3.2 Hz), strength drifting 0.56-1 (owner: "faster and smoother, not bursts").
+  Old bug fixed: fish driven by the breeder choreography were never articulated (no fin canvas) - the breeding male
+  was always the plain flat sprite in the Breeder Tank. The breeder wrapper now articulates them.
+- Old-code note: a young fish coming down a side wall (`detach`, fixed 7 s) moves ~3.4 px/frame when it was high up.
+- Next: owner feedback on the clips; then commit. Possible follow-ups: eggs on the cave ceiling instead of the floor;
+  male shifting over the clump; fry clinging on the cave/wood top (they only use sand + glass now).
+
+---
+
+# Earlier (2026-10-12, cloud session)
 
 ## Latest: CORYDORAS PHOTO MODELS (V17.87) + PHOTO BREEDING BOX (V17.88) — merged to main 2026-10-12
 
