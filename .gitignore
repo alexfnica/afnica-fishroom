@@ -9,3 +9,4 @@ assets_blender/trailer/out/music_AFNICA_*.wav
 assets_blender/trailer/out/sfx_*.json
 assets_blender/trailer/*log*.txt
 .claude/launch.json
+__pycache__/

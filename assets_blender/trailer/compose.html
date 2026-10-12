@@ -1,9 +1,9 @@
 <!doctype html>
 <html><head><meta charset="utf-8">
 <style>
-@font-face{font-family:Bahn;src:url('file:///C:/Windows/Fonts/bahnschrift.ttf');font-weight:100 900;font-stretch:75% 100%}
-@font-face{font-family:Goth;src:url('file:///C:/Windows/Fonts/GOTHIC.TTF')}
-@font-face{font-family:GothB;src:url('file:///C:/Windows/Fonts/GOTHICB.TTF')}
+@font-face{font-family:Bahn;src:url('file:///C:/Windows/Fonts/bahnschrift.ttf'),local('Inter Display ExtraBold'),local('InterDisplay-ExtraBold');font-weight:100 900;font-stretch:75% 100%}
+@font-face{font-family:Goth;src:url('file:///C:/Windows/Fonts/GOTHIC.TTF'),local('Inter Medium'),local('Inter-Medium')}
+@font-face{font-family:GothB;src:url('file:///C:/Windows/Fonts/GOTHICB.TTF'),local('Inter Bold'),local('Inter-Bold')}   /* local(): fallbacks when the Windows fonts are not there (cloud) */
 html,body{margin:0;background:#000;overflow:hidden}
 canvas{display:block}
 </style></head>
@@ -12,7 +12,7 @@ canvas{display:block}
 // AFNICA trailer compositor. window.TL (timeline) is set from Python; renderFrame(i) draws frame i (30 fps).
 const W = 1080, H = 1920, FPS = 30;
 const cv = document.getElementById('cv'), g = cv.getContext('2d');
-const ROOT = 'file:///D:/Retirement/assets_blender/trailer/';
+let ROOT = 'file:///D:/Retirement/assets_blender/trailer/';   // compose.py sets it to this folder
 const cache = new Map();
 function img(src) {
   if (cache.has(src)) return cache.get(src);
@@ -109,6 +109,64 @@ function tag(name, latin, x, y, t, o) {   // documentary species label: a thin l
   g.fillText(name, x + 76 - 26 * (1 - k2), y - 12);
   g.globalAlpha = out * clamp(k3); g.font = 'italic 34px Georgia'; g.letterSpacing = '1px'; g.fillStyle = '#bfeaff';
   g.fillText(latin, x + 76 - 26 * (1 - k3), y + 32);
+  g.restore();
+}
+
+function cap(txt, x, y, t, o) {      // story caption: one big centred line, white with a thick dark outline, pops in on the beat
+  const {size = 92, t1 = 1e9, exit = .16, hi = [], hiColor = '#ffd23f', instant = false, maxW = 980} = o;
+  const k = instant ? 1 : eBack(t / .2), a = (instant ? 1 : clamp(t / .08)) * (1 - eIn(clamp((t - (t1 - exit)) / exit)));
+  if (a <= 0) return;
+  g.save(); g.font = '800 ' + size + 'px Bahn, "Noto Color Emoji"'; g.textBaseline = 'middle';
+  const words = txt.split(' '), sp = g.measureText(' ').width, ws = words.map(w => g.measureText(w).width);
+  const total = ws.reduce((p, q) => p + q, 0) + sp * (words.length - 1), fit = Math.min(1, maxW / total);
+  g.translate(x, y); g.scale(fit * lerp(1.35, 1, k), fit * lerp(1.35, 1, k)); g.globalAlpha = a;
+  let cx = -total / 2;
+  words.forEach((w, i) => {
+    g.lineJoin = 'round'; g.lineWidth = size * .2; g.strokeStyle = 'rgba(4,14,22,.92)'; g.shadowColor = 'rgba(0,0,0,.5)'; g.shadowBlur = 24; g.shadowOffsetY = 8;
+    g.strokeText(w, cx, 0); g.shadowColor = 'transparent';
+    g.fillStyle = hi.includes(w) ? hiColor : '#ffffff'; g.fillText(w, cx, 0);
+    cx += ws[i] + sp;
+  });
+  g.restore();
+}
+
+function socials(t, S) {             // follow card: white page, app icon, the three accounts with their icons
+  const lt = t - S.t0; if (lt < 0 || t >= S.t1) return;
+  g.save(); g.globalAlpha = clamp(lt / .25); g.fillStyle = S.bg || '#fefefe'; g.fillRect(0, 0, W, H); g.restore();
+  const icon = S.iconImg; if (icon) { const k = eBack(lt / .5), w = 260 * lerp(.6, 1, k); g.save(); g.globalAlpha = clamp(lt / .3);
+    g.beginPath(); g.roundRect((W - w) / 2, 520 - w / 2, w, w, w * .22); g.clip(); g.drawImage(icon, (W - w) / 2, 520 - w / 2, w, w); g.restore(); }
+  g.save(); g.textAlign = 'center'; g.textBaseline = 'middle'; g.globalAlpha = clamp((lt - .15) / .3);
+  g.fillStyle = '#0b2a38'; g.font = '800 76px Bahn'; g.fillText(S.title || 'FOLLOW AFNICA', W / 2, 760);
+  g.fillStyle = '#4a7385'; g.font = '40px Goth'; g.fillText(S.sub || 'Aquarium Simulator', W / 2, 830); g.restore();
+  (S.items || []).forEach((it, i) => {
+    const u = eOut((lt - .3 - i * .15) / .45); if (u <= 0) return;
+    const y = 1060 + i * 240, x = 150 - 60 * (1 - u), r = 130;
+    g.save(); g.globalAlpha = u; drawNetIcon(it.net, x, y - r / 2, r);
+    g.fillStyle = '#0b2a38'; g.textBaseline = 'middle'; g.font = '700 30px Goth'; g.fillStyle = '#6b8c99'; g.fillText(it.label, x + r + 40, y - 34);
+    g.fillStyle = '#0b2a38'; let fs = 58; g.font = '800 ' + fs + 'px Bahn'; while (g.measureText(it.handle).width > W - (x + r + 40) - 50 && fs > 30) { fs -= 2; g.font = '800 ' + fs + 'px Bahn'; }
+    g.fillText(it.handle, x + r + 40, y + 22); g.restore();
+  });
+}
+function drawNetIcon(net, x, y, r) {  // simple drawn icons (no image files): TikTok, Instagram, Facebook
+  g.save();
+  if (net === 'tiktok') {
+    g.beginPath(); g.roundRect(x, y, r, r, r * .24); g.fillStyle = '#010101'; g.fill();
+    const note = (dx, dy, col) => { g.save(); g.translate(x + r * .5 + dx, y + r * .5 + dy); g.fillStyle = col; g.strokeStyle = col;
+      g.fillRect(r * .02, -r * .3, r * .1, r * .42);                                                     // stem
+      g.lineWidth = r * .1; g.beginPath(); g.arc(-r * .09, r * .12, r * .13, -.2, Math.PI * 1.9); g.stroke();   // round head
+      g.beginPath(); g.moveTo(r * .07, -r * .3); g.quadraticCurveTo(r * .1, -r * .12, r * .3, -r * .1); g.lineWidth = r * .09; g.stroke();   // flag
+      g.restore(); };
+    note(-r * .03, -r * .025, '#25F4EE'); note(r * .03, r * .025, '#FE2C55'); note(0, 0, '#ffffff');
+  } else if (net === 'instagram') {
+    const lg = g.createLinearGradient(x, y + r, x + r, y); ['#feda75', '#fa7e1e', '#d62976', '#962fbf', '#4f5bd5'].forEach((c, i) => lg.addColorStop(i / 4, c));
+    g.beginPath(); g.roundRect(x, y, r, r, r * .26); g.fillStyle = lg; g.fill();
+    g.strokeStyle = '#fff'; g.lineWidth = r * .075; g.beginPath(); g.roundRect(x + r * .2, y + r * .2, r * .6, r * .6, r * .18); g.stroke();
+    g.beginPath(); g.arc(x + r * .5, y + r * .5, r * .145, 0, 6.283); g.stroke();
+    g.fillStyle = '#fff'; g.beginPath(); g.arc(x + r * .665, y + r * .335, r * .04, 0, 6.283); g.fill();
+  } else {
+    g.beginPath(); g.arc(x + r / 2, y + r / 2, r / 2, 0, 6.283); g.fillStyle = '#1877F2'; g.fill();
+    g.fillStyle = '#fff'; g.font = '800 ' + (r * .78) + 'px Inter, Bahn, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.fillText('f', x + r * .55, y + r * .93);
+  }
   g.restore();
 }
 
@@ -214,6 +272,7 @@ window.renderFrame = async function (fi) {
     else if (x.kind === 'sub') sub(x.text, x.x || W / 2, x.y, lt, Object.assign({t1: x.t1 - x.t0}, x));
     else if (x.kind === 'line') line(x.x || W / 2, x.y, lt, Object.assign({t1: x.t1 - x.t0}, x));
     else if (x.kind === 'tag') tag(x.text, x.latin, x.x || 70, x.y || 270, lt, {t1: x.t1 - x.t0});
+    else if (x.kind === 'cap') cap(x.text, x.x || W / 2, x.y || 1420, lt, Object.assign({t1: x.t1 - x.t0}, x));
   });
   // logos: the app icon (rounded, pops in) and the splash screen (full white page with the logo)
   for (const L of (TL.logos || [])) {
@@ -236,6 +295,7 @@ window.renderFrame = async function (fi) {
       g.fillStyle = lg; g.fillRect(x, y, w, h); }
     g.restore(); g.lineWidth = 3; g.strokeStyle = 'rgba(200,240,255,.35)'; g.stroke(); g.restore();
   }
+  if (TL.socials) { if (TL.socials.icon && !TL.socials.iconImg) TL.socials.iconImg = await img(ROOT + TL.socials.icon); socials(t, TL.socials); }
   // flashes (impacts) and fades
   (TL.flashes || []).forEach(([ts, k, d]) => { const u = (t - ts) / (d || .35); if (u >= 0 && u < 1) flash(k * Math.pow(1 - u, 2)); });
   (TL.fades || []).forEach(([a, b, dir]) => { if (t >= a && t < b) { const u = (t - a) / (b - a); flash(dir === 'in' ? 1 - u : u, '0,0,0'); } else if (dir === 'out' && t >= b) flash(1, '0,0,0'); });

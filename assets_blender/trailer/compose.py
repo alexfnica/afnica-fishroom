@@ -12,6 +12,7 @@ TL, SFX, DURATION, MUSIC = timeline.TL, timeline.SFX, timeline.DURATION, timelin
 OUTNAME = getattr(timeline, 'OUTNAME', 'AFNICA_trailer.mp4'); TAG = '' if OUTNAME == 'AFNICA_trailer.mp4' else '_' + os.path.splitext(OUTNAME)[0]
 HERE = os.path.dirname(os.path.abspath(__file__)); OUTF = os.path.join(HERE, 'out', 'frames' + TAG); os.makedirs(OUTF, exist_ok=True)
 BL = r'D:\Blender\blender.exe'; FPS = 30
+CLOUD = not os.path.exists(BL)                       # no Blender (cloud): music with this python, encode with ffmpeg
 N = int(round(DURATION * FPS))
 
 def take_info(take):
@@ -56,6 +57,9 @@ def events(take, log, fps):
         ev['slaps'] = slaps
         first(lambda p: p and p.get('seg') == 'spin', 'spin')
         first(lambda p: p and p.get('seg') == 'pursue', 'pursue')
+    if take.startswith('c_'):                           # corydoras takes: the first frame of every ritual phase, e.g. 'eat', 'T', 'lay'
+        for i, p in enumerate(ph):
+            if p and p.get('phase') and p['phase'] not in ev: ev[p['phase']] = i / fps
     if take == 'net' or take.endswith('_net'): ev['dodge'] = 40 / 30 + .25; ev['catch'] = 110 / 30 + .33
     if take == 'feed': ev['feed'] = 15 / 30 + .4
     return ev
@@ -128,7 +132,7 @@ if __name__ == '__main__':
     try:
       if rng:
         c.cmd('Page.navigate', url='file:///' + os.path.join(HERE, 'compose.html').replace(os.sep, '/')); c.wait_event('Page.loadEventFired', 30)
-        c.js('ready'); c.js('window.TL=' + json.dumps(TL) + ';1')
+        c.js('ready'); c.js('ROOT=' + json.dumps('file:///' + HERE.replace(os.sep, '/').lstrip('/') + '/') + ';1'); c.js('window.TL=' + json.dumps(TL) + ';1')
         t0 = time.time()
         for i in range(rng[0], rng[1] + 1):
             c.js('renderFrame(%d)' % i)
@@ -139,8 +143,14 @@ if __name__ == '__main__':
     if rng is None or rng == (0, N - 1):
         json.dump(sfx, open(os.path.join(HERE, 'out', 'sfx%s.json' % TAG), 'w')); print('sfx', sorted(sfx))
         wav = os.path.join(HERE, 'out', 'music%s.wav' % (TAG or '_trailer'))
-        r = subprocess.run([BL, '-b', '-P', os.path.join(HERE, 'music.py'), '--', MUSIC.get('style', 'A'), wav, str(MUSIC['bars']), os.path.join(HERE, 'out', 'sfx%s.json' % TAG), str(MUSIC['drop']), str(MUSIC['end'])], capture_output=True, text=True)
+        margs = ['--', MUSIC.get('style', 'A'), wav, str(MUSIC['bars']), os.path.join(HERE, 'out', 'sfx%s.json' % TAG), str(MUSIC['drop']), str(MUSIC['end']), str(MUSIC.get('intro', 2))]
+        r = subprocess.run(([sys.executable, os.path.join(HERE, 'music.py')] if CLOUD else [BL, '-b', '-P', os.path.join(HERE, 'music.py')]) + margs, capture_output=True, text=True)
         print([l for l in r.stdout.splitlines() if 'SAVED' in l or 'rror' in l][-3:])
         mp4 = os.path.join(HERE, 'out', OUTNAME)
-        r = subprocess.run([BL, '-b', '-P', os.path.join(HERE, 'encode.py'), '--', OUTF, wav, mp4], capture_output=True, text=True)
-        print([l for l in r.stdout.splitlines() if 'ENCODED' in l or 'rror' in l][-3:])
+        if CLOUD:
+            r = subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-framerate', str(FPS), '-i', os.path.join(OUTF, '%05d.jpg'), '-i', wav, '-c:v', 'libx264', '-preset', 'slow', '-crf', '17',
+                                '-pix_fmt', 'yuv420p', '-g', '30', '-c:a', 'aac', '-b:a', '256k', '-shortest', '-movflags', '+faststart', mp4], capture_output=True, text=True)
+            print('ENCODED' if r.returncode == 0 else r.stderr[-800:], mp4)
+        else:
+            r = subprocess.run([BL, '-b', '-P', os.path.join(HERE, 'encode.py'), '--', OUTF, wav, mp4], capture_output=True, text=True)
+            print([l for l in r.stdout.splitlines() if 'ENCODED' in l or 'rror' in l][-3:])

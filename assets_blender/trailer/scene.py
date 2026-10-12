@@ -2,7 +2,7 @@
 import os, sys, time, json
 sys.path.insert(0, os.path.dirname(__file__))
 from cdp import Chrome, CLOCK_JS
-GAME = 'file:///D:/Retirement/AFNICA_Aquarium_V17_40_Bristlenose_Breeding.html'
+GAME = os.environ.get('AF_GAME', 'file:///D:/Retirement/AFNICA_Aquarium_V17_40_Bristlenose_Breeding.html')   # AF_GAME: the game file elsewhere (cloud)
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 HELPERS = r'''

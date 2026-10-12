@@ -1,6 +1,6 @@
 # Original trailer music for AFNICA - Aquarium Simulator, synthesised from scratch with numpy (no samples, no copyright).
 # 120 BPM (one beat = 0.5 s) so the trailer cuts land on the beat. Key: A minor, progression Am - F - C - G.
-# Run: D:\Blender\blender.exe -b -P music.py -- <style A|B|C> <out.wav> [bars]
+# Run: D:\Blender\blender.exe -b -P music.py -- <style A|B|C> <out.wav> [bars] [sfx.json] [drop] [end] [intro bars]   (plain python works too)
 import sys, wave, numpy as np
 a = sys.argv[sys.argv.index('--') + 1:]
 STYLE, OUT = a[0].upper(), a[1]; BARS = int(a[2]) if len(a) > 2 else 10
@@ -140,7 +140,8 @@ def chord_at(bar): return bar % 4
 
 pads = np.zeros(N); padsR = np.zeros(N)
 DROP = int(a[4]) if len(a) > 4 else BARS - 2                     # the drop bar (default: the last two bars)
-INTRO, BUILD = 2, DROP - 1                                       # bars 0-1 intro, build in the bar before the drop
+INTRO = int(a[6]) if len(a) > 6 else 2                           # bars of quiet intro (0: drums from the first beat)
+BUILD = DROP - 1                                                 # build in the bar before the drop
 END = float(a[5]) if len(a) > 5 else None                        # optional hard end: fade out just before it
 pump = np.ones(N)                                                # sidechain: pads duck under each kick
 

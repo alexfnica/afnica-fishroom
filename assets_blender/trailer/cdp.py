@@ -4,7 +4,7 @@
 # however long a screenshot takes.
 import base64, hashlib, json, os, socket, struct, subprocess, time, urllib.request, random
 
-CHROME = r'C:\Program Files\Google\Chrome\Application\chrome.exe'
+CHROME = os.environ.get('AF_CHROME', r'C:\Program Files\Google\Chrome\Application\chrome.exe')   # AF_CHROME: another Chrome/Chromium (cloud)
 
 class WS:
     def __init__(self, url):
@@ -50,7 +50,7 @@ class Chrome:
         self.profile = profile or os.path.join(os.path.dirname(os.path.abspath(__file__)), '_profiles', 'p%d' % random.randint(0, 1 << 30))
         self.proc = subprocess.Popen([CHROME, '--headless=new', '--remote-debugging-port=%d' % port, '--user-data-dir=' + self.profile,
                                       '--no-first-run', '--no-default-browser-check', '--mute-audio', '--hide-scrollbars',
-                                      '--allow-file-access-from-files', '--window-size=%d,%d' % (w, h), 'about:blank'],
+                                      '--allow-file-access-from-files', '--window-size=%d,%d' % (w, h)] + os.environ.get('AF_CHROME_ARGS', '').split() + ['about:blank'],
                                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         for _ in range(100):
             try:
