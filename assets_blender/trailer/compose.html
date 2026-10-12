@@ -278,11 +278,12 @@ window.renderFrame = async function (fi) {
   for (const L of (TL.logos || [])) {
     if (t < L.t0 || t >= L.t1) continue; const li = await img(ROOT + L.src); if (!li) continue;
     const lt = t - L.t0;
-    if (L.splash) {
+    if (L.splash) {                   // drawn as one layer (page + logo), so a fade does not show the logo's own white box
       const fin = L.fin == null ? .25 : L.fin, a = (fin ? clamp(lt / fin) : 1) * (L.fout ? 1 - eIn(clamp((t - (L.t1 - L.fout)) / L.fout)) : 1);   // fin 0: fully on from its first frame (an opening splash)
-      g.save(); g.globalAlpha = a; g.fillStyle = L.bg || '#fff'; g.fillRect(0, 0, W, H);
       const z = lerp(1.06, 1.0, eOut(lt / 1.6)), w = L.w * z, h = w * li.height / li.width;
-      g.drawImage(li, (W - w) / 2, L.y - h / 2, w, h); g.restore(); continue;
+      const oc = window.__splashC || (window.__splashC = document.createElement('canvas')); oc.width = W; oc.height = H; const o = oc.getContext('2d');
+      o.fillStyle = L.bg || '#fff'; o.fillRect(0, 0, W, H); o.drawImage(li, (W - w) / 2, L.y - h / 2, w, h);
+      g.save(); g.globalAlpha = a; g.drawImage(oc, 0, 0); g.restore(); continue;
     }
     const k = eBack(lt / .5), a = clamp(lt / .2) * (1 - eIn(clamp((t - (L.t1 - .3)) / .3)));
     const w = L.w * lerp(.55, 1, k), h = w * li.height / li.width, x = (W - w) / 2, y = L.y - h / 2, r = (L.round || 0) * w;
