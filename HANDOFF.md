@@ -2,6 +2,12 @@
 
 ## Latest: CORYDORAS PHOTO MODELS (V17.87) + PHOTO BREEDING BOX (V17.88) — merged to main 2026-10-12
 
+### Corydoras story clip (2026-10-12): `AFNICA_Cory_Story_v2.mp4` (v1 superseded)
+- New format instead of "What's new": opening splash, "What we've been working on", a mini-story in 2-3 s shots with
+  big first-person captions, icon + splash end, socials card. `takes_cory.py`, `timeline_cory.py`; PLAYBOOK §5 has the
+  format and the cloud render settings. Owner feedback applied in v2: slower transitions, splash first, nursery shows
+  only eggs and day-1 larvae. Copy to D:\Retirement on the laptop.
+
 ### V17.87 corydoras photos (end of file)
 - Every cory stage is now a Gemini photo, cut out with `assets_blender/cut_translucent_np.py` (cut-outs in
   `assets_blender/incoming/cory_*_gemini_cut.png`): larva 0-2, fry 3-6, juvenile 7-13, adult 14-30 (`cory|adultM87`,
