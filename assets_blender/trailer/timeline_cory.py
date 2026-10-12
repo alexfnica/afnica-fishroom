@@ -25,7 +25,7 @@ SHOTS = [
     S(2.0, 3.0, 'c_surf', tin='whip', td=.3, zoom=(1.0, 1.08), at=surf_peak()),
     S(3.0, 4.5, 'c_ritual', tin='cut', punch=.1, zoom=(1.04, 1.12), anchor='T', anchorAt=2.0),
     S(4.5, 5.5, 'c_ritual', tin='cut', punch=.1, zoom=(1.1, 1.18), anchor='lay', anchorAt=3.6),
-    S(5.5, 6.0, 'c_hard', tin='cut', punch=.12, zoom=(1.08, 1.14), anchor='lay', anchorAt=4.6),
+    S(5.5, 6.0, 'c_hard', tin='cut', punch=.12, zoom=(1.08, 1.14), anchor='lay', anchorAt=5.4),
     # 3 tension (6-9): a hungry fish comes for the clutch
     S(6.0, 7.5, 'c_hungry', tin='whip', td=.3, dir=-1, zoom=(1.0, 1.06), at=3.0),
     S(7.5, 9.0, 'c_hungry', tin='cut', punch=.12, zoom=(1.18, 1.32), at=7.2),
