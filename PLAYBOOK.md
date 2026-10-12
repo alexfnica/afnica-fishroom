@@ -52,6 +52,13 @@ switchTankV8('main');
 
 - `assets_blender/trailer`: `takes_<sp>.py <take>` films raw frames to `raw/<take>/`; `timeline_<sp>.py` = shots, texts, music style (A cinematic, B marimba, C chill); render: `AF_TL=timeline_<sp> D:/Blender/5.2/python/bin/python.exe compose.py` → `out/AFNICA_whats_new_<sp>.mp4`; copy to the repo root as `AFNICA_WhatsNew_<Sp>_vN.mp4`.
 - Two rigs in parallel: `AF_PORT=9334`. Run long jobs in the background. Re-film only changed takes.
+- Story format (2026-10-12, `takes_cory.py` / `timeline_cory.py` → `AFNICA_Cory_Story_v1.mp4`): a 22 s mini-story (hook with
+  stakes → problem → tension → solution → fast payoff → "follow"), one big first-person caption per shot (`kind='cap'`,
+  `hi=[words]` in yellow, `instant=True` on the first frame for the thumbnail), then the usual icon + splash and a 3 s
+  socials card (`TL.socials`). Music style B with `intro=0` (drums from the first beat). Use this instead of "What's new".
+- Cloud (no Windows Chrome/Blender): `AF_CHROME=/opt/pw-browsers/chromium-1194/chrome-linux/chrome AF_CHROME_ARGS="--no-sandbox"
+  AF_GAME=file:///home/user/afnica-fishroom/AFNICA_Aquarium_V17_40_Bristlenose_Breeding.html`; compose.py then makes the
+  music with plain python and encodes with ffmpeg. About 1 s per take frame per rig (3 s with four rigs on 4 CPUs).
 
 ## 6. Keep credits low
 
