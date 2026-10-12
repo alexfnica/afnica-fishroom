@@ -52,7 +52,7 @@ def take_c_eat():
         fem = start_ritual(c, rounds=3)
         wait_phase(c, 'lay')
         # filming only: the 30%% chance of eating an egg comes up this time
-        c.js("(()=>{const r=Math.random;setInterval(()=>{const R=coryRitualDebugV1781().R;if(R&&R.phase==='lay'&&R.t>3.6&&R.laid>0&&!R.ateEgg){Math.random=()=>.1;setTimeout(()=>{Math.random=r},60);}},30);return 1})()")
+        c.js("(()=>{const r=Math.random;setInterval(()=>{const R=coryRitualDebugV1781().R;Math.random=(R&&R.phase==='lay'&&R.t>3.6&&R.laid>0&&!R.ateEgg)?()=>.1:r;},20);return 1})()")
         advance(c, 2.5)
         run(c, 'c_eat', 7, fps=60, target=fem_cam(c, fem), cam=Cam(tau=.4), zoom=3.6, phase=PH_RIT)
     finally: c.close()
