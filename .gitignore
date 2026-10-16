@@ -10,3 +10,8 @@ assets_blender/trailer/out/sfx_*.json
 assets_blender/trailer/*log*.txt
 .claude/launch.json
 __pycache__/
+# bristlenose 3D (anc3d): render intermediates; keep only the packed sheets/atlases install90.py embeds
+assets_blender/anc3d/out/*
+!assets_blender/anc3d/out/atlas92_*.webp
+!assets_blender/anc3d/out/atlas92_*.json
+!assets_blender/anc3d/out/sheet90.webp

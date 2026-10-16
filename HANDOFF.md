@@ -1,6 +1,108 @@
-# Handoff — where work stopped (2026-10-12)
+# Handoff — where work stopped (2026-10-13)
 
-## Latest: BRISTLENOSE LIFE (V17.89, end of the game HTML) — not committed yet, waiting for the owner's feedback on the clips
+## Latest: BRISTLENOSE 3D (V17.90) — in the game, not committed; owner watching the 1 male + 2 females session
+
+Owner judged V17.89 "hideous"; audit image `AFNICA_Anc90_audit.jpg` (9 states, ref vs game). Method chosen: real 3D
+fish made in Blender, rendered to sprite frames. Everything is in `assets_blender/anc3d/` (see the header of each script).
+- **Models** (`anc_build2.py`, `anc_build.py` = cave/scene/clearance helpers): built from the owner's Gemini specimen photos
+  in `assets_blender/incoming/` (memory "anc-specimen-photos"): full-grown male olive-brown with bristles, female black
+  (owner: keep both colours, "the fry will come out mixed"). Side photo -> flanks/dorsal/caudal, top photo -> back +
+  pectoral/pelvic fins (flat like wings), belly photo -> underside. Male top photo nostrils toned down (`prep_photos.py`).
+  Photos cut by `cut_photo.py`. 3D bristles = curves. Units: 1 = 32.5 game px.
+- **Frames** (`render_frames.py`, `render_cave.py`, packed by `pack_atlas.py` into WebP sheets): per sex yaw 0..90 (mirrored
+  for the other half), crawl x8, rasp x2, swim x6, glass belly x3 (160x90 game px, pivot 77.7,48.4). Cave: tube + male
+  together, 340x110 at (cave.left-160, cave.top-30), mouth (173.8,72): empty, in -20..140, fan x12 (tail out), out -50..120.
+  Every cave frame is checked: no fish point inside the clay (`clearance`).
+- **Game block** V17.90 at the end of the HTML, between `<!-- V17.90 BEGIN/END -->`, source `anc3d/block90.js`, installed by
+  `install90.py` (re-run after any change; it replaces the block). Wraps `ancPostV1789`; draws only. Turn = real yaw through
+  depth (`ancTurnSecV1789`), crawl frames advanced by distance, drawn facing follows sustained movement on the sand (never
+  drawn backwards), glass blend by `--anc-glass`, male in cave modes -> composite cave frame (his element opacity 0).
+  Spawning visit (breeder, stage 'spawning') keeps the OLD drawing; young/fry use the adult frames (male frames if no sex).
+  Switch `window.ANC90=false`; debug `anc90Debug()`.
+- **Old-code fixes** (marked V17.90): attach/detach duration scales with height (was a fixed 7 s: up to 6.4 px/frame);
+  glass grazing turns head first toward the patch and glides only when aligned (used to slide down tail first);
+  toEdgeG heading +180 instead of -angle; with eggs/fry the male keeps fanning head-in/tail-out (no head-out guard; owner:
+  head-out = inviting a female, memory "bristlenose-cave-poses").
+- **Measured** (`trailer/measure90.py`, seeds 3/7/11/19, 90 s, main tank 1M+2F): max step 2.58 px/frame, male 0 backward
+  frames, females 0-2 on the sand (the rest are the corner manoeuvres of attach/detach), glass 0-6 % against the heading
+  (while turning), 45 cave frames used, no console errors. Spawning visit test (`trailer/test90spawn.py`) ok.
+- Clips: `AFNICA_Anc90_clip1.mp4` (first 3D test), `AFNICA_Anc90_session.mp4` (game session 1M+2F, `trailer/takes90.py`).
+  Browser pane: `.claude/launch.json` has `afnica-pane` (port 8791) - the pane can only open servers it starts itself.
+- aquarium-reviewer: fixed spawning() (st is a top-level let, not window.st), shadow class cleanup, male-only cave frames,
+  broken-image guard, old cave hidden only after the new tube is drawn. Left: the old fin canvas / anc3dV1789 still run
+  hidden (cost only); young fish need their own frames; on-the-glass belly photos were never generated.
+- **v2 (owner: "complete shit", "look like a placeholder")**: side-on frames (yaw00, crawl, rasp, swim) are now the owner's
+  photos themselves (`photo_frames.py`, soft painted contact shadow); 3D only for the turn (yaw15-90: dorsal up, paired
+  fins + bristles cut from the SIDE photo = `paired='side'` in anc_build2, EMIT .75, pitch 3) and the cave frames.
+  Still `AFNICA_Anc90_ingame_v2.jpg`. Open: in the cave the side-photo fins dip ~0.03 units (1 px) into the clay floor
+  inside the tube (invisible, but tuck them tighter); young/fry frames.
+- **v3 (owner: "fins don't move, no rasping on the glass - a step back")**: the OLD animated drawing is back (V17.42 fin
+  canvas: stepping fins, body flex, breathing; V17.89 flat pectorals; glass mouth pulse) but runs on the owner's photos:
+  `make_sheet.py` rebuilds the old 1254x1254 sheet layout (side photos aligned to the old snout/tail/belly line; belly cells =
+  belly photo mouth->vent over the 3D glass render) = `SHEET` in the block, applied by `html .ancArt i{background-image}`.
+  Female flat-fin polygons replaced at load (`ancDebugV1789().PFIN['anc|120|38']`, from `sheet90_pfin.json`).
+  `ANC3D_V1789=false` (the shader path did not step the fins). V17.90 now draws only the TURN (3D yaw frames while
+  f.turn / s.turn, old drawing hidden, that fish's shadow hidden) and the CAVE composites. Clip `AFNICA_Anc90_session_v3.mp4`.
+- **V17.91 BRISTLENOSE LIFE 2** (owner: "do all - more realistic"), logic in `anc3d/block90.js` (section V17.91) + small
+  hooks in the old code (`anc3d/patch_v91_game.py`, all marked V17.91): `DFOLD` dorsal fold in V17.42 draw(); per-fish inputs
+  via `window.ancCanvasV1791` (fold at rest, raised when moving/swimming/fanning/courting/another anc within 75 px; snout
+  pressed down when crawling, grip pulse ~1.5 Hz when rasping on the sand; tail sway; swim = stronger faster beat; male
+  bristles idle sway); breathing `BRS.anc` r 50 + `vis` 2.2 (visible low gill slit); glass mouth grip-and-release
+  (`--anc-mouth`) + small head turns; crawling in bouts (wrapper on `ancSandSpeedV1789`: 1.6-3.4 s walk, 0.35-0.95 s stop);
+  pause 0.8-1.4 s with the snout at the cave mouth (main-tank first entry + V17.89 'enter'); cave in/out frames with wriggle
+  variants a/b (bend +-0.2) picked by distance moved (`wig91`), depth normalised by the male's scale; chin bristles never
+  below the ground. 118 cave frames, all clear of the clay. Drawn facing follows sustained movement again (old code slides
+  a grazing fish out of the cave zone sideways). Clips `AFNICA_Anc91_tank.mp4`, `AFNICA_Anc91_cave.mp4`.
+  Item 8: FRY done - owner's fry photos (side/top/belly, `incoming/anc_fry_*`, cut with `anc3d/cut_soft.py` to keep the glassy
+  fins) are new rows of the sheet (now 240x620 css: fry side y 238, belly 338; juvenile rows 438/538 reserved); a fish
+  younger than 5 days gets `.ancArt[data-stage91=fry]` (`stage91()` in the block) and the V17.42 fin canvas crops
+  `anc|sx|238` / glass `ancg|sx|338` (adoptAnc / adoptAncGlass patched, marked V17.91). JUVENILES (age 5..S.anc.adult):
+  `data-stage91=juv` + `data-col91` o/b chosen from a mixed hash of the fish id (owner: "the fry will come out mixed");
+  sheet rows 438 (side) / 538 (belly), column 0 olive, 1 black; both side photos are in (`incoming/anc_juv_olive_side*`, `anc_juv_black_side*`),
+  missing cells are filled with the adult cell of that column by `make_sheet.py` until the photos arrive (black juvenile
+  side, juvenile belly). Adults still take their colour from the sex (male olive, female black).
+  Later the same day: all juvenile photos in (side/top/belly, olive + black; belly photos placed whole with the cut tail end
+  faded), nostrils toned down (`prep_photos.py` -> `*_top_fix.png`), 3D juveniles `SPEC['JO'/'JB']` in anc_build2 ->
+  turn atlases `atlas90_JO/JB` (ATL.JO/JB in the block); fry keep the flat turn; facing thresholds scale with the fish
+  (young react after 0.3 s). Reviewer fixes: body/tail pieces re-pointed on a stage change, `typeof S` for the adult age,
+  juveniles never use the adult cave frames. Mixed tank (2 adults, 2 fry, 3 juveniles, 90 s): max 2.58 px/frame, no
+  errors; 3-9 % backward frames on the young, mostly the corner climb (attach) and short hops. Clip `AFNICA_Anc91_family.mp4`.
+  Note (old code): young males are drawn as females (no bristles) until they mature, so they show the female/black cell.
+- **V17.92 natural turn + cave entry** (owner: "fix how they turn and how the male enters the cave"):
+  turn = 13 U-turn frames per fish (`anc3d/render_turn.py`: head swings toward the viewer, body curled in a C, tail
+  follows), colour-matched to the photos (`colour_match.py`), driven by the old turn's own timer `s.turn` (fish stays put)
+  or the facing-follow; photo <-> 3D cross-fade over the first/last 12 %, the old shadow fades with the photo; only when
+  level (rotate < 10 deg). Cave = tube alone (`C_tube00`) + the male as two layers split by the mouth plane
+  (`render_cave2.py`: `_out` in front, `_in` shown only through the mouth ellipse 7x22.6 at 173.8,72), frames every 4 px
+  + the remainder as a sub-pixel shift (smooth), path: side-on at d -64, lines up with the tube by -10, climbs over the
+  lip edge (straight body resting on the edge, tail on the sand, levels inside), body undulation tied to distance;
+  hand-over cross-fades d -64..-48 / 108..124. Folded fins now lie back along the body (anc_build2 side fins). Clay check:
+  entry/exit climb clean; level-inside/fanning poses <= 0.0106 units (0.3 px) and only in the hidden `_in` layer.
+  Atlases `atlas92_T` (0.47 MB), `atlas92_C2` (1.2 MB); old M/F/C/JO/JB atlases dropped (block 2.8 MB, was 3.6).
+  install90.py now retries the write (the file is sometimes locked by a reader). Clips `AFNICA_Anc92_cave.mp4`, `AFNICA_Anc92_turns.mp4`.
+- **V17.93 round 2** (owner: male drops from above the sand to the cave level; fanning tail not smooth; turns still
+  unnatural): the tube stands ~17 px lower on screen than the fish lane (closer to the viewer) -> the male walks down to
+  it gradually (`dy` in caveState: d -64..-10 in, 70..124 out); his outside layer is a second canvas `anc90cv.front`
+  (z 47, above the other fish: he is closer). Fanning 24 frames a beat, neighbours blended by the fractional phase.
+  Turn 25 frames, neighbours blended, small loop toward the viewer (0.45 units) and back, pectorals flared (spread 1.35)
+  mid-turn, dorsal up (ref. QqU5RsqYAOI 10:05), cross-fade 8 %. Measured: max 2.58 px/frame, male 0 backward, no errors.
+  Clips `AFNICA_Anc93_cave.mp4`, `AFNICA_Anc93_turns.mp4`. Note: the photo's paired fins hang ~8 px below its belly line
+  (the 3D fins stop at the ground), so the photo/3D blend at the turn ends still shows a slight difference.
+- **Adults looked "badly cropped" (owner)**: the V17.89 flat-fin hook (PFIN polygons, tuned for the OLD sprite) erased the
+  photo's pectoral/pelvic fins and redrew them flat -> PFIN emptied at load for all keys (the photos show the fins as they
+  lie); the old `.ancSide{transform:scaleY(.91)}` squash and the saturate/contrast filter are off for the photos; the male
+  side photo had the photo's floor shadow under the chin/fins -> removed in `incoming/anc_mfull_side_cut.png` (grey
+  below the belly, dark low-saturation core under the chin, flecks). Before/after `AFNICA_Anc93_adults_fix.jpg`.
+  **V17.94 walking U-turn** (owner: "everything" about the turn was wrong): `render_turn2.py` - the fish walks a U-turn,
+  heading follows the path, curving AWAY into the tank (tail toward the viewer mid-turn, no face-on lump), body bent along
+  the arc, small crawl wave, 25 frames 240x110 (`canvas.anc94t`, pivot 110,64); the forward part of the walk is applied
+  in-game as the element `translate` (photo and 3D move together during the 15 % cross-fades) and sized to the free space
+  ahead (`f.tr94.R` <= 39 px: walls / cave - turns usually happen at an obstacle); `ancTurnSecV1789` 0.8 s, heading eased
+  (smooth ends, fastest mid). Session clip `AFNICA_Anc94_session.mp4` (3 adults + 3 fry): max 2.58 px/frame, no errors.
+- Next: owner feedback on the session; female cave frames for the spawning visit (both fish inside); fry/juvenile frames
+  (mixed colours); then commit when asked.
+
+## Earlier: BRISTLENOSE LIFE (V17.89, end of the game HTML)
 
 Reference: Foisy Aquatics, youtube.com/watch?v=QqU5RsqYAOI (mostly longfin albino / super red; behaviour only, the game keeps
 the wild-type sprites; 2:39-4:03, 5:03-5:15, 7:24-7:42 are a zebra pleco L046, ignored). Not in the video (do not invent):
