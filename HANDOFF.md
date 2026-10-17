@@ -1,4 +1,62 @@
-# Handoff — where work stopped (2026-10-13)
+# Handoff — where work stopped (2026-10-17: Phases 1-3 APPROVED — turn V17.95, movement V17.95, male fights V17.96)
+
+## In progress: V17.95 PIVOT TURN (owner prompt: Phase 1 turns → Phase 2 movement → Phase 3 male fights)
+- Diagnosis done + owner OK'd the pivot plan. Ref turn: B7RksQ1xU18 0:25.4–0:27.8 (dark common bristlenose pivots almost
+  on the spot ~2–2.4 s, pectorals spread, gentle curve, head away / tail toward viewer). Before: old `turn()` (line ~7739)
+  freezes the fish 0.8 s, V17.94 walks the drawn fish 39 px out and back = **6.2 px/frame** (rig `trailer/measure_turn95.py`,
+  60 s, 1M+1F: 4 turns, all old-driven, 0–1 backward frames, no errors).
+- Done (NOT installed in the game HTML yet): `anc3d/render_turn3.py` (pivot frames, R .12, bend .3, smootherstep),
+  rendered + colour-matched to `anc3d/out/turn95/`, packed `anc3d/out/atlas95_T.webp/.json` (same names/cells as atlas92_T).
+  `anc3d/block90.js` patched: `ancTurnSecV1789=2`, facing-follow turns `TF=min(T,1)`, walk/translate removed
+  (backup `out/block90_v94_backup.js`).
+- INSTALLED 2026-10-17 (install90.py → atlas95_T), syntax 0 errors. Measured (seeds 3/7, 60 s, before → after): turn
+  0.8 s → 2.0 s, drawn drift 39 px → 0, max step 6.2 → ≤1.0 px/frame (fish-wide max now 2.58 = cave approach, unchanged),
+  no errors. Female backward frames (graze 19–42, attach 20) exist before and after: old code slides a grazing fish before
+  the facing-follow turn reacts (0.6 s) + the attach corner move → Phase 2 / first-list item 7.
+- Reviewer: no blocker. Watch for: old turn() holds the fish still for the whole 2 s (by design) but ignores a target
+  flip mid-turn → up to ~4 s still (wafer crossing the fish, cave doorway ±3); fry follow-turns (1 s) slide while the old
+  code moves them; stale `ancTurnSecV1789=1` at ~line 13201 (overridden later).
+- **Owner APPROVED the pivot turn (2026-10-17)** after checking it in the Browser pane. Not committed yet.
+- Phase 2 (movement, ref. B7RksQ1xU18 whole clip): video table given to the owner (rests flat 0:09-0:14/1:04/1:28, creep
+  0:15-0:22, dart 0:22.3, glide 0:32-0:36, head-down rasping 0:43-1:02, glass slide-down TAIL FIRST 1:34-1:41). Owner picked
+  1-3, skipped 4 (leaving the glass; open question: is the real tail-first slide allowed?).
+- **V17.95 BRISTLENOSE MOVEMENT** (section in `anc3d/block90.js`, installed; switch `window.ANC95=false`; counters
+  `anc90Debug().D95`): darts (25 % per move/toWall trip once facing the target + a timer every ~1-2.5 min × activity from
+  graze/rest, pivots first if the room is behind; burst ≤ 1.6 s, peak 1.8 BL/s = 6.0 px/frame — owner-accepted exception;
+  never across the cave or into a wall), longer rests (30 % of grazes → rest, 6-15 s) with dorsal flat and still tail,
+  grazing sessions 10-20 s with 3-6 s rasp phases and a head-down tilt ≤ 11° around the snout (stacks on V17.89's 2.4°).
+  Skipped in the breeder (`via==='breed'`) and for young/fry/cave modes/glass. Rig `trailer/measure_move95.py`
+  (AT1 = put the female on open sand: in the rig scene she lives in the 100 px gap between cave and wall, no dart room).
+  Measured (180 s, before → after): rests ~3 s → 10-19 s; rasp tilt 2.4° → 11°; darts 0 → 2-3 per 3 min, 1.6 s each;
+  max step outside darts 2.58 (unchanged); night: shorter rests/grazes (more active); no errors.
+  Still open: backward frames in attach/detach (old corner move = item 4).
+- **Owner APPROVED Phase 2 (2026-10-17).** Not committed yet.
+- Phase 3 (male fights, ref. youtube.com/shorts/R6KUQ73HhlI) started: check existing anc male code, analyse the short,
+  propose, then a still of the pose before animating.
+  - Existing code: only `ancTerritorialClashCheck40` (line ~8105, daily 6 % health hit + toast, no animation); V17.48
+    fights cover livebearers only. Owner OK'd the plan: trigger 2+ adult males within ~1.2 BL (x4 with a cave or female
+    near), one fight per tank, cooldown per pair, more at night; sequence approach → broadside (dorsal up) → head-to-tail
+    with 3-6 tail sweeps → short head shove (< 1 s, never frozen) → half circle, maybe repeat; winner = cave holder > size >
+    health + luck; loser pivots + darts away and avoids the cave; health stays with the daily check (fight is visual).
+  - Still: `anc3d/still_fight.py` → `AFNICA_Anc95_fight_still.jpg` (head-to-tail, dorsals up, rear male curled).
+    Owner OK'd the still (2026-10-17).
+  - **V17.96 BRISTLENOSE MALE FIGHTS** (section in `anc3d/block90.js`, installed; switch `window.ANC96=false`; force the
+    next fight `window.anc96Force=1`; debug `anc90Debug().F96/CD96/C96`): pair frames `anc3d/render_fight.py` (60 frames:
+    A settle 12, B tail sweep 12 cyclic, C shove 15, D half circle 21, 15 fps, both males in one 300x130 frame, pitch 8)
+    → `out/fight96` → `out/atlas96_P` (1.0 MB). Rates: 1/20 s within 2.5 BL, 1/60 s farther (one seeks the other), x4 cave
+    holder (last 2 min) or female near, more at night; cooldown 3 min per pair. Attacker walks (round the rival's head if
+    from behind), rival lies still; 3D plays 3-6 sweeps + shove + half circle (30 % twice), photos faded; winner rests,
+    loser darts away. Not in the breeder. Rig `trailer/measure_fight96.py` (2 males, 5 min): 1 fight in 4 of 6 runs,
+    walk 6-7 s, 3D 6-12 s, ends "done", max step outside darts 2.58, no errors; end + tank-switch abort leave no
+    frozen fish / canvas / faded photos.
+  - KNOWN GAPS: a male in his cave cycle never fights (with a female in the tank the cave male is busy most of the time,
+    so no fights there) → cave defence = follow-up; loser does not avoid the cave; walk-in passes over the rival's body;
+    a water change mid-fight leaves both frozen until it ends. Reviewer otherwise OK.
+  - **Owner APPROVED Phase 3 (2026-10-17)** after checking it in the Browser pane. All three phases approved; nothing
+    committed yet (owner decides when). Next candidates: cave defence (task card proposed), leaving the glass (item 4,
+    needs the owner's ruling on the tail-first slide), the items from the owner's first prompt list.
+
+# Earlier handoff (2026-10-13)
 
 ## Latest: BRISTLENOSE 3D (V17.90) — in the game, not committed; owner watching the 1 male + 2 females session
 

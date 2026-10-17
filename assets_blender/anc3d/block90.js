@@ -12,11 +12,11 @@
    Not done yet: the spawning visit (both fish inside) keeps the old drawing; fry/young use the adult frames scaled. */
 (function(){
  window.ANC90=true;
- window.ancTurnSecV1789=.8;                                  /* V17.94: a quicker turn (ref. 10:05), smooth start and stop */
+ window.ancTurnSecV1789=2;                                   /* V17.95: a slow, even pivot (ref. B7RksQ1xU18 0:25.4-0:27.8, ~2.4 s) */
  window.ANC3D_V1789=false;                                  /* the V17.89 shader path drew the sprite without the stepping fins; turns are 3D frames now */
  const SHEET='@@SHEET@@';
  try{const P=window.ancDebugV1789&&ancDebugV1789().PFIN;if(P)for(const k of Object.keys(P))P[k]=[];}catch(e){console.error('AFNICA V17.93 fins',e);}   /* the photos already show the fins as they lie: no erase-and-redraw (it cut them) */
- const ATL={T:{src:'@@ATLAS_T@@',idx:@@INDEX_T@@},C2:{src:'@@ATLAS_C2@@',idx:@@INDEX_C2@@}};   /* V17.92: T = U-turn frames (M, F, JO, JB), C2 = tube + the male's cave layers */
+ const ATL={T:{src:'@@ATLAS_T@@',idx:@@INDEX_T@@},C2:{src:'@@ATLAS_C2@@',idx:@@INDEX_C2@@},P:{src:'@@ATLAS_P@@',idx:@@INDEX_P@@}};   /* V17.96: P = the two-male fight */   /* V17.92: T = U-turn frames (M, F, JO, JB), C2 = tube + the male's cave layers */
  for(const k in ATL){const a=ATL[k];a.img=new Image();a.img.src=a.src;a.pos={};a.idx.names.forEach((n,i)=>a.pos[n]=a.idx.pos[i]);}
  const ready=a=>a.img.complete&&a.img.naturalWidth>0;   /* a broken image is 'complete' too */
  const clamp=(v,a,b)=>v<a?a:v>b?b:v,sm=q=>{q=clamp(q,0,1);return q*q*(3-2*q);};
@@ -170,7 +170,7 @@
   const th=Math.max(2,9*scl),opp=glass<.3&&!blocked&&Math.abs(f.vx)>th&&Math.sign(f.vx)!==face;f.ot=opp?(f.ot||0)+dt:0;   /* thresholds scale with the fish: young hop slowly */
   if(glass<.3&&!blocked){if(f.ot>(scl<.8?.3:.6))f.mv=Math.sign(f.vx);   /* young react quicker (short hops) */else if(Math.abs(f.vx)<th/3)f.mv=0;else if(f.mv&&Math.sign(f.vx)!==f.mv)f.mv=0;}else f.mv=0;
   /* V17.92 turn: the old turn's own timer (s.turn, during which the fish stays put) or a facing-follow turn of our own */
-  const T=Math.max(.5,window.ancTurnSecV1789||1);let tu=null;
+  const T=Math.max(.5,window.ancTurnSecV1789||1),TF=Math.min(T,1);let tu=null;   /* V17.95: TF = facing-follow turns (the fish keeps moving) stay short */
   if(f.df==null)f.df=face;
   if(s&&s.turn&&glass<=.3){tu={u:clamp(s.turn.t/T,0,1),from:s.turn.from<0?-1:1,to:s.turn.to<0?-1:1};f.df=tu.to;f.turn=null;}
   else{
@@ -178,26 +178,21 @@
    if(glass>.3){f.df=wantF;f.turn=null;}
    else{
     if(!f.turn&&f.df!==wantF)f.turn={from:f.df,to:wantF,t:0};
-    if(f.turn&&f.turn.to!==wantF)f.turn={from:f.turn.to,to:f.turn.from,t:Math.max(0,T-f.turn.t)};   /* reverses smoothly */
-    if(f.turn){f.turn.t+=dt;tu={u:clamp(f.turn.t/T,0,1),from:f.turn.from,to:f.turn.to};if(f.turn.t>=T){f.df=f.turn.to;f.turn=null;tu=null;}}
+    if(f.turn&&f.turn.to!==wantF)f.turn={from:f.turn.to,to:f.turn.from,t:Math.max(0,TF-f.turn.t)};   /* reverses smoothly */
+    if(f.turn){f.turn.t+=dt;tu={u:clamp(f.turn.t/TF,0,1),from:f.turn.from,to:f.turn.to};if(f.turn.t>=TF){f.df=f.turn.to;f.turn=null;tu=null;}}
    }
   }
   const setSign=sg=>{if(m)el.style.setProperty('transform',tr.replace(/scaleX\([^)]*\)/,'scaleX('+sg+')'),'important');};   /* no flat squash */
   const rot=/rotate\(([-\d.e]+)deg\)/.exec(tr),tilt=rot?Math.abs(+rot[1]):0;
   if(!tu||tu.from===tu.to||tilt>10){setSign(tu&&tilt>10?(tu.u<.5?tu.from:tu.to):f.df);oldDraw(tank,el,f);return;}   /* 3D U-turn only when level on the sand */
-  /* V17.94 walking U-turn: the fish curves away into the tank along a semicircle (radius 39 px at scale 1) and comes back
-     facing the other way; the photo drawing walks the same path while it cross-fades (first/last 15 %) */
+  /* V17.95 pivot turn (replaces the V17.94 walking U-turn, which walked 39 px out and back = 6.2 px/frame): the fish turns
+     almost on the spot (render_turn3.py: belly down, pectorals spread, gentle curve, head away, tail sweeping toward the
+     viewer); the photo drawing cross-fades in place over the first/last 15 % */
   const u=tu.u,kf=24*u,k=Math.min(24,Math.floor(kf)),k2=Math.min(24,k+1),mix=kf-k,a3=u<.15?u/.15:u>.85?(1-u)/.15:1,sg=u<.5?tu.from:tu.to;
-  /* the forward part of the walk fits the free space ahead (a wall or the cave is usually why it turns) */
-  if(!f.tr94||f.tr94.key!==tu.from+'|'+tu.to+'|'+(s&&s.turn?1:0)){
-   const sn=x+56*scl*tu.from,W=tank.clientWidth||960;let room=tu.from>0?W-14-sn:sn-14;
-   if(cave){const L=parseFloat(cave.style.left)||0;if(tu.from>0&&L+8>sn)room=Math.min(room,L+8-sn);if(tu.from<0&&L+156<sn)room=Math.min(room,sn-(L+156));}
-   f.tr94={key:tu.from+'|'+tu.to+'|'+(s&&s.turn?1:0),R:clamp(room-6,0,39*scl)};}
-  const hd94=Math.PI*(u-Math.sin(2*Math.PI*u)/(2*Math.PI)),dx94=f.tr94.R*Math.sin(hd94)*tu.from;
   setSign(sg);el.style.setProperty('clip-path','none','important');el.classList.add('anc90');fade(tank,el,1-a3);
-  el.style.setProperty('translate',dx94.toFixed(2)+'px 0px','important');f.tx94=1;   /* the photo moves with the 3D fish */
+  if(f.tx94){f.tx94=0;el.style.removeProperty('translate');}
   const c=turnCanvas(el,sex),g=c.getContext('2d');c.style.display='block';g.clearRect(0,0,480,220);
-  c.style.translate='none';                                   /* the element's shift carries the walk for both */
+  c.style.translate='none';
   const mir=(tu.from<0)!==(sg<0);blit(g,ATL.T,sex+'_turn'+String(k).padStart(2,'0'),mir,a3,220);if(mix>.02&&k2!==k)blit(g,ATL.T,sex+'_turn'+String(k2).padStart(2,'0'),mir,a3*mix,220);   /* right->left as rendered, left->right mirrored */
  }
 
@@ -249,5 +244,189 @@
   q.t+=dt;if(q.t>q.d){q.on=!q.on;q.t=0;q.d=q.on?1.6+Math.random()*1.8:.35+Math.random()*.6;}
   q.f+=((q.on||d<6?1:0)-q.f)*Math.min(1,dt*5);return v*q.f;
  };
- window.anc90Debug=()=>({ATL,ST,TK,Q91});
+ /* ================= V17.95 BRISTLENOSE MOVEMENT (owner picked 1-3; ref. youtube B7RksQ1xU18) =================
+    1. DARTS (0:22.3): now and then an adult on the sand bursts forward off the bottom - ~0.18 s to a peak of 1.8 body
+       lengths/s, then a decaying glide (lifted, tail beating, via the V17.89 swim flags) and it settles. One roll per trip
+       (25 %; a wander trip is set to 1-1.4 body lengths, a walk to the glass keeps its target; the burst lasts <= 1.6 s,
+       then the old crawl takes over) + a timer every ~1-2.5 min from grazing/resting (pivots first if the room is behind), only straight
+       ahead with room (never across the cave, never into a wall). Intended exception to 3 px/frame.
+    2. LONG FLAT RESTS (0:09-0:14, 1:04-1:08, 1:28-1:32): after a trip an adult rests more often (30 % of grazes become
+       rests) and longer (6-15 s x day/night activity), dorsal folded flat, no tail sway.
+    3. HEAD-DOWN RASPING (0:43-1:02): grazing sessions last 10-20 s, rasp phases 3-6 s, the creep is slower; while rasping
+       (or on a wafer) the body tilts head-down up to 11 deg around the snout (the snout stays on the sand, the tail rises).
+    Switch: window.ANC95=false. */
+ const ACT95=()=>typeof ancActivityScaleV17==='function'?ancActivityScaleV17():1;
+ const FAN95={'fanning':1,'cave-in':1,'cave-flip':1,'cave-peek':1,'cave-guard':1,'cave-exit':1,'cave-enter':1,'cave-approach':1,'breeding-display':1};
+ const sandOk95=s=>s&&s.surface==='substrate'&&!s.atWall&&!s.transition&&!(s.glass>.02)&&!FAN95[s.mode];
+ const adult95=s=>sandOk95(s)&&!s.young&&!s.cavePhase&&!s.fight96;
+ function room95(s,fc){                                    /* free sand in direction fc (walls 70 px, the cave 10 px) */
+  fc=fc||(s.face<0?-1:1);const tk=document.getElementById(s.tankId),W=tk&&tk.clientWidth||960,cv=s.cave89;
+  let room=fc>0?W-70-s.x:s.x-70;
+  if(cv){if(s.x>=cv[0]-10&&s.x<=cv[1]+10)room=0;else if(fc>0&&s.x<cv[0])room=Math.min(room,cv[0]-10-s.x);else if(fc<0&&s.x>cv[1])room=Math.min(room,s.x-cv[1]-10);}
+  return room;
+ }
+ const sand95=window.ancSandSpeedV1789,D95={roll:0,dart:0,noroom:0,trips:0};
+ if(sand95)window.ancSandSpeedV1789=function(s,d,thrust,dt,scale,key){
+  if(key==null)key=s.tx;
+  const trip=s.mode==='move'||s.mode==='toWall';            /* toWall: the walk to the glass, most of the long trips */
+  if(window.ANC95!==false&&trip&&adult95(s)&&!s.turn&&thrust>0&&s.dk95!==key&&!(s.dart95&&s.dart95.key===key)&&(key-s.x)*(s.face<0?-1:1)>0){   /* rolled once it faces the target (after any turn) */
+   s.dk95=key;D95.trips++;                                  /* one roll per trip (or a dart the timer below asked for) */
+   if(s.force95===key||Math.random()<.25){D95.roll++;
+    const BL=Math.max(12,112*scale),fc=s.face<0?-1:1,room=room95(s);
+    if(s.mode==='toWall'){if(d>1.6*BL&&(key-s.x)*fc>0&&Math.abs(key-s.x)<=room+70){s.dart95={key,t:0,BL};D95.dart++;}else D95.noroom++;}
+    else if(room>1.6*BL&&(key-s.x)*fc>0){key=s.x+fc*Math.min(room,(1+Math.random()*.4)*BL);s.tx=key;d=Math.abs(key-s.x);s.dk95=key;s.dart95={key,t:0,BL};D95.dart++;}else D95.noroom++;
+   }
+  }
+  const v=sand95.call(this,s,d,thrust,dt,scale,key),q=s.dart95;
+  if(!q)return v;
+  if(q.key!==key||!trip){s.dart95=null;return v;}
+  if(q.t>1.6){if(s.bg&&q.sw0!=null)s.bg.swim=q.sw0;s.dart95=null;return v;}   /* burst over: an ordinary crawl again */
+  if(s.bg){if(q.sw0==null)q.sw0=!!s.bg.swim;s.bg.swim=true;}                                  /* lifted, tail beating (V17.89 / V17.91), no crawl bouts */
+  if(s.turn||!(thrust>0))return v;
+  q.t+=dt;const t=q.t,env=t<.18?sm(t/.18):Math.max(.1,Math.exp(-(t-.18)/.45)),brake=Math.min(1,d/(.35*q.BL)+.08);
+  return Math.min(1.8*q.BL*env*brake,d/Math.max(dt,.001))*thrust;
+ };
+ /* rests and grazing sessions: adjusted once, right after the old code ends a trip */
+ function life95(tank,el,s,sc,dt,via){
+  if(!s)return;
+  if(via==='breed'){s.r95=0;s.dart95=null;s.pm95=s.mode;return;}   /* breeder choreography (display, spawning) owns the fish */
+  const p=s.pm95;s.pm95=s.mode;
+  if(s.dart95&&s.mode!=='move'&&s.mode!=='toWall')s.dart95=null;   /* the trip is over */
+  if(window.ANC95===false)return;
+  if(p==='move'&&s.mode!=='move'&&adult95(s)){
+   if(s.mode==='graze'&&Math.random()<.3){s.mode='rest';s.pm95='rest';}
+   if(s.mode==='rest')s.wait=(6+Math.random()*9)*ACT95();
+   else if(s.mode==='graze')s.wait=(10+Math.random()*10)*ACT95();
+  }
+  /* a dart now and then even without a trip: every ~1-2.5 min (slower by day/night activity), from grazing or resting */
+  if(adult95(s)&&(s.mode==='graze'||s.mode==='rest')&&!s.turn&&Number.isFinite(s.time)){
+   if(s.nd95==null||s.nd95>s.time+400)s.nd95=s.time+(30+Math.random()*60)*ACT95();
+   else if(s.time>=s.nd95){
+    const BL=112*(sc||1),fc=s.face<0?-1:1,room=room95(s);
+    const back=room95(s,-fc),dir=room>1.6*BL?fc:back>1.6*BL?-fc:0,rm=dir===fc?room:back;   /* behind: it pivots first */
+    if(dir){s.mode='move';s.pm95='move';s.tx=s.x+dir*Math.min(rm,(1+Math.random()*.4)*BL);s.ty=s.y;s.force95=s.tx;s.wait=0;s.fg=null;s.nudgeV=0;s.raspV=0;s.nd95=s.time+(60+Math.random()*90)*ACT95();}   /* activity is low at night: shorter waits, more darts */
+    else s.nd95=s.time+8;                                   /* no room ahead: try again a little later */
+   }
+  }
+  if(s.mode==='graze'&&adult95(s)&&s.fg&&s.fg!==s.fg95){s.fg95=s.fg;const g=s.fg;   /* a new foraging phase from the old code */
+   if(g.k==='rasp')g.d=3+Math.random()*3;else if(g.k==='mow')g.v*=.4;else g.v*=.7;}
+  /* head-down rasping pose: rotate around the snout (positive = head down, as in V17.89) */
+  const on=sandOk95(s)&&!el.classList.contains('anc90')&&((s.raspV||0)>.2||s.mode==='wafer');
+  s.r95=(s.r95||0)+((on&&window.ANC95!==false?1:0)-(s.r95||0))*Math.min(1,(dt||0)*(on?1.1:2));
+  if(s.r95<.005||!sandOk95(s)){if(!sandOk95(s))s.r95=0;return;}
+  if(s.w95&&el.style.rotate===s.w95)return;               /* V17.89 did not redraw this frame: never add the tilt twice */
+  const th=11*s.r95,f=s.face<0?-1:1,rm=/(-?[\d.e]+)deg/.exec(el.style.rotate||''),tm=/^\s*(-?[\d.e]+)px\s+(-?[\d.e]+)px/.exec(el.style.translate||'');
+  const r0=rm?+rm[1]:0,tx0=tm?+tm[1]:0,ty0=tm?+tm[2]:0,lift=56*(sc||1)*Math.sin(th*Math.PI/180);
+  el.style.setProperty('rotate',(r0+f*th).toFixed(2)+'deg','important');
+  el.style.setProperty('translate',tx0.toFixed(2)+'px '+(ty0-lift).toFixed(2)+'px','important');s.w95=el.style.rotate;
+ }
+ const prev95=window.ancPostV1789;
+ window.ancPostV1789=function(tank,el,s,fish,dt,sc,blocked,via){
+  prev95.apply(this,arguments);
+  try{life95(tank,el,s,sc,dt,via);}catch(e){console.error('AFNICA V17.95 anc movement',e);}
+ };
+ /* rest: dorsal folded flat, tail still */
+ const can95=window.ancCanvasV1791,R95=new WeakMap();
+ window.ancCanvasV1791=function(s,dt,sp,move,fan){
+  const r=can95.apply(this,arguments);if(!r||!s.fe||window.ANC95===false)return r;
+  const fe=s.fe,rest=fe.dataset.ancMode==='rest'&&fe.dataset.ancSurface!=='glass'&&fe.dataset.alert91!=='1';
+  let k=R95.get(fe)||0;k+=((rest?1:0)-k)*Math.min(1,dt*(rest?.6:3));R95.set(fe,k);
+  if(k>.01){r.fold=r.fold+(1-r.fold)*k;r.sway*=1-k;}
+  return r;
+ };
+ /* ================= V17.96 BRISTLENOSE MALE FIGHTS (owner OK'd plan + still; ref. youtube shorts R6KUQ73HhlI) =================
+    Two adult males on the sand of the same tank (not the breeder) may fight: about once per 20 s of being within 2.5
+    body lengths, once per 60 s when farther apart (one goes looking for the other) (x4 if one of them held the cave in the last 2 min or a female is near, more at night), one fight
+    per tank, 3 min cooldown per pair. The attacker (the cave holder if there is one) walks to the rival - round the rival's
+    head first if it came from behind, so it always ends head-to-tail facing the other way; the rival stops once it is
+    close. Then both photos fade out and the 3D pair (render_fight.py, both fish in one frame) plays: settle, 3-6 tail
+    sweeps, a head shove (1 s, always moving), half a circle; 30 % play it twice. The winner (cave holder > size > health +
+    luck) stays and rests, the loser darts away (V17.95 dart). Visual only: health stays with ancTerritorialClashCheck40.
+    The pair canvas hangs on the right-facing fish (its scale, never mirrored); fish state only in memory (s.fight96).
+    Switch: window.ANC96=false; debug: anc90Debug().F96 */
+ const F96={},CD96={},R96={},C96={calls:0,ticks:0,males:0,close:0,starts:0};let N96=0;
+ const SEQ96=n=>{const q=[['A',12]];for(let i=0;i<n;i++)q.push(['B',12]);q.push(['C',15],['D',21]);return q;};
+ function free96(e){const s=e.s;return e.fish&&e.fish.sex==='M'&&!s.young&&sandOk95(s)&&!s.cavePhase&&!s.turn&&(s.mode==='graze'||s.mode==='rest'||s.mode==='move'||s.fight96);}
+ function hold96(s){return s.cave96&&performance.now()-s.cave96<120000;}
+ function release96(F,why){
+  for(const e of [F.a,F.b]){const s=e.s;s.fight96=null;if(s.wait>100)s.wait=1+Math.random()*2;fade(e.tank,e.el,1);}
+  const m=R96[F.tid]||{};for(const e of [F.a,F.b]){const n=m[e.fish.id];if(n&&n.el!==e.el)fade(n.tank,n.el,1);}   /* the tank was redrawn: new elements */
+  if(F.cv)F.cv.remove();delete F96[F.tid];CD96[F.key]=performance.now()+(why==='done'?180000:30000);F.end=why;window.__f96last=F;
+ }
+ function go96(e,tx){const s=e.s;s.mode='move';s.tx=clamp(tx,70,(e.tank.clientWidth||960)-70);s.ty=s.y;s.wait=0;s.dk95=s.tx;s.force95=null;s.fg=null;}
+ function stop96(e){const s=e.s;if(s.mode!=='rest'||s.wait<100){s.mode='rest';s.wait=999;s.tx=s.x;s.ty=s.y;s.fg=null;s.nudgeV=0;s.raspV=0;}}
+ function start96(tid,a,b,now){
+  const BL=112*(a.sc||1),rf=b.s.face<0?-1:1,W=a.tank.clientWidth||960,behind=(a.s.x-b.s.x)*rf<0;
+  const F={tid,a,b,key:[a.fish.id,b.fish.id].sort().join('|'),ph:'walk',t:0,leg:behind?1:2,rf,BL,n:++N96,tmax:10+Math.abs(a.s.x-b.s.x)/20};
+  if(behind){const p1=b.s.x+rf*1.25*BL;if(p1<75||p1>W-75){CD96[F.key]=now+30000;return;}F.p1=p1;go96(a,p1);}else go96(a,b.s.x-rf*4);
+  a.s.fight96=b.s.fight96=F;F96[tid]=F;stop96(b);           /* the rival lies still, as in the clip */
+ }
+ function step96(F,dt,now){
+  const a=F.a,b=F.b,A=a.s,Bs=b.s;F.t+=dt;
+  if(!a.el.isConnected||!b.el.isConnected||F.cv&&F.cv.parentElement!==F.R.el||!free96(a)&&!A.turn||!free96(b)&&!Bs.turn){release96(F,'abort');return;}
+  if(F.ph==='walk'){
+   if(Math.abs(A.x-Bs.x)<1.8*F.BL)stop96(b);
+   if(F.t>F.tmax){release96(F,'timeout');return;}
+   if(A.mode==='move'||A.turn)return;
+   if(F.leg===1){F.leg=2;F.rf=Bs.face<0?-1:1;go96(a,Bs.x-F.rf*4);return;}
+   const fa=A.face<0?-1:1,fb=Bs.face<0?-1:1;
+   if(fa===fb||Math.abs(A.x-Bs.x)>12){release96(F,'misaligned');return;}
+   stop96(a);stop96(b);
+   const R=fa>0?a:b,O=R===a?b:a,tw=Math.random()<.3;
+   F.ph='fight';F.t=0;F.R=R;F.O=O;F.q=SEQ96(3+Math.floor(Math.random()*4)).concat(tw?SEQ96(2+Math.floor(Math.random()*3)).slice(1):[]);
+   F.T=F.q.reduce((t,x)=>t+x[1],0)/15;
+   const sc=e=>(hold96(e.s)?2:0)+(+e.fish.age||0)/40+(+e.fish.health||0)/100+Math.random();F.win=sc(a)>=sc(b)?a:b;
+   const c=document.createElement('canvas');c.className='anc96p';c.width=600;c.height=260;R.el.appendChild(c);F.cv=c;
+   return;
+  }
+  if(F.ph==='fight'){
+   stop96(a);stop96(b);
+   const t=Math.min(F.t,F.T),al=Math.min(1,t/.3,(F.T-t)/.3);
+   let f=t*15,k=0;while(k<F.q.length-1&&f>=F.q[k][1]){f-=F.q[k][1];k++;}
+   const [ph,n]=F.q[k],i=Math.min(n-1,Math.floor(f));F.cur=ph+i;
+   F.al=al;for(const e of [a,b])fade(e.tank,e.el,1-al);
+   const c=F.cv,R=F.R,O=F.O,s=R.sc||1,dx=(O.s.x-R.s.x)/2/s;
+   c.style.left=(57.7-150+dx).toFixed(2)+'px';c.style.top=(38.4-84)+'px';
+   const g=c.getContext('2d');g.clearRect(0,0,600,260);blit(g,ATL.P,'P_'+ph+String(i).padStart(2,'0'),false,al);
+   if(F.t>=F.T){
+    const L=F.win===a?b:a,W2=F.win,fl=L.s.face<0?-1:1,BL=F.BL;release96(F,'done');
+    W2.s.mode='rest';W2.s.wait=3+Math.random()*3;
+    const ahead=room95(L.s,fl),back=room95(L.s,-fl),dir=ahead>BL?fl:back>BL?-fl:0;
+    if(dir){L.s.mode='move';L.s.tx=L.s.x+dir*Math.min(dir===fl?ahead:back,1.4*BL);L.s.ty=L.s.y;L.s.wait=0;L.s.force95=L.s.tx;L.s.dk95=null;}
+    else{L.s.mode='rest';L.s.wait=4;}
+   }
+  }
+ }
+ function tank96(tid,now,dt){
+  const list=Object.values(R96[tid]||{});
+  const F=F96[tid];if(F){step96(F,dt,now);return;}
+  if(window.ANC96===false||!ready(ATL.P))return;
+  C96.ticks++;const males=list.filter(free96);if(males.length>1)C96.males++;const fem=list.filter(e=>e.fish&&e.fish.sex==='F'&&!e.s.young);
+  for(let i=0;i<males.length;i++)for(let j=i+1;j<males.length;j++){
+   const p=males[i],q=males[j],BL=112*(p.sc||1);
+   const far=Math.abs(p.s.x-q.s.x)>2.5*BL;if(!far)C96.close++;   /* far apart: now and then one goes looking for the other */
+   const key=[p.fish.id,q.fish.id].sort().join('|');if(CD96[key]&&now<CD96[key])continue;
+   const hp=hold96(p.s),hq=hold96(q.s),boost=hp||hq||fem.some(f=>Math.abs(f.s.x-p.s.x)<2.5*BL)?4:1;
+   if(window.anc96Force||Math.random()<dt*boost/(far?60:20)*ACT96()){window.anc96Force=0;   /* anc96Force=1: the next free pair fights (tests) */const att=hp?p:hq?q:Math.random()<.5?p:q;C96.starts++;start96(tid,att,att===p?q:p,now);return;}
+  }
+ }
+ const ACT96=()=>{const a=ACT95();return a>0?1/a:1;};   /* night (low activity scale) = more fights */
+ function life96(tank,el,s,fish,dt,sc,blocked,via){
+  C96.calls++;if(!s||!fish||via!=='main'||!tank||!tank.id||tank.id==='tank-breeder')return;
+  if(s.cavePhase||CAVEMODES[s.mode]||s.mode==='cave-approach')s.cave96=performance.now();
+  const now=performance.now(),m=R96[tank.id]||(R96[tank.id]={});
+  m[fish.id]={tank,el,s,fish,sc,seen:now};
+  if(s.fight96&&s.fight96.ph==='fight'&&s.fight96.al!=null)fade(tank,el,1-s.fight96.al);   /* after this fish's own drawing pass */
+  if(blocked)return;
+  for(const k in m)if(now-m[k].seen>1500)delete m[k];
+  if(Object.keys(m)[0]!==String(fish.id))return;            /* once per frame per tank: on the first fish still there */
+  tank96(tank.id,now,Math.min(.1,dt||0));
+ }
+ const prev96=window.ancPostV1789;
+ window.ancPostV1789=function(tank,el,s,fish,dt,sc,blocked,via){
+  prev96.apply(this,arguments);
+  try{life96(tank,el,s,fish,dt,sc,blocked,via);}catch(e){console.error('AFNICA V17.96 anc fight',e);}
+ };
+ css.textContent+='canvas.anc96p{position:absolute;width:300px;height:130px;pointer-events:none;transform:none!important}';
+ window.anc90Debug=()=>({ATL,ST,TK,Q91,D95,F96,CD96,C96,R96});
 })();
