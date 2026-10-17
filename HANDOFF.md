@@ -55,6 +55,57 @@
   - **Owner APPROVED Phase 3 (2026-10-17)** after checking it in the Browser pane. All three phases approved; nothing
     committed yet (owner decides when). Next candidates: cave defence (task card proposed), leaving the glass (item 4,
     needs the owner's ruling on the tail-first slide), the items from the owner's first prompt list.
+- After the push (f72d546), NOT committed yet (owner feedback while watching the pane, 2026-10-17):
+  - Rasping must not lift the body at all: V17.95 pose off (`const on=false`), V17.89 rasp tilt off (`0*s.tilt89` in the
+    HTML). The remaining sand tilt is the V17.89 climb over the cave tube (ovA89), not rasping.
+  - Glass "corruption" at the mouth = the old `.ancGlass::after` mouth patch squashed an oval smaller than the disc
+    (ring + smeared tentacles). Owner then missed the mouth movement → V17.97: a circular copy of the oral disc swells up to
+    10 % (always covers the original; tentacles untouched). Black male keeps the photo's pale oral disc (recolor_sheet.py).
+  - Glass view tail: a 30 %-high fan of the side photo's caudal laid under the edge-on tail line (recolor_sheet.py).
+    Male bristles: sway ~3x stronger (r.W/60 instead of /170, HTML fin code) and never stop (phase speed >= .6).
+  - Cave "teleport": the old 'cave-turn' mode (he backs out to the mouth and goes in again) was missing from V17.90
+    CAVEMODES → the photo popped up ~13 px higher for 0.5 s while the 3D still showed. Added; rig shows only the smooth
+    approach fade now.
+  - Glass gait (owner: "swims on the glass"): V17.89 glide was a steady 12 px/s. V17.97 wraps ancGlideV1789 into push
+    (0.4-0.8 s, eased) + grip (0.5-1.2 s), peak 0.68 px/frame, avg ~5 px/s (switch window.ANC97GAIT=false); the stroke
+    signal (ancStroke: pectoral steps, tail wave) follows the pushes (HTML ~13318). Glass tentacles froze while gripping
+    (phase only advanced with strokes) → always >= .5 speed (HTML fin code).
+  - Fish sunk below the sand in a short tank (Browser pane 813x388: sand strip only 68 px, fish line at 56 % of it put
+    the 70 px sprite past the bottom edge): bristlenose `base` now = min(old, h-52*scale) (HTML ~7766); 960x540 unchanged.
+  - Fish "cut off" away from the cave: V17.89 place() leaves its cave clip-path polygon on the element after the cave
+    cycle; V17.97 removes it in every ordinary mode (rig 2x300 s: 0 masked frames outside cave modes).
+  - Female mouth pulse off (`.ancFemale .ancGlass::after{display:none}`): the ghost second ring in the female belly
+    photo made the copied disc look broken. Males keep the pulse. (Fixing the female belly asset itself = follow-up.)
+  - Side <-> belly view on glass transitions: was a linear cross-fade over the whole transition (double image ~70 % of
+    it); now a quick smoothstep swap around --anc-glass .42-.58 via --anc-sop/--anc-gop (both visible 5 %).
+  - V17.98 turn: the pivot swung the head away, so mid-turn showed only the tail fan (owner: "cut-off"). render_turn3.py
+    now turns the other way (head toward the viewer, face + bristles mid-turn) → `out/atlas98_T`.
+  - V17.98 fight: owner: "they don't circle each other, they hit each other with their spines". Phase D = spine strikes
+    (rear male jerks his head into the other's flank, fast in / slow out, then the front male strikes back; nobody changes
+    sides, so the photo flip is off: F.nD=0) → `out/atlas98_P`. Rig: 3 mixed fights "done", no errors.
+  - Turn bend (owner: "turn with a bend of the body, not flat"): render_turn3.py bend -.95 (C-curl mid-turn) → atlas98_T.
+  - Turn flicker / "vanish + corruption on the glass transition": 3D turns started during attach/detach and were cut
+    after a few frames (photo dipped to 0, side frames over the belly view); one female's facing-follow turn reversed every
+    frame and sat at u~0 for 27 s (ghost 3D over the photo). Now: no 3D turn while glass>.02 or attach/detach/wallHold/
+    toEdgeG (TRANS97), and a facing-follow turn starts or reverses only after the wanted facing held .25 s. Rig 150 s:
+    every turn one clean 63-frame run, no blips.
+  - Mouth on the glass: V17.89 set --anc-mouth 1 during every hold (5-14 s) → no rasping while still. Removed (HTML
+    ~13318); mouth pulses 80 % of glass grazing. Females get a milder pulse (circle 6.4 px, up to 1.05).
+  - OPEN (owner, 2026-10-17, end of this chat): "fish disappear / appear, cut-offs". 45 s of per-frame sampling in the
+    Browser pane (2M+2F, fights forced) found 0 frames with a fish invisible outside cave/fight 3D; could be an old copy
+    in the owner's own browser tab (Ctrl+F5). Next session: reproduce in the owner's window size, record the exact moment.
+  - Other open items: female belly photo has a faint second ring around the mouth disc (sheet asset); dex/shop thumbnails
+    use the photo colours; water-change freeze (fish stuck above the water line); cave defence (task card); leaving the
+    glass tail first (owner's ruling). ALL of V17.97/98 is uncommitted (owner did not confirm yet).
+  - **V17.97 colour for life**: every non-fry fish keeps its id-hash colour ('o' olive-brown / 'b' black) as an adult.
+    Sheet 4 columns (`recolor_sheet.py` → `out/sheet97.webp`: col 240 black male, col 360 brown female; brightness
+    histogram match + tint). 3D frames (turn T, cave male layers C2, fight P) recoloured per frame on demand in the
+    browser (`recol97`, maps `make_maps97.py` → `out/maps97.json`). Fight atlas now per-fish layers (`render_fight.py`
+    4th arg = layer, holdout) → `out/atlas97_P` (1.7 MB); odd number of half circles flips both photos at the final fade.
+    HTML patches outside the block: fin-canvas cell mapping (~8721), PFIN aliases 240/360 (~13474), male bristles for
+    'anc|240|38' and 'ancg|240|138'. Checked headless: all 4 adult colours, juvenile→adult keeps colour, mixed fights end
+    "done" with correct facing, no errors. Reviewer OK after fixes. Not shown: dex/shop thumbnails still use the photo
+    colours. Water-change freeze (fish stuck above the water line) = next, owner asked.
 
 # Earlier handoff (2026-10-13)
 

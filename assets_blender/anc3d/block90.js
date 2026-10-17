@@ -18,13 +18,35 @@
  try{const P=window.ancDebugV1789&&ancDebugV1789().PFIN;if(P)for(const k of Object.keys(P))P[k]=[];}catch(e){console.error('AFNICA V17.93 fins',e);}   /* the photos already show the fins as they lie: no erase-and-redraw (it cut them) */
  const ATL={T:{src:'@@ATLAS_T@@',idx:@@INDEX_T@@},C2:{src:'@@ATLAS_C2@@',idx:@@INDEX_C2@@},P:{src:'@@ATLAS_P@@',idx:@@INDEX_P@@}};   /* V17.96: P = the two-male fight */   /* V17.92: T = U-turn frames (M, F, JO, JB), C2 = tube + the male's cave layers */
  for(const k in ATL){const a=ATL[k];a.img=new Image();a.img.src=a.src;a.pos={};a.idx.names.forEach((n,i)=>a.pos[n]=a.idx.pos[i]);}
- const ready=a=>a.img.complete&&a.img.naturalWidth>0;   /* a broken image is 'complete' too */
+ const ready=a=>a.rc97||a.img.complete&&a.img.naturalWidth>0;   /* a broken image is 'complete' too; rc97 = a recoloured canvas copy */
+ /* V17.97 colour for life: every non-fry fish keeps one colour from its id (olive-brown 'o' or black 'b'); adults whose
+    colour differs from their photo (black male, brown female) use two extra sheet columns (recolor_sheet.py) and, for the
+    3D frames, a copy of the atlas recoloured here once (MAPS97 from make_maps97.py: brightness LUT + tint). */
+ const MAPS97=@@MAPS97@@;
+ function recol97(atl,key){                                /* per frame on demand: small canvases (Safari/iOS canvas limit, memory, no hitch) */
+  if(!key||!ready(atl)||!MAPS97[key])return atl;atl.rc=atl.rc||{};
+  return atl.rc[key]||(atl.rc[key]={img:atl.img,idx:atl.idx,pos:atl.pos,rc97:1,cells:new Map(),cell(name){
+   let c=this.cells.get(name);if(c!==undefined)return c;const p=atl.pos[name],w=atl.idx.w,h=atl.idx.h;c=null;
+   try{c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d',{willReadFrequently:true});g.drawImage(atl.img,p[0],p[1],w,h,0,0,w,h);
+    const d=g.getImageData(0,0,w,h),q=d.data,M=MAPS97[key],L=M.lut,T=M.tint;
+    for(let k=0;k<q.length;k+=4){if(q[k+3]<10)continue;const y=(q[k]*.299+q[k+1]*.587+q[k+2]*.114)|0,yt=L[y>255?255:y],t=T[Math.min(23,(yt*24/256)|0)];q[k]=yt*t[0];q[k+1]=yt*t[1];q[k+2]=yt*t[2];}
+    g.putImageData(d,0,0);}catch(e){console.error('AFNICA V17.97 recolour',e);c=null;}
+   this.cells.set(name,c);return c;}});
+ }
+ function rc97(el){                                          /* '' (as photographed), 'MB' black adult male, 'FO' brown adult female */
+  const a=el&&el.querySelector('.ancArt');if(!a||a.dataset.stage91)return '';
+  const F=a.classList.contains('ancFemale'),c=a.dataset.col91;return !F&&c==='b'?'MB':F&&c==='o'?'FO':'';
+ }
  const clamp=(v,a,b)=>v<a?a:v>b?b:v,sm=q=>{q=clamp(q,0,1);return q*q*(3-2*q);};
  const PIVX=155.4,PIVY=96.8;                                 /* frame px of the mid-body ground point (2x) */
- const CAVEMODES={'fanning':1,'cave-in':1,'cave-flip':1,'cave-peek':1,'cave-guard':1,'cave-exit':1,'cave-enter':1};
+ const TRANS97={attach:1,detach:1,wallHold:1,toEdgeG:1};   /* glass transitions */
+ const CAVEMODES={'fanning':1,'cave-in':1,'cave-flip':1,'cave-peek':1,'cave-guard':1,'cave-exit':1,'cave-enter':1,'cave-turn':1};   /* V17.97: cave-turn too (the photo popped up for half a second at the mouth) */
  const ST=new WeakMap(),TK=new WeakMap();
  const css=document.createElement('style');
- css.textContent='html .ancArt i{background-image:url('+SHEET+');background-size:240px 620px}html .ancArt .ancSide{transform:none!important;filter:none!important}'+   /* no squash, no washed-out colours on the photos */
+ css.textContent='html .ancArt i{background-image:url('+SHEET+');background-size:480px 620px}'+   /* V17.97: 4 columns (male, female, black male, brown female) */
+  'html .ancArt:not([data-stage91]):not(.ancFemale)[data-col91=b] .ancSide{background-position:-240px -38px}html .ancArt:not([data-stage91]):not(.ancFemale)[data-col91=b] .ancGlass{background-position:-240px -138px}'+
+  'html .ancArt:not([data-stage91]).ancFemale[data-col91=o] .ancSide{background-position:-360px -38px}html .ancArt:not([data-stage91]).ancFemale[data-col91=o] .ancGlass{background-position:-360px -138px}'+
+  'html .ancArt .ancSide{transform:none!important;filter:none!important}'+   /* no squash, no washed-out colours on the photos */
   /* V17.91 young rows: fry side 238 / belly 338, juvenile side 438 / belly 538 (css px of the 240 px wide sheet) */
   'html .ancArt[data-stage91=fry] .ancSide{background-position:0 -238px}html .ancArt[data-stage91=fry].ancFemale .ancSide{background-position:-120px -238px}'+
   'html .ancArt[data-stage91=fry] .ancGlass{background-position:0 -338px}html .ancArt[data-stage91=fry].ancFemale .ancGlass{background-position:-120px -338px}'+
@@ -52,9 +74,9 @@
  }
  function blit(g,atl,name,mirror,alpha,piv){
   const p=atl.pos[name];if(!p||!ready(atl))return false;
-  const w=atl.idx.w,h=atl.idx.h;g.save();g.globalAlpha=alpha;
+  const w=atl.idx.w,h=atl.idx.h,cel=atl.cell?atl.cell(name):null;g.save();g.globalAlpha=alpha;
   if(mirror){g.translate(2*(piv||PIVX),0);g.scale(-1,1);}
-  g.drawImage(atl.img,p[0],p[1],w,h,0,0,w,h);g.restore();return true;
+  if(cel)g.drawImage(cel,0,0,w,h,0,0,w,h);else g.drawImage(atl.img,p[0],p[1],w,h,0,0,w,h);g.restore();return true;   /* V17.97: a recoloured cell (or the photo colour if that failed) */
  }
  function off(el,tank){
   el.classList.remove('anc90','anc90hid');const f0=ST.get(el);if(f0&&f0.hid){f0.hid=0;el.style.setProperty('opacity','1','important');}const c=el.querySelector(':scope>canvas.anc90c');if(c)c.remove();
@@ -94,8 +116,8 @@
   const g=cv.getContext('2d'),gf=fv.getContext('2d');g.clearRect(0,0,680,220);gf.clearRect(0,0,680,220);
   if(!blit(g,ATL.C2,'C_tube00',false,1))return;t.last=sig;tank.classList.add('anc90cave');   /* old cave hidden once the new one is drawn */
   if(m&&m.name){
-   g.save();g.beginPath();g.ellipse(MX,MY,MRX,MRY,0,0,7);g.clip();g.translate(m.shift,m.dy||0);blit(g,ATL.C2,m.name+'_in',false,m.a);if(m.name2&&m.mix>.02)blit(g,ATL.C2,m.name2+'_in',false,m.a*m.mix);g.restore();
-   gf.save();gf.translate(m.shift,m.dy||0);blit(gf,ATL.C2,m.name+'_out',false,m.a);if(m.name2&&m.mix>.02)blit(gf,ATL.C2,m.name2+'_out',false,m.a*m.mix);gf.restore();
+   g.save();g.beginPath();g.ellipse(MX,MY,MRX,MRY,0,0,7);g.clip();g.translate(m.shift,m.dy||0);blit(g,recol97(ATL.C2,m.rc),m.name+'_in',false,m.a);if(m.name2&&m.mix>.02)blit(g,recol97(ATL.C2,m.rc),m.name2+'_in',false,m.a*m.mix);g.restore();
+   gf.save();gf.translate(m.shift,m.dy||0);blit(gf,recol97(ATL.C2,m.rc),m.name+'_out',false,m.a);if(m.name2&&m.mix>.02)blit(gf,recol97(ATL.C2,m.rc),m.name2+'_out',false,m.a*m.mix);gf.restore();
   }
  }
  function caveLoop(){
@@ -133,12 +155,12 @@
   /* juveniles come out mixed (owner): olive-brown or black, fixed per fish (from its id) */
   let h=0;const id=String(fish&&fish.id||'');for(let i=0;i<id.length;i++)h=(h*31+id.charCodeAt(i))|0;
   h^=h>>>16;h=Math.imul(h,0x45d9f3b);h^=h>>>16;h=Math.imul(h,0x45d9f3b);h^=h>>>16;   /* mix well: ids differ by one character */
-  const col=stg==='juv'?(h&1?'b':'o'):'';
+  const col=stg==='fry'?'':(h&1?'b':'o');   /* V17.97: the same colour as a juvenile and as an adult */
   if((art.dataset.stage91||'')===stg&&(art.dataset.col91||'')===col)return;
   if(stg)art.dataset.stage91=stg;else delete art.dataset.stage91;
   if(col)art.dataset.col91=col;else delete art.dataset.col91;
   /* the old articulated body/tail pieces keep the cell they were made with: point them at the new one */
-  const px=col==='o'?0:col==='b'?-120:art.classList.contains('ancFemale')?-120:0,py=stg==='fry'?-238:stg==='juv'?-438:-38;
+  const isF97=art.classList.contains('ancFemale'),px=stg==='juv'?(col==='o'?0:-120):stg==='fry'?(isF97?-120:0):isF97?(col==='o'?-360:-120):(col==='b'?-240:0),py=stg==='fry'?-238:stg==='juv'?-438:-38;
   art.querySelectorAll('.ancBodyPiece,.ancTailPiece').forEach(p=>p.style.backgroundPosition=px+'px '+py+'px');
   const side=art.querySelector('.ancSide');if(side){side.querySelectorAll(':scope>canvas').forEach(c=>c.remove());side.classList.remove('finWarp');delete side.dataset.finSkip;}
   const gl=art.querySelector('.ancGlass');if(gl){gl.querySelectorAll(':scope>canvas').forEach(c=>c.remove());gl.classList.remove('finWarpG','gOn');}
@@ -158,7 +180,7 @@
   if(cave&&(CAVEMODES[mode]||mode==='cave-approach')&&!spawning()&&fish&&fish.sex==='M'&&!stg91){
    if(mode==='cave-enter'&&face>0&&s&&!s.p91done){const dIn=+el.dataset.ancX+56*scl-((parseFloat(cave.style.left)||0)+13.8);if(dIn>=-3){s.p91done=1;s.p91until=now+800+Math.random()*600;}}   /* V17.91: pause at the mouth */
    const cs=caveState(el,cave,face,scl,mode);
-   if(cs){let t=TK.get(tank);if(!t){t={};TK.set(tank,t);}t.m=cs.hide?null:cs;t.at=now;
+   if(cs){let t=TK.get(tank);if(!t){t={};TK.set(tank,t);}t.m=cs.hide?null:cs;if(cs)cs.rc=rc97(el);t.at=now;
     const a=cs.hide?1:cs.a;el.style.setProperty('opacity',(1-a).toFixed(3),'important');f.hid=1;f.df=face;f.turn=null;f.x=+el.dataset.ancX;f.vx=0;f.mv=0;
     const c=el.querySelector(':scope>canvas.anc90c');if(c)c.style.display='none';fade(tank,el,1);return;}
   }
@@ -172,13 +194,15 @@
   /* V17.92 turn: the old turn's own timer (s.turn, during which the fish stays put) or a facing-follow turn of our own */
   const T=Math.max(.5,window.ancTurnSecV1789||1),TF=Math.min(T,1);let tu=null;   /* V17.95: TF = facing-follow turns (the fish keeps moving) stay short */
   if(f.df==null)f.df=face;
-  if(s&&s.turn&&glass<=.3){tu={u:clamp(s.turn.t/T,0,1),from:s.turn.from<0?-1:1,to:s.turn.to<0?-1:1};f.df=tu.to;f.turn=null;}
+  const tr97=glass>.02||TRANS97[mode];                      /* V17.98: no 3D turn while going onto / off the glass (it was cut after a few frames: the fish vanished, side frames over the belly view) */
+  if(f.wf!==(f.mv||face)){f.wf=f.mv||face;f.wt=0;}else f.wt=(f.wt||0)+dt;   /* how long the wanted facing has held */
+  if(s&&s.turn&&!tr97){tu={u:clamp(s.turn.t/T,0,1),from:s.turn.from<0?-1:1,to:s.turn.to<0?-1:1};f.df=tu.to;f.turn=null;}
   else{
    const wantF=f.mv||face;
-   if(glass>.3){f.df=wantF;f.turn=null;}
+   if(tr97){f.df=wantF;f.turn=null;}
    else{
-    if(!f.turn&&f.df!==wantF)f.turn={from:f.df,to:wantF,t:0};
-    if(f.turn&&f.turn.to!==wantF)f.turn={from:f.turn.to,to:f.turn.from,t:Math.max(0,TF-f.turn.t)};   /* reverses smoothly */
+    if(!f.turn&&f.df!==wantF&&f.wt>.25)f.turn={from:f.df,to:wantF,t:0};
+    if(f.turn&&f.turn.to!==wantF&&f.wt>.25)f.turn={from:f.turn.to,to:f.turn.from,t:Math.max(0,TF-f.turn.t)};   /* reverses smoothly */
     if(f.turn){f.turn.t+=dt;tu={u:clamp(f.turn.t/TF,0,1),from:f.turn.from,to:f.turn.to};if(f.turn.t>=TF){f.df=f.turn.to;f.turn=null;tu=null;}}
    }
   }
@@ -193,7 +217,7 @@
   if(f.tx94){f.tx94=0;el.style.removeProperty('translate');}
   const c=turnCanvas(el,sex),g=c.getContext('2d');c.style.display='block';g.clearRect(0,0,480,220);
   c.style.translate='none';
-  const mir=(tu.from<0)!==(sg<0);blit(g,ATL.T,sex+'_turn'+String(k).padStart(2,'0'),mir,a3,220);if(mix>.02&&k2!==k)blit(g,ATL.T,sex+'_turn'+String(k2).padStart(2,'0'),mir,a3*mix,220);   /* right->left as rendered, left->right mirrored */
+  const AT97=recol97(ATL.T,rc97(el)),mir=(tu.from<0)!==(sg<0);blit(g,AT97,sex+'_turn'+String(k).padStart(2,'0'),mir,a3,220);if(mix>.02&&k2!==k)blit(g,AT97,sex+'_turn'+String(k2).padStart(2,'0'),mir,a3*mix,220);   /* right->left as rendered, left->right mirrored */
  }
 
  const prev=window.ancPostV1789;
@@ -253,7 +277,7 @@
     2. LONG FLAT RESTS (0:09-0:14, 1:04-1:08, 1:28-1:32): after a trip an adult rests more often (30 % of grazes become
        rests) and longer (6-15 s x day/night activity), dorsal folded flat, no tail sway.
     3. HEAD-DOWN RASPING (0:43-1:02): grazing sessions last 10-20 s, rasp phases 3-6 s, the creep is slower; while rasping
-       (or on a wafer) the body tilts head-down up to 11 deg around the snout (the snout stays on the sand, the tail rises).
+       (or on a wafer) the body tilts head-down up to 4 deg (owner: 11 lifted the tail far too high) around the snout (the snout stays on the sand, the tail rises).
     Switch: window.ANC95=false. */
  const ACT95=()=>typeof ancActivityScaleV17==='function'?ancActivityScaleV17():1;
  const FAN95={'fanning':1,'cave-in':1,'cave-flip':1,'cave-peek':1,'cave-guard':1,'cave-exit':1,'cave-enter':1,'cave-approach':1,'breeding-display':1};
@@ -311,11 +335,11 @@
   if(s.mode==='graze'&&adult95(s)&&s.fg&&s.fg!==s.fg95){s.fg95=s.fg;const g=s.fg;   /* a new foraging phase from the old code */
    if(g.k==='rasp')g.d=3+Math.random()*3;else if(g.k==='mow')g.v*=.4;else g.v*=.7;}
   /* head-down rasping pose: rotate around the snout (positive = head down, as in V17.89) */
-  const on=sandOk95(s)&&!el.classList.contains('anc90')&&((s.raspV||0)>.2||s.mode==='wafer');
+  const on=false;   /* owner 2026-10-17: rasping must not lift the body or tail at all - pose switched off (kept for reference) */
   s.r95=(s.r95||0)+((on&&window.ANC95!==false?1:0)-(s.r95||0))*Math.min(1,(dt||0)*(on?1.1:2));
   if(s.r95<.005||!sandOk95(s)){if(!sandOk95(s))s.r95=0;return;}
   if(s.w95&&el.style.rotate===s.w95)return;               /* V17.89 did not redraw this frame: never add the tilt twice */
-  const th=11*s.r95,f=s.face<0?-1:1,rm=/(-?[\d.e]+)deg/.exec(el.style.rotate||''),tm=/^\s*(-?[\d.e]+)px\s+(-?[\d.e]+)px/.exec(el.style.translate||'');
+  const th=4*s.r95,f=s.face<0?-1:1,rm=/(-?[\d.e]+)deg/.exec(el.style.rotate||''),tm=/^\s*(-?[\d.e]+)px\s+(-?[\d.e]+)px/.exec(el.style.translate||'');
   const r0=rm?+rm[1]:0,tx0=tm?+tm[1]:0,ty0=tm?+tm[2]:0,lift=56*(sc||1)*Math.sin(th*Math.PI/180);
   el.style.setProperty('rotate',(r0+f*th).toFixed(2)+'deg','important');
   el.style.setProperty('translate',tx0.toFixed(2)+'px '+(ty0-lift).toFixed(2)+'px','important');s.w95=el.style.rotate;
@@ -340,7 +364,7 @@
     per tank, 3 min cooldown per pair. The attacker (the cave holder if there is one) walks to the rival - round the rival's
     head first if it came from behind, so it always ends head-to-tail facing the other way; the rival stops once it is
     close. Then both photos fade out and the 3D pair (render_fight.py, both fish in one frame) plays: settle, 3-6 tail
-    sweeps, a head shove (1 s, always moving), half a circle; 30 % play it twice. The winner (cave holder > size > health +
+    sweeps, a head shove (1 s, always moving), spine strikes (V17.98, was half a circle); 30 % play it twice. The winner (cave holder > size > health +
     luck) stays and rests, the loser darts away (V17.95 dart). Visual only: health stays with ancTerritorialClashCheck40.
     The pair canvas hangs on the right-facing fish (its scale, never mirrored); fish state only in memory (s.fight96).
     Switch: window.ANC96=false; debug: anc90Debug().F96 */
@@ -374,7 +398,7 @@
    stop96(a);stop96(b);
    const R=fa>0?a:b,O=R===a?b:a,tw=Math.random()<.3;
    F.ph='fight';F.t=0;F.R=R;F.O=O;F.q=SEQ96(3+Math.floor(Math.random()*4)).concat(tw?SEQ96(2+Math.floor(Math.random()*3)).slice(1):[]);
-   F.T=F.q.reduce((t,x)=>t+x[1],0)/15;
+   F.T=F.q.reduce((t,x)=>t+x[1],0)/15;F.nD=0;   /* V17.98: D = spine strikes, nobody changes sides (was a half circle) */F.k1=rc97(R.el);F.k2=rc97(O.el);   /* V17.97: each male in his own colour (fish 1 = the right-facing one) */
    const sc=e=>(hold96(e.s)?2:0)+(+e.fish.age||0)/40+(+e.fish.health||0)/100+Math.random();F.win=sc(a)>=sc(b)?a:b;
    const c=document.createElement('canvas');c.className='anc96p';c.width=600;c.height=260;R.el.appendChild(c);F.cv=c;
    return;
@@ -385,9 +409,13 @@
    let f=t*15,k=0;while(k<F.q.length-1&&f>=F.q[k][1]){f-=F.q[k][1];k++;}
    const [ph,n]=F.q[k],i=Math.min(n-1,Math.floor(f));F.cur=ph+i;
    F.al=al;for(const e of [a,b])fade(e.tank,e.el,1-al);
+   if(F.nD%2&&!F.flipped&&F.t>=F.T-.3){                    /* odd number of half circles: the two swapped sides - the photos fade back in turned round */
+    F.flipped=1;for(const e of [a,b]){const q=e.s;q.face=q.face<0?1:-1;q.fv=q.face;q.turn=null;const f=ST.get(e.el);if(f){f.df=q.face;f.turn=null;}}
+    const t=F.R;F.R=F.O;F.O=t;F.R.el.appendChild(F.cv);      /* the canvas always hangs on the right-facing fish (never mirrored) */
+   }
    const c=F.cv,R=F.R,O=F.O,s=R.sc||1,dx=(O.s.x-R.s.x)/2/s;
    c.style.left=(57.7-150+dx).toFixed(2)+'px';c.style.top=(38.4-84)+'px';
-   const g=c.getContext('2d');g.clearRect(0,0,600,260);blit(g,ATL.P,'P_'+ph+String(i).padStart(2,'0'),false,al);
+   const g=c.getContext('2d');g.clearRect(0,0,600,260);const nm=ph+String(i).padStart(2,'0');blit(g,recol97(ATL.P,F.k1),'P1_'+nm,false,al);blit(g,recol97(ATL.P,F.k2),'P2_'+nm,false,al);
    if(F.t>=F.T){
     const L=F.win===a?b:a,W2=F.win,fl=L.s.face<0?-1:1,BL=F.BL;release96(F,'done');
     W2.s.mode='rest';W2.s.wait=3+Math.random()*3;
@@ -422,11 +450,30 @@
   if(Object.keys(m)[0]!==String(fish.id))return;            /* once per frame per tank: on the first fish still there */
   tank96(tank.id,now,Math.min(.1,dt||0));
  }
+ /* V17.97 glass gait (owner: "it looks like it swims on the glass, not the ancistrus movement"): the V17.89 glide went at a
+    steady 12 px/s. A bristlenose on glass inches along: a short push (~0.4-0.8 s, eased), then it grips and rasps
+    (~0.5-1.2 s), and again - about 40 % of the old average speed, never a steady slide. Switch: window.ANC97GAIT=false. */
+ const glide97=window.ancGlideV1789;
+ if(glide97)window.ancGlideV1789=function(s,thrust,gate){
+  const v=glide97.apply(this,arguments);if(!(v>0)||window.ANC97GAIT===false){if(s.h97)s.h97.mv0=0;return v;}
+  const h=s.h97||(s.h97={t:9,T:1,mv:.5,last:s.time}),dt=Math.max(0,Math.min(.1,(s.time||0)-h.last));h.last=s.time;h.t+=dt;
+  if(h.t>=h.T){h.t=0;h.mv=.4+Math.random()*.4;h.T=h.mv+.5+Math.random()*.7;}
+  const u=h.t/h.mv,env=u<1?Math.sin(Math.PI*u):0;h.mv0=env;
+  return v*env*(h.T/h.mv)*.64;                              /* peak ~18 px/s (0.6 px/frame), average ~5 px/s */
+ };
+ css.textContent+='html .ancArt .ancSide{opacity:var(--anc-sop,var(--anc-side,1))!important}html .ancArt .ancGlass{opacity:var(--anc-gop,var(--anc-glass,0))!important}';
+ const FREE97={graze:1,rest:1,move:1,toWall:1,attach:1,detach:1,wallHold:1,toEdgeG:1,wafer:1};
  const prev96=window.ancPostV1789;
  window.ancPostV1789=function(tank,el,s,fish,dt,sc,blocked,via){
   prev96.apply(this,arguments);
   try{life96(tank,el,s,fish,dt,sc,blocked,via);}catch(e){console.error('AFNICA V17.96 anc fight',e);}
+  /* V17.97: the V17.89 cave mask (clip-path polygon) stayed on after the cave cycle - the fish walked around cut off */
+  if(s&&FREE97[s.mode]&&el.style.clipPath&&el.style.clipPath!=='none')el.style.removeProperty('clip-path');
+  /* V17.97: side <-> belly view: a quick swap in the middle of the glass transition instead of a long double image */
+  {const g=parseFloat(el.style.getPropertyValue('--anc-glass'))||0,q=clamp((g-.42)/.16,0,1),o=q*q*(3-2*q);el.style.setProperty('--anc-gop',o.toFixed(3));el.style.setProperty('--anc-sop',(1-o).toFixed(3));}
  };
+ css.textContent+='html .ancArt .ancGlass::after{clip-path:circle(8.6px at 102.4px 35.6px)!important;transform-origin:102.4px 35.6px!important;transform:scale(calc(1.33 - .33*var(--anc-mouth,1)))!important}'+
+  'html .ancArt.ancFemale .ancGlass::after{clip-path:circle(6.4px at 104.9px 37.1px)!important;transform-origin:104.9px 37.1px!important;transform:scale(calc(1.17 - .17*var(--anc-mouth,1)))!important}';   /* females: a smaller, milder pulse inside the disc (the faint second ring around it is left alone) */   /* V17.97 rasping on the glass: the oral disc swells up to 10 % (a copy, clipped to the disc, always covering the original); the old squashed oval smeared the tentacles */
  css.textContent+='canvas.anc96p{position:absolute;width:300px;height:130px;pointer-events:none;transform:none!important}';
- window.anc90Debug=()=>({ATL,ST,TK,Q91,D95,F96,CD96,C96,R96});
+ window.anc90Debug=()=>({ATL,ST,TK,Q91,D95,F96,CD96,C96,R96,recol97});
 })();

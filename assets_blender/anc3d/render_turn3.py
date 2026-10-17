@@ -18,10 +18,10 @@ cam.data.shift_x = .5 - PIV[0] / FW; cam.data.shift_y = (.5 - (1 - PIV[1] / FH))
 L = B2.LEN[SEX]; N = 24
 for k in range(N + 1):
     u = k / N; e = u * u * u * (u * (u * 6 - 15) + 10)                             # smootherstep: slow start and stop, even middle
-    th = math.pi * e
+    th = -math.pi * e                                                             # V17.98: head swings toward the viewer (mid-turn shows the face, not the tail fan that hid the body)
     cx, cy = 0., R * math.sin(th)                                                 # back to the same spot at the end
     flare = math.sin(math.pi * u)
-    bend = .3 * flare                                                             # gentle curve, tail toward the inside
+    bend = -.95 * flare                                                           # V17.98 (owner: turn with a bend of the body, not flat): a real C-curl mid-turn
     for o in [o for o in bpy.data.objects if o.name.startswith('fish')]: bpy.data.objects.remove(o, do_unlink=True)
     for coll in (bpy.data.meshes, bpy.data.curves, bpy.data.materials):
         for dd in [dd for dd in coll if dd.users == 0]: coll.remove(dd)

@@ -5,14 +5,15 @@ import os, json, base64, re
 HERE = os.path.dirname(os.path.abspath(__file__)); OUT = os.path.join(HERE, 'out')
 GAME = os.path.join(HERE, '..', '..', 'AFNICA_Aquarium_V17_40_Bristlenose_Breeding.html')
 js = open(os.path.join(HERE, 'block90.js'), encoding='utf-8').read()
-for key, pre in (('T', 'atlas95_T'), ('C2', 'atlas92_C2'), ('P', 'atlas96_P')):
+for key, pre in (('T', 'atlas98_T'), ('C2', 'atlas92_C2'), ('P', 'atlas98_P')):
     idx = json.load(open(os.path.join(OUT, pre + '.json')))
     url = 'data:image/webp;base64,' + base64.b64encode(open(os.path.join(OUT, pre + '.webp'), 'rb').read()).decode()
     small = json.dumps(dict(w=idx['w'], h=idx['h'], names=idx['names'], pos=idx['pos']), separators=(',', ':'))
     assert js.count('@@ATLAS_%s@@' % key) == 1 and js.count('@@INDEX_%s@@' % key) == 1
     js = js.replace('@@ATLAS_%s@@' % key, url).replace('@@INDEX_%s@@' % key, small)
-sheet = 'data:image/webp;base64,' + base64.b64encode(open(os.path.join(OUT, 'sheet90.webp'), 'rb').read()).decode()
-assert js.count('@@SHEET@@') == 1
+sheet = 'data:image/webp;base64,' + base64.b64encode(open(os.path.join(OUT, 'sheet97.webp'), 'rb').read()).decode()
+assert js.count('@@SHEET@@') == 1 and js.count('@@MAPS97@@') == 1
+js = js.replace('@@MAPS97@@', open(os.path.join(OUT, 'maps97.json')).read().strip())
 js = js.replace('@@SHEET@@', sheet)
 assert '//' not in re.sub(r"data:image/webp;base64,[A-Za-z0-9+/=]+", '', js).replace('http://', '').replace('https://', ''), 'no // comments in the block'
 block = '<!-- V17.90 BEGIN -->\n<script>\n' + js + '</script>\n<!-- V17.90 END -->\n'
