@@ -17,11 +17,16 @@ B2.EMIT = .75; bpy.data.objects['sun'].data.energy = 1.4
 cam.data.shift_x = .5 - PIV[0] / FW; cam.data.shift_y = (.5 - (1 - PIV[1] / FH)) * FH / FW
 L = B2.LEN[SEX]; N = 24
 for k in range(N + 1):
-    u = k / N; e = u * u * u * (u * (u * 6 - 15) + 10)                             # smootherstep: slow start and stop, even middle
-    th = -math.pi * e                                                             # V17.98: head swings toward the viewer (mid-turn shows the face, not the tail fan that hid the body)
+    u = k / N; ss5 = lambda q: (lambda t: t * t * t * (t * (t * 6 - 15) + 10))(min(1., max(0., q)))   # smootherstep
+    # V17.99 (owner: "it turns rigid and straight, as one flat piece; a real fish bends into a C, head leading"): the head
+    # leads and the tail follows LAG later (0.24 s of the 2 s turn); the rigid front (head shield) carries the heading, the
+    # rear body bends by the difference between head and tail heading (C into the turn, peak ~35 deg), straight at both ends.
+    LAG = .12
+    eh, et = ss5(u / (1 - LAG)), ss5((u - LAG) / (1 - LAG))
+    th = -math.pi * eh                                                            # head heading (head swings toward the viewer, V17.98)
     cx, cy = 0., R * math.sin(th)                                                 # back to the same spot at the end
     flare = math.sin(math.pi * u)
-    bend = -.95 * flare                                                           # V17.98 (owner: turn with a bend of the body, not flat): a real C-curl mid-turn
+    bend = -min(.62, .78 * math.pi * (eh - et))                                   # rear body lags the head: C into the turn
     for o in [o for o in bpy.data.objects if o.name.startswith('fish')]: bpy.data.objects.remove(o, do_unlink=True)
     for coll in (bpy.data.meshes, bpy.data.curves, bpy.data.materials):
         for dd in [dd for dd in coll if dd.users == 0]: coll.remove(dd)

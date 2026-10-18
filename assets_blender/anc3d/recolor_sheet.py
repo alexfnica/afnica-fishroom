@@ -57,7 +57,7 @@ if __name__ == '__main__':
             xb = xl + int(np.argmax(ha[xl:] > 22))                  # where the thin line meets the body
             sx = np.nonzero((side[..., 3] > 60).sum(0))[0][0]; L = xb - xl
             fan = side[:, sx:sx + L]; ys = np.nonzero((fan[..., 3] > 60).sum(1))[0]; fan = fan[ys[0]:ys[-1] + 1]
-            nh = max(6, int(fan.shape[0] * .3)); yi = (np.arange(nh) * fan.shape[0] / nh).astype(int); fan = fan[yi]
+            nh = max(6, int(fan.shape[0] * .7)); yi = (np.arange(nh) * fan.shape[0] / nh).astype(int); fan = fan[yi]   # V17.99 (owner: the tail looked corrupted, a stick with a blob): pressed flat on the glass, ~70 % of the side fan
             fan[..., 3] *= np.clip((np.arange(L) - L * .0) / (L * .15), 0, 1)[None, :] * .95   # soft where it meets the stick root
             cy = int(np.average(np.nonzero(bel[:, xl:xb, 3] > 60)[0]))
             y0 = cy - nh // 2; reg = bel[y0:y0 + nh, xl:xb]
@@ -73,8 +73,9 @@ if __name__ == '__main__':
             m, f = A[r0:r1, :CW], A[r0:r1, CW:]
             S[r0:r1, 2 * CW:3 * CW] = recolor(m, hist_map(fishpx(m), fishpx(f)))   # black male
             S[r0:r1, 3 * CW:] = recolor(f, hist_map(fishpx(f), fishpx(m)))         # brown female
+        # V17.99: the male belly moved 5 css px (make_sheet.py MDX), so the disc centre too
         # the oral disc stays pale on a black male (as on real black bristlenose): put the photo's disc back (soft circle)
-        cy, cx, R = 907, 535, 58; yy, xx = np.mgrid[0:H, 0:CW]; w = np.clip((R + 8 - np.hypot(xx - cx, yy - cy)) / 16, 0, 1)[..., None]
+        cy, cx, R = 907, round(535 - 5 * F), 58; yy, xx = np.mgrid[0:H, 0:CW]; w = np.clip((R + 8 - np.hypot(xx - cx, yy - cy)) / 16, 0, 1)[..., None]
         S[:, 2 * CW:3 * CW, :3] = (A[:, :CW, :3] * w + S[:, 2 * CW:3 * CW, :3] * (1 - w)).astype(np.uint8)
         b = base64.b64encode(S.tobytes()).decode()
         url = c.js("(async(b,w,h)=>{const s=atob(b),u=new Uint8ClampedArray(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);const c=document.createElement('canvas');c.width=w;c.height=h;"

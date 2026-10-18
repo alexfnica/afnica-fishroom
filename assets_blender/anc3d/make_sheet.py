@@ -17,16 +17,20 @@ F = 1254 / 240                                   # sheet natural px per css px
 SIDE = {'M': ('anc_mfull_side_cut.png', 1225, 5, 412, 590, 14, 400, 0),
         'F': ('anc_ffull_side_cut.png', 1270, 5, 425, 1227, 643, 432, 627)}
 # belly placement: render frame mouth (x,y) and tail-tip x -> old mouth (x,y) and tail x
-BELLY = {'M': ('fr_M/M_glass01.png', 241.0, 96.8, 45.0, 535, 907, 22, 0),
-         'F': ('fr_F/F_glass01.png', 243.9, 96.8, 48.2, 1175, 915, 650, 627)}
+# V17.99 (owner: "parts are cut off on the glass"): the male's bristles ended at 121.5 css px of a 120 px cell and the
+# female's lower pectoral at 70.8 of 70 -> male moved 5 css px toward the tail, female 2 css px up (same scale; the mouth
+# spot in the V17.97 ::after CSS moves with them: male 97.4,35.6 / female 104.9,35.1)
+MDX, FDY = -5 * F, -2 * F
+BELLY = {'M': ('fr_M/M_glass01.png', 241.0, 96.8, 45.0, 535 + MDX, 907, 22 + MDX, 0),
+         'F': ('fr_F/F_glass01.png', 243.9, 96.8, 48.2, 1175, 915 + FDY, 650, 627)}
 ops = []
 for s, (img, S, tip, G, oS, oT, oG, cx) in SIDE.items():
     k = (oS - oT) / (S - tip); ops.append(dict(src=u(os.path.join(INC, img)), k=k, x=oT - tip * k, y=oG - G * k, clip=[cx, 38 * F, 627, 70 * F]))
 for s, (img, mx, my, tx, oMx, oMy, oTx, cx) in BELLY.items():
     k = (oMx - oTx) / (mx - tx); ops.append(dict(src=u(os.path.join(OUT, img)), k=k, x=oMx - mx * k, y=oMy - my * k, clip=[cx, 138 * F, 627, 70 * F]))
 # belly PHOTO over the render, mouth -> vent (sharp mouth disc for the rasping); photo is head-up, turned to head-right
-PH = {'M': ('anc_mfull_belly_cut.png', 258, 135, 560, 1.063 * 1.40 * SIDE['M'][4 - 0] * 0 + 1.063 * 1.40 * (590 - 14) / (1225 - 5), 535, 907, 0),
-      'F': ('anc_ffull_belly_cut.png', 705, 80, 520, 1.07 * 1.38 * (1227 - 643) / (1270 - 5), 1175, 915, 627)}
+PH = {'M': ('anc_mfull_belly_cut.png', 258, 135, 560, 1.063 * 1.40 * SIDE['M'][4 - 0] * 0 + 1.063 * 1.40 * (590 - 14) / (1225 - 5), 535 + MDX, 907, 0),
+      'F': ('anc_ffull_belly_cut.png', 705, 80, 520, 1.07 * 1.38 * (1227 - 643) / (1270 - 5), 1175, 915 + FDY, 627)}
 for s_, (img, mx, my, vy, k, oMx, oMy, cx) in PH.items():
     ops.append(dict(src=u(os.path.join(INC, img)), photo=[mx, my, vy, k, oMx, oMy], clip=[cx, 138 * F, 627, 70 * F]))
 # V17.91 young rows (css y): fry side 238, fry belly 338 (juvenile side 438, belly 538 when its photos arrive); sheet 240x620 css

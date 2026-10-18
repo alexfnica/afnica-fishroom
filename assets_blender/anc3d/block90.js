@@ -165,6 +165,33 @@
   const side=art.querySelector('.ancSide');if(side){side.querySelectorAll(':scope>canvas').forEach(c=>c.remove());side.classList.remove('finWarp');delete side.dataset.finSkip;}
   const gl=art.querySelector('.ancGlass');if(gl){gl.querySelectorAll(':scope>canvas').forEach(c=>c.remove());gl.classList.remove('finWarpG','gOn');}
  }
+ /* V17.99 (owner: "the male teleports a little going into the cave"): the photo -> cave-frame hand-over lasted ~3 frames
+    (16 depth units of walking) and the cave frame sat ~4 px off the photo (a pop). At the first frame of the fade the cave
+    frame is moved onto the photo (alpha centroids); that correction eases out as the fade completes. */
+ const CC99=new Map();
+ function cen99(name){if(CC99.has(name))return CC99.get(name);const A=ATL.C2;let r=null;
+  try{if(ready(A)){const w=A.idx.w,h=A.idx.h,c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d',{willReadFrequently:true});let sx=0,sy=0,sw=0;
+   for(const n of [name+'_in',name+'_out']){const p=A.pos[n];if(!p)continue;g.clearRect(0,0,w,h);g.drawImage(A.img,p[0],p[1],w,h,0,0,w,h);const d=g.getImageData(0,0,w,h).data;
+    for(let y=0;y<h;y+=2)for(let x=0;x<w;x+=2){const q=d[(y*w+x)*4+3];if(q>40){sx+=x*q;sy+=y*q;sw+=q;}}}
+   if(sw)r=[sx/sw,sy/sw];}}catch(e){console.error('AFNICA V17.99 cave centroid',e);}
+  if(r||ready(A))CC99.set(name,r);return r;}
+ function photo99(tank,el){const c=el.querySelector('.ancSide>canvas');if(!c||!c.width||c.style.visibility==='hidden')return null;
+  const T=tank.getBoundingClientRect(),r=c.getBoundingClientRect();if(!r.width)return null;const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;let sx=0,sy=0,sw=0;
+  for(let y=0;y<c.height;y+=2)for(let x=0;x<c.width;x+=2){const q=d[(y*c.width+x)*4+3];if(q>40){sx+=x*q;sy+=y*q;sw+=q;}}if(!sw)return null;
+  const mir=/scaleX\(-/.test(el.style.transform||''),u=sx/sw/c.width,v=sy/sw/c.height,k=T.width/(tank.clientWidth||T.width)||1;
+  return [(r.left-T.left+(mir?1-u:u)*r.width)/k,(r.top-T.top+v*r.height)/k];}
+ function xfade99(tank,el,f,cs,dt){
+  if(cs.hide||!cs.name||cs.name2){f.x99=null;return;}                    /* fanning (two frames blended) or hidden: nothing to hand over */
+  const fading=cs.a>0&&cs.a<1;
+  if(!fading&&!f.x99)return;
+  if(!f.x99){f.x99={a:cs.a>=.5?1:0,dx:0,dy:0};                           /* coming from the cave side (walking out): fade the photo in */
+   let pc=null,cc=null;try{pc=photo99(tank,el);cc=cen99(cs.name);}catch(e){console.error('AFNICA V17.99 cave hand-over',e);}const cv=tank.querySelector('canvas.anc90cv.front');
+   if(pc&&cc&&cv){const L=parseFloat(cv.style.left)||0,Tp=parseFloat(cv.style.top)||0,mx=L+(cc[0]+cs.shift)/2,my=Tp+(cc[1]+(cs.dy||0))/2;
+    const dx=pc[0]-mx,dy=pc[1]-my;if(Math.abs(dx)<14&&Math.abs(dy)<14){f.x99.dx=dx;f.x99.dy=dy;}}}
+  const X=f.x99;X.a=cs.a;   /* no time lag: a slower fade would leave the photo over the clay at the mouth */
+  const k=1-sm(X.a);cs.shift+=2*X.dx*k;cs.dy=(cs.dy||0)+2*X.dy*k;
+  if(!fading&&(X.a<=0||X.a>=1))f.x99=null;
+ }
  function drawFish(tank,el,s,fish,dt,sc,blocked,via,cave){
   stage91(el,fish);
   let f=ST.get(el);
@@ -179,18 +206,19 @@
   /* cave (adult male): drawn by the cave canvas; his own element fades out as the cave layers fade in */
   if(cave&&(CAVEMODES[mode]||mode==='cave-approach')&&!spawning()&&fish&&fish.sex==='M'&&!stg91){
    if(mode==='cave-enter'&&face>0&&s&&!s.p91done){const dIn=+el.dataset.ancX+56*scl-((parseFloat(cave.style.left)||0)+13.8);if(dIn>=-3){s.p91done=1;s.p91until=now+800+Math.random()*600;}}   /* V17.91: pause at the mouth */
-   const cs=caveState(el,cave,face,scl,mode);
+   const cs=caveState(el,cave,face,scl,mode);if(cs)xfade99(tank,el,f,cs,dt);   /* V17.99 */
    if(cs){let t=TK.get(tank);if(!t){t={};TK.set(tank,t);}t.m=cs.hide?null:cs;if(cs)cs.rc=rc97(el);t.at=now;
     const a=cs.hide?1:cs.a;el.style.setProperty('opacity',(1-a).toFixed(3),'important');f.hid=1;f.df=face;f.turn=null;f.x=+el.dataset.ancX;f.vx=0;f.mv=0;
     const c=el.querySelector(':scope>canvas.anc90c');if(c)c.style.display='none';fade(tank,el,1);return;}
   }
+  f.x99=null;   /* V17.99: outside the cave drawing - the next hand-over measures afresh */
   if(f.hid){f.hid=0;el.classList.remove('anc90hid');el.style.setProperty('opacity','1','important');}
   const glass=clamp(parseFloat(el.style.getPropertyValue('--anc-glass'))||(s&&s.glass)||0,0,1);
   /* never drawn crawling backwards: on the sand a clear, sustained movement decides the facing (head first) */
   const x=+el.dataset.ancX,dx=Number.isFinite(x)&&Number.isFinite(f.x)&&dt>0&&dt<.2?x-f.x:0;f.x=x;   /* no velocity across a gap */
   f.vx=(f.vx||0)+((dt>0?dx/dt:0)-(f.vx||0))*Math.min(1,dt*6);
-  const th=Math.max(2,9*scl),opp=glass<.3&&!blocked&&Math.abs(f.vx)>th&&Math.sign(f.vx)!==face;f.ot=opp?(f.ot||0)+dt:0;   /* thresholds scale with the fish: young hop slowly */
-  if(glass<.3&&!blocked){if(f.ot>(scl<.8?.3:.6))f.mv=Math.sign(f.vx);   /* young react quicker (short hops) */else if(Math.abs(f.vx)<th/3)f.mv=0;else if(f.mv&&Math.sign(f.vx)!==f.mv)f.mv=0;}else f.mv=0;
+  const th=Math.max(2,9*scl),opp=glass<.3&&!blocked&&!TRANS97[mode]&&Math.abs(f.vx)>th&&Math.sign(f.vx)!==face;f.ot=opp?(f.ot||0)+dt:0;   /* thresholds scale with the fish: young hop slowly */
+  if(glass<.3&&!blocked&&!TRANS97[mode]){if(f.ot>(scl<.8?.3:.6))f.mv=Math.sign(f.vx);   /* young react quicker (short hops) */else if(Math.abs(f.vx)<th/3)f.mv=0;else if(f.mv&&Math.sign(f.vx)!==f.mv)f.mv=0;}else f.mv=0;   /* V17.99 (owner: turns flat): the corner moves of attach/detach slide the body, they are not walking - they flipped him flat */
   /* V17.92 turn: the old turn's own timer (s.turn, during which the fish stays put) or a facing-follow turn of our own */
   const T=Math.max(.5,window.ancTurnSecV1789||1),TF=Math.min(T,1);let tu=null;   /* V17.95: TF = facing-follow turns (the fish keeps moving) stay short */
   if(f.df==null)f.df=face;
@@ -244,7 +272,7 @@
   /* glass rasping: small side-to-side head turns while gripping */
   if(el.dataset.ancSurface==='glass'&&mode==='graze'&&el.dataset.ancStroke!=='0'){
    const tr=el.style.transform||'',m=/rotate\(([-\d.e]+)deg\)/.exec(tr);
-   if(m){const w=3.5*Math.sin(now/1000*1.15+(el.dataset.fishId||'').length);el.style.setProperty('transform',tr.replace(m[0],'rotate('+(+m[1]+w).toFixed(2)+'deg)'),'important');}
+   if(m){const w=1.5*Math.sin(now/1000*1.15+(el.dataset.fishId||'').length);   /* V17.99: was 3.5 deg - the whole body rocked; the jaws do the rasping now */el.style.setProperty('transform',tr.replace(m[0],'rotate('+(+m[1]+w).toFixed(2)+'deg)'),'important');}
   }
  }
  window.ancCanvasV1791=function(s,dt,sp,move,fan){
@@ -381,18 +409,21 @@
  function stop96(e){const s=e.s;if(s.mode!=='rest'||s.wait<100){s.mode='rest';s.wait=999;s.tx=s.x;s.ty=s.y;s.fg=null;s.nudgeV=0;s.raspV=0;}}
  function start96(tid,a,b,now){
   const BL=112*(a.sc||1),rf=b.s.face<0?-1:1,W=a.tank.clientWidth||960,behind=(a.s.x-b.s.x)*rf<0;
-  const F={tid,a,b,key:[a.fish.id,b.fish.id].sort().join('|'),ph:'walk',t:0,leg:behind?1:2,rf,BL,n:++N96,tmax:10+Math.abs(a.s.x-b.s.x)/20};
-  if(behind){const p1=b.s.x+rf*1.25*BL;if(p1<75||p1>W-75){CD96[F.key]=now+30000;return;}F.p1=p1;go96(a,p1);}else go96(a,b.s.x-rf*4);
-  a.s.fight96=b.s.fight96=F;F96[tid]=F;stop96(b);           /* the rival lies still, as in the clip */
+  const F={tid,a,b,key:[a.fish.id,b.fish.id].sort().join('|'),ph:'walk',t:0,leg:2,rf,BL,n:++N96,tmax:10+Math.abs(a.s.x-b.s.x)/20};
+  /* V17.99 (owner: "they spin against each other"): no walk round the rival's head and U-turn back (that was the circling).
+     If both face the same way and the intruder is behind, the territorial male turns to face him (one pivot), then the
+     intruder slides in alongside; otherwise the intruder comes straight in (turning once himself if he must). */
+  const fa=a.s.face<0?-1:1;
+  if(fa===rf&&behind){F.leg=3;stop96(a);go96(b,b.s.x-rf*6);}else{F.leg=2;go96(a,b.s.x-rf*4);}
+  a.s.fight96=b.s.fight96=F;F96[tid]=F;if(F.leg!==3)stop96(b);   /* V17.99: unless he first turns to face the intruder */           /* the rival lies still, as in the clip */
  }
  function step96(F,dt,now){
   const a=F.a,b=F.b,A=a.s,Bs=b.s;F.t+=dt;
   if(!a.el.isConnected||!b.el.isConnected||F.cv&&F.cv.parentElement!==F.R.el||!free96(a)&&!A.turn||!free96(b)&&!Bs.turn){release96(F,'abort');return;}
-  if(F.ph==='walk'){
+  if(F.ph==='walk'){if(F.leg===3){if(F.t>F.tmax){release96(F,'timeout');return;}if(Bs.mode==='move'||Bs.turn)return;F.rf=Bs.face<0?-1:1;if(F.rf===(A.face<0?-1:1)){release96(F,'misaligned');return;}F.leg=2;F.t=0;F.tmax=10+Math.abs(A.x-Bs.x)/20;stop96(b);go96(a,Bs.x-F.rf*4);return;}   /* reviewer: no turn happened (wall) -> no pointless walk; fresh walk timer */   /* V17.99: the rival has turned to face him */
    if(Math.abs(A.x-Bs.x)<1.8*F.BL)stop96(b);
    if(F.t>F.tmax){release96(F,'timeout');return;}
    if(A.mode==='move'||A.turn)return;
-   if(F.leg===1){F.leg=2;F.rf=Bs.face<0?-1:1;go96(a,Bs.x-F.rf*4);return;}
    const fa=A.face<0?-1:1,fb=Bs.face<0?-1:1;
    if(fa===fb||Math.abs(A.x-Bs.x)>12){release96(F,'misaligned');return;}
    stop96(a);stop96(b);
@@ -470,10 +501,18 @@
   /* V17.97: the V17.89 cave mask (clip-path polygon) stayed on after the cave cycle - the fish walked around cut off */
   if(s&&FREE97[s.mode]&&el.style.clipPath&&el.style.clipPath!=='none')el.style.removeProperty('clip-path');
   /* V17.97: side <-> belly view: a quick swap in the middle of the glass transition instead of a long double image */
-  {const g=parseFloat(el.style.getPropertyValue('--anc-glass'))||0,q=clamp((g-.42)/.16,0,1),o=q*q*(3-2*q);el.style.setProperty('--anc-gop',o.toFixed(3));el.style.setProperty('--anc-sop',(1-o).toFixed(3));}
+  /* V17.99 (owner: "teleports going onto the glass"): with both fin canvases set up, the side canvas draws the whole roll
+     (drawRoll ends on the belly view, pixel-identical) and the belly canvas only shows from .999 - the mid swap hid the side
+     drawing at .58 and the fish was invisible for ~1.5 s, then popped in. Now the swap happens at .999, where both match. */
+  {const g=parseFloat(el.style.getPropertyValue('--anc-glass'))||0,sc=el.querySelector('.ancSide.finWarp>canvas'),gc=el.querySelector('.ancGlass.finWarpG>canvas');
+   /* reviewer: follow what the fin canvases actually show (the side canvas only draws the roll once the belly record is cached) */
+   const rl=sc&&gc&&(g>=.999?gc.style.visibility==='visible':sc.style.visibility==='visible');
+   const q=clamp((g-.42)/.16,0,1),o=rl?(g>=.999?1:0):q*q*(3-2*q);el.style.setProperty('--anc-gop',o.toFixed(3));el.style.setProperty('--anc-sop',(1-o).toFixed(3));}
  };
  css.textContent+='html .ancArt .ancGlass::after{clip-path:circle(8.6px at 102.4px 35.6px)!important;transform-origin:102.4px 35.6px!important;transform:scale(calc(1.33 - .33*var(--anc-mouth,1)))!important}'+
   'html .ancArt.ancFemale .ancGlass::after{clip-path:circle(6.4px at 104.9px 37.1px)!important;transform-origin:104.9px 37.1px!important;transform:scale(calc(1.17 - .17*var(--anc-mouth,1)))!important}';   /* females: a smaller, milder pulse inside the disc (the faint second ring around it is left alone) */   /* V17.97 rasping on the glass: the oral disc swells up to 10 % (a copy, clipped to the disc, always covering the original); the old squashed oval smeared the tentacles */
- css.textContent+='canvas.anc96p{position:absolute;width:300px;height:130px;pointer-events:none;transform:none!important}';
+ css.textContent+='html .ancArt:not([data-stage91]):not(.ancFemale) .ancGlass::after{clip-path:circle(8.6px at 97.4px 35.6px)!important;transform-origin:97.4px 35.6px!important}'+   /* V17.99: the adult belly cells moved inside the cell (make_sheet.py MDX/FDY); fry/juvenile rows did not */
+   'html .ancArt.ancFemale:not([data-stage91]) .ancGlass::after{clip-path:circle(6.4px at 104.9px 35.1px)!important;transform-origin:104.9px 35.1px!important}';
+  css.textContent+='canvas.anc96p{position:absolute;width:300px;height:130px;pointer-events:none;transform:none!important}';
  window.anc90Debug=()=>({ATL,ST,TK,Q91,D95,F96,CD96,C96,R96,recol97});
 })();

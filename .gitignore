@@ -15,3 +15,8 @@ assets_blender/anc3d/out/*
 !assets_blender/anc3d/out/atlas92_*.webp
 !assets_blender/anc3d/out/atlas92_*.json
 !assets_blender/anc3d/out/sheet90.webp
+# V17.97-V17.99: the sheet, colour maps and atlases install90.py packs now
+!assets_blender/anc3d/out/sheet97.webp
+!assets_blender/anc3d/out/maps97.json
+!assets_blender/anc3d/out/atlas99_*.webp
+!assets_blender/anc3d/out/atlas99_*.json

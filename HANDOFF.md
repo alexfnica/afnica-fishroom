@@ -1,4 +1,41 @@
-# Handoff — where work stopped (2026-10-17: Phases 1-3 APPROVED — turn V17.95, movement V17.95, male fights V17.96)
+# Handoff — where work stopped (2026-10-18: V17.99 ANCISTRUS FIXES, all 7 owner points APPROVED, NOT committed)
+
+## V17.99 bristlenose fixes (owner's 7 complaints; spec `docs/ANCISTRUS_SPEC.md`, sources + targets)
+Order done: 2 → 3 → 4 → 7 → 6 → 5 → 1, each measured, one frame grid each (`AFNICA_Anc99_*_grid.jpg` in the root),
+reviewer after each. Syntax check 0 errors after every edit. **Nothing committed** (owner decides). V17.97/98 also still
+uncommitted (see below).
+- **2 sand → glass "teleport"**: the fish was INVISIBLE ~1.5 s of every climb (V17.97 side/belly opacity swap at glass .42-.58
+  while the belly canvas only shows from .999). block90.js: swap at .999, following the canvases' real visibility. Rig:
+  0 invisible frames (was 45).
+- **3 cut-offs + tail + roll**: male belly bristles ran past the 120 px cell, female fin past 70 px → `make_sheet.py`
+  MDX -5 / FDY -2 css px (adult belly cells only), ::after mouth CSS moved for adults (young rows keep the old spots);
+  belly tail fan 70 % (was 30 %, "stick with a blob") in `recolor_sheet.py`; drawRoll LAG 0 (whole body rolls, no
+  half-side/half-belly twist). Sheet rebuilt (backups `out/*_v98_backup*`). 0 opaque border px on adult belly cells.
+- **4 cave entry**: walk-in frames ramped over the lip, ~10 px off the fanning pose → `render_cave2.py` pose('i') levels onto
+  the floor from d 30 and arrives at d 74 in the fan pose; d >= 32 re-rendered (`out/cave99`) → `out/atlas99_C2`.
+  block90.js `xfade99`: photo→cave hand-over registered (alpha centroids). Jumps 10-12 px → < 1 px; hand-over 4-8 → ~1 px.
+- **7 glass crawl + mouth** (2nd attempt): V17.42 `drawVentral` FIN99 = pectorals swing out as a continuous warp (0 at the
+  body, ~8 deg), `jaw99` = jaws rasp ±7° at 3 Hz in bouts inside a still disc (::after bubble hidden), midline seam
+  closed; glass rock 3.5 → 1.5°.
+- **6 bristles**: V17.42 `t99prep/t99draw`: adult male side + belly cells, bristles cut out by alpha opening, head drawn
+  without them, bristle layer moved per pixel (tip-weighted spring trailing the head + slow sway). Rest ~1 px, moving up
+  to 3.2 + 2 px. Test hook `window.__T99` (never set by the game). 3D frames (turn/cave/fight) still have baked bristles.
+- **5 fights**: `render_fight.py` re-posed (yaw ≤ 8° was 22, curl ≤ .34 was 1.05, tail beats 2.5 Hz, shoves along the body)
+  → `out/fight99` (colour by LUT `lut_match99.py` from fight97_raw→fight97, exact) → `out/atlas99_P`. Walk-in: no walk
+  round the rival's head + U-turn; if the intruder is behind, the rival turns to face him (leg 3), else straight in.
+- **1 turning**: `render_turn3.py` head leads, tail lags 0.24 s, C-bend peak ~35° at the oblique views → `out/turn99`
+  (`lut_match_turn99.py`) → `out/atlas99_T`. block90.js: attach/detach/wallHold/toEdgeG no longer steer the drawn facing
+  (the corner slide flipped him flat): 0 flat flips outside the cave (was 2-4 per fish / 4 min).
+- install90.py now packs atlas99_T / atlas99_C2 / atlas99_P. Rigs (trailer/): `measure_diag99.py` (SCN=cave|cave2|fight,
+  PC=1 pixel centroids, CV=1 cave canvas, XF=1 hand-over), `probe_roll99/cut99/cells99/cave99/fin99/tent99/t99.py`,
+  `grid99.py` (GRID=roll|cave|glass|tent|fight|turn, SEX=M). `measure_fight96.py` needs SEED set (else a JS error).
+- Open / not checked: female + juvenile on the glass (fins/jaws), bristle pop at the roll start/end, frame cost with 3+
+  males, walking out of the cave hand-over, cheek odontodes not modelled (fights), fight walk-in took 12.8 s once.
+- **Owner's C: drive is full** (81 MB free): `C:\Users\Alexandru Nica\.claude\file-history` = 3.9 GB of Claude edit
+  backups; suggested robocopy /MOVE to D:\ClaudeData + mklink /J (owner does it with the app closed). Scratch now in
+  `D:\ClaudeWork\scratch99`.
+
+# Earlier (2026-10-17: Phases 1-3 APPROVED — turn V17.95, movement V17.95, male fights V17.96)
 
 ## In progress: V17.95 PIVOT TURN (owner prompt: Phase 1 turns → Phase 2 movement → Phase 3 male fights)
 - Diagnosis done + owner OK'd the pivot plan. Ref turn: B7RksQ1xU18 0:25.4–0:27.8 (dark common bristlenose pivots almost

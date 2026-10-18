@@ -68,6 +68,14 @@ def pose(kind, d, fanph=None):
         t = (d / PX) / dirv.x; snout = mouth + dirv * t
         z, pit = climb(d / PX)
         bend = (.06 + .14 * sm((d + 10) / 30.)) * math.sin(2 * math.pi * d / 32.)
+        # V17.99 (owner: "he teleports a little going into the cave"): from d 30 he levels onto the floor and arrives at
+        # d 74 exactly in the fanning pose (C2_f00: snout mouth + ax*74/PX, belly at FL, no pitch, straight body); deeper
+        # he stays level. Before, d 74 showed him still ramped over the lip, ~10 game px higher -> an 11 px jump to fanning.
+        bl = sm((d - 30) / 44.)
+        if bl > 0:
+            snout = snout.lerp(mouth + ax * (d / PX), bl); dirv = dirv.lerp(ax, bl).normalized()
+            z = z * (1 - bl) + FL * bl; pit = pit * (1 - bl)
+            bend *= max(1 - bl, min(1., abs(d - 74) / 24.))       # straight at the fanning depth, the crawl wriggle returns deeper
         return snout, dirv, z, pit, bend
     if kind == 'o':
         w = sm((d - 60) / 50.); dirv = (-ax * (1 - w) - X * w).normalized()
@@ -79,7 +87,7 @@ def pose(kind, d, fanph=None):
     return snout, ax, FL, 0., .42 * math.sin(2 * math.pi * fanph / 24)   # 24 frames per beat (smooth)
 
 FR = []
-if KIND == 'i': FR = [('i', d) for d in range(-64, 145, 4)]
+if KIND == 'i': FR = [('i', d) for d in range(-64, 145, 4) if d >= int(os.environ.get('DMIN', '-64'))]   # V17.99: DMIN=28 re-renders only the changed frames
 elif KIND == 'o': FR = [('o', d) for d in range(-52, 125, 4)]
 else: FR = [('f', k) for k in range(24)]
 if os.environ.get('CHUNK'):
@@ -93,7 +101,7 @@ for kind, d in FR:
     inside = (kind == 'i' and d > -10) or (kind == 'o' and d < 60) or kind == 'f'
     tries = ((1., .05), (.6, .3), (.45, .45), (.32, .55), (.2, .65), (.1, .72)) if inside else ((1., .05),)
     for spread, sweep in tries:
-        m = B2.build_fish('M', 'male', fold=.15, spread=spread, sweep=sweep, bend=bend, bend_from=1.7 if kind == 'f' else 1.0)
+        m = B2.build_fish('M', 'male', fold=.15, spread=spread, sweep=sweep, bend=bend, bend_from=1.7 if kind == 'f' else 1.0 + .7 * (sm((d - 30) / 44.) if kind == 'i' else 0))   # V17.99: same bend root as the fan pose at d 74
         m.rotation_euler = (0, pit, math.atan2(dirv.y, dirv.x)); m.location = (snout.x, snout.y, z)
         bpy.context.view_layer.update(); cl = B.clearance(B.fish_points(m), cave)
         if cl <= 0: break

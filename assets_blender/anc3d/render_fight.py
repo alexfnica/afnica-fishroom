@@ -33,23 +33,29 @@ for k in range(N):
     for coll in (bpy.data.meshes, bpy.data.curves, bpy.data.materials):
         for dd in [dd for dd in coll if dd.users == 0]: coll.remove(dd)
     u = k / N; al = 0.; b1 = 0.; b2 = .3; fold = 0.; spr = 1.35; rear = 0.; push = 0.; push1 = 0.; w2 = .03; ph = 0.
+    # V17.99 (owner: "they spin against each other, it does not look natural"): a lateral display as in Ancistrus -
+    # side by side, head to tail, both tails beating (~2.5 Hz at 15 fps), short shoves along the body, quick sideways head
+    # strikes into the flank. Heads yaw at most 8 deg (was 22), the rear male's curl stays mild (bend <= .34, was 1.05).
+    # Every phase starts and ends at b2 .12 / b1 -.056, so the phases loop into each other (A -> B.. -> C -> D -> B..).
+    B2E, B1E = .12, -.056
     if PH == 'A':
-        e = ss(u / .9); fold = .3 * (1 - e); spr = 1. + .35 * e; b2 = .3 * e
+        e = ss(u / .9); fold = .3 * (1 - e); spr = 1. + .35 * e; b2 = B2E * e; b1 = B1E * e
     elif PH == 'B':
-        ph = 2 * math.pi * u; c = (1 - math.cos(ph)) / 2
-        b2 = .3 + .75 * c; b1 = -.14 * (1 - math.cos(ph - .9)) / 2; w2 = .03 + .03 * c
+        ph = 4 * math.pi * u
+        b2 = B2E + .22 * math.sin(ph); b1 = .1 * math.sin(ph + math.pi + .6); w2 = .03
+        b1 += B1E - .1 * math.sin(math.pi + .6)
     elif PH == 'C':
         env = math.sin(math.pi * u); jerk = abs(math.sin(3 * math.pi * u))
-        rear = math.radians(9) * env * (.55 + .45 * jerk); push = .3 * env * jerk; push1 = -.12 * env * jerk; b2 = .3 + .15 * env
+        rear = math.radians(4) * env * (.55 + .45 * jerk); push = .25 * env * jerk; push1 = -.08 * env * jerk; b2 = B2E + .06 * env; b1 = B1E
     s1 = s2 = 0.
     if PH == 'D':
         hit = lambda v: (v / .25 if v < .25 else max(0., 1 - (v - .25) / .75)) if 0 <= v < 1 else 0.   # fast in, slow out
         s2 = hit(u * 2); s1 = hit(u * 2 - 1); s2 = s2 * s2 * (3 - 2 * s2); s1 = s1 * s1 * (3 - 2 * s1)
-        b2 = .3 - .2 * s2 + .1 * s1; b1 = -.1 * s2 - .2 * s1
+        b2 = B2E - .12 * s2 + .05 * s1; b1 = B1E - .1 * s1 + .03 * s2
     r = DY * (1 - .38 * max(s1, s2))                             # the striker closes the gap
     m1 = (-.12 * s2, -r + .18 * s1 - .12 * s2); m2 = (.12 * s1, r - .18 * s2 + .12 * s1)   # striker pushes in, the other is knocked back
-    place('male1', m1, H0 + math.radians(22) * s1 - math.radians(6) * s2, push=push1, fold=fold, spread=spr, sweep=.05, bend=b1, bend_from=1.0)
-    place('male2', m2, H0 + math.pi + math.radians(22) * s2 - math.radians(6) * s1, rear=rear, push=push, fold=fold, spread=spr, sweep=.05, bend=b2, bend_from=1.1, wave=w2, wave_ph=ph + 1.2)
+    place('male1', m1, H0 + math.radians(8) * s1 - math.radians(3) * s2, push=push1, fold=fold, spread=spr, sweep=.05, bend=b1, bend_from=1.0)
+    place('male2', m2, H0 + math.pi + math.radians(8) * s2 - math.radians(3) * s1, rear=rear, push=push, fold=fold, spread=spr, sweep=.05, bend=b2, bend_from=1.1, wave=w2, wave_ph=ph + 1.2)
     bpy.context.view_layer.update()
     sc.render.filepath = os.path.join(OUT, ('P%d_%s%02d.png' % (LAYER, PH, k) if LAYER else 'P_%s%02d.png' % (PH, k))); bpy.ops.render.render(write_still=True)
     print('FRAME', PH, k, flush=True)
