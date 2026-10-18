@@ -15,8 +15,11 @@ assets_blender/anc3d/out/*
 !assets_blender/anc3d/out/atlas92_*.webp
 !assets_blender/anc3d/out/atlas92_*.json
 !assets_blender/anc3d/out/sheet90.webp
-# V17.97-V17.99: the sheet, colour maps and atlases install90.py packs now
+# V17.97-V17.99: the sheet, colour maps and atlases install90.py packs now (needed to rebuild the game)
 !assets_blender/anc3d/out/sheet97.webp
 !assets_blender/anc3d/out/maps97.json
 !assets_blender/anc3d/out/atlas99_*.webp
 !assets_blender/anc3d/out/atlas99_*.json
+# owner (2026-10-18): no session clips / frame grids in git
+/AFNICA_Anc9*.mp4
+/AFNICA_Anc9*.jpg
