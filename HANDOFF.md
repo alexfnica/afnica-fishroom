@@ -1,4 +1,100 @@
-# Handoff — where work stopped (2026-10-18: V17.99 ANCISTRUS FIXES, all 7 owner points APPROVED, NOT committed)
+# Handoff — where work stopped (2026-10-18: V17.100 belly view + nav overlap, NOT committed)
+
+## V17.100 (owner: "fish only a fragment on the sand"; "2 sets of bottom fins, double tail")
+- **Fragment on the sand (real cause)**: a load race in the V17.42 fin code. The V17.90 block swaps the bristlenose CSS to
+  the 4-column V17.97 sheet only on `window.load`; fish articulated earlier captured the OLD 2-column sheet (1254x1254)
+  as `dataset.originalImage`, and `ancSheetImg()` kept the first image forever. Columns 0/120 exist in both sheets, but the
+  colour-for-life cells 240 (black male) / 360 (brown female) were cropped from the wrong image: the base had the fish at
+  rows 94-151 of 152 (the dorsal only, ~980 px drawn instead of ~3900). Reproduced on the owner's real save too
+  (`anc|360|38` broken). Intermittent = depends on load timing. `mk()` test fish are fine (same fields as real saves).
+  Fix (V17.42 code, `ancSheetImg/Load/Check/Reset`): after `window.load` (setTimeout 0, so after the V17.90 handler)
+  `ancSheetCheck` reads the sheet URL from the V17.90 rule `html .ancArt i`; from then on only that URL is used (a stale
+  originalImage never brings the old sheet back - tested in the pane). If the image in use differs it is swapped and
+  `ancSheetReset` drops every `anc|`/`ancg|` record, rewrites the sides' originalImage + body/tail pieces, removes the fin
+  canvases/classes (re-adopted next tick) and rebuilds the glass ::after style (which now uses the live sheet URL).
+  Reviewer watch-outs left: body/tail pieces keep their inline background-size/position (hidden under .finWarp); a reset
+  landing in the cave hand-over frame can pop up to ~14 px once (photo99 null); per-canvas fin states restart.
+  After: all 8 records sane (240 = 0, 360 = 120), every fish draws 3769-4070 px; rig `D:\ClaudeWork\scratch100\
+  probe_frag100.py` (headless, 2 males a1/a2, fights forced every 10 s).
+- **Nav overlap (separate, real at 1024x768)**: with the page at the top, the fixed bottom navs (`.v8nav` + the old
+  `nav.nav`, top y 683) covered the tank's last 45 px (tank bottom 728). Not the cause of the fragment (my first
+  diagnosis was wrong). Fix: new block "V17.100 TANK BOTTOM CLEAR OF THE NAV" (before
+  `<!-- V17.90 BEGIN -->`): after load and every `switchTankV8` (60 + 400 ms), scroll down just enough that the tank
+  bottom clears the nav (never up, not within 1.5 s of wheel/touch, capped so the tank top stays). `tankClearV17100()`.
+  Measured at 1024x768: tank bottom 676 < nav 683; 2 males 25 s swimming: always 100 % visible, lowest bottom 669.
+  PLAYBOOK §2 updated (anc test fish + forced fights).
+- **Belly view (glass)**: two causes in the sheet build. (1) `make_sheet.py`: the belly photo faded out AT the vent, cutting
+  its pelvics (they reach ~45 photo px past it), and the 3D render's own fins showed round them = a second fin set. Now
+  `SEAM` M 650 / F 580 (35 px fade), render masked to show only behind the seam. (2) `recolor_sheet.py`: the render's
+  edge-on tail stick lay over the caudal fan and poked past its notch = "double tail". Now the stick is erased (except the
+  last 20 % at the stalk join), the fan lies on top. Backups `out/*_v99_backup*`. Rebuilt sheet90 → sheet97 → install90.
+  (A longer male photo seam, 728, was tried and reverted: the fan length is measured from the stick, the fan got short.)
+- **Seam lines** on the glass belly: V17.99 FIN99 pectoral-zone bands met with anti-aliased edges → each band now reaches
+  1 px into the inner one (drawVentral). Row-profile dip 9-17 → max 3, 0 of 131 glass frames > 6.
+- Syntax 0 errors after each edit; reviewer: no blockers. Reviewer watch-outs: keyboard/scrollbar scrolling is not
+  detected by the nav block (only wheel/touch); check breeder/shop/dex at 1024x768 for page jumps; FIN99 zones / mouth
+  spot were tuned on the old belly look (looked fine in the pane, not measured).
+- Fights: 1 full forced fight after the fix (walk → fight → done), fight canvas 553-683, fish fully visible. 3 more forced
+  fights all ended in the walk-in (`misaligned` / timeout, males stacked 2-4 px apart facing the same way) = existing
+  V17.96 walk-in weakness, not touched. Element boxes reaching 696-702 px are a1's rotated box at the glass corner
+  (height 132-139), not visible pixels.
+- **Turn glitch + "fins vanish when they turn"** (owner): (1) the 3D turn frames had no visible paired fins: the photo's
+  fins/chin bristles hang below its belly (= ground) line, the build clamped them to z >= .012 and the shadow-catcher floor
+  hid the rest. `anc_build2.HANG` (default False, only render_turn3 sets it): no clamp, fins never longer than the photo
+  (rr <= 1), spread > 1 = wider (tilt .5*spread); render_turn3 lifts the fish to the lowest vertex (0.14-0.16 u = ~5 px)
+  and shifts the camera up the same, so the body stays where the photo has it. Re-rendered all 4 → `out/turn100_raw`.
+  (2) colour: new `lut_match_photo100.py` matches each type's frame 00 to its own photo cell in sheet97 (brightness raw
+  114/89/100/64 → 90/67/81/42, photo 91/68/82/43; the old frames were lighter/yellower) → `out/turn100` →
+  `out/atlas100_T` (same names/cells/size as atlas99_T, 1.2 MB). install90 packs atlas100_T. **Commit needs
+  `git add -f assets_blender/anc3d/out/atlas100_T.*`** (out/ is ignored; atlas99_T was force-added).
+  (3) block90.js turn draw: the photo faded out while the 3D faded in on top → both half-faded = a ~75 % opaque,
+  see-through fish at the start and end of every turn. Now the photo stays opaque under the 3D while it fades and only
+  fades itself while the 3D is fully opaque (u .15-.25 / .75-.85). Measured (headless, black male): photo 1.00 on every
+  3D-fade frame; 3D brightness 68-71 vs photo 67 (olive 88-92 vs 91); 3D px 3228-3490 vs photo ~3900 (was ~2750-3160).
+  Grid `AFNICA_Anc100_turn_grid.jpg` (root, git-ignored). Probe `D:\ClaudeWork\scratch100\probe_turn100.py`.
+  **49 turn frames** (owner OK'd): the mid-turn pale halo = two neighbouring turn frames blended (k + k2 at mix) while
+  ~14 deg apart at peak yaw speed. render_turn3 `TURN_N` (default 48) → `out/turn100b_raw` → `out/turn100b` →
+  `out/atlas100b_T` (196 cells, 6240x3520, 2.28 MB WebP, ~88 MB decoded vs 44); block90 turn draw kf=48*u. Game file
+  31.3 → 33.0 MB. Halo px from blending (offline, same blend as the game): male mean 248 → 130 / peak 1817 → 966, female
+  214 → 105 / 1617 → 810. Cost (headless, 3 males + brown female, turns forced every 2 s, 60 s, wall ms incl. CDP):
+  median 15.3 → 16.9, p95 33 → 35, first-turn hitch 618 → 580 ms (the existing atlas decode, unchanged), hitches > 50 ms
+  11 → 2 (noise). A faint ghost remains where the tail sweeps fastest. Probe `D:\ClaudeWork\scratch100\
+  probe_turncost100.py` (its rAF timer reads 0: the rig's fake clock bypasses requestAnimationFrame; use wall time).
+  Grid `AFNICA_Anc100_turn49_grid.jpg`. **Commit: `git add -f assets_blender/anc3d/out/atlas100b_T.*`** (atlas100_T, the
+  25-frame version, is no longer used). Brown female turn colour checked: 86-90 vs photo 90 (FO map OK); her 3D frames
+  are ~22 % smaller than the photo (fins show less). maps97 (built from turn95) unchanged.
+  Reviewer (no blockers): decoded atlases now ~310 MB in total (C2 ~150 + P ~75 + T ~88), heavy for phones/iOS; the
+  first-turn hitch (~0.6 s) is the lazy T decode - a one-time off-screen warm-up draw at boot is untested (the earlier
+  keep-warm every 2 s was worse). `out/atlas100_T.*` is a leftover, keep it out of git.
+- **Two on the glass on top of each other** (owner screenshot): the glass neighbour test was 48 px with the height x .7
+  (a head-up fish is ~70 x 120 px → half a body could overlap) and only ran while grazing; the climb always lands in the
+  wall corner (s.x = lo/hi) and moves on the glass never looked. V17.100 (HTML ~7870-7945): climb picks a wall whose
+  corner is free (no glass fish within 130 px of lo/hi, nobody climbing there) else the other wall else stays on the
+  sand (`wl100`); glass graze + glass move refuse a step that overlaps (|dx| < 60, |dy| < 110, x scale) AND gets closer
+  (`ov100`/`blk100`; moving apart always allowed); next patch 70/45 px away. Probe `D:\ClaudeWork\scratch100\
+  probe_glass100.py` (180 s, 2M+1F, climbs nudged every 3 s): HEAD 3462 frames with 2 on the glass, all > 25 % overlap
+  (worst 100 %); now 1510 frames, 0 overlap, no errors. After the reviewer: a fish in toEdgeG counts as taking that
+  corner; short of oxygen (`up`) a fish always climbs (the freer wall). Rerun 120 s: 2382 frames with 2 on the glass,
+  0 overlap. Not tested: low-oxygen mode with 3+ fish (glass band only ~45 px tall there), young fish, a very narrow
+  tank (one glass fish can make both corners "busy"); fish meeting head-on on the glass both stop and wait 15-30 s.
+- **Rasping on the glass** (owner: "now I have no rasping"): it runs (V17.99 jaw99, ±7 deg turn of the inner mouth inside
+  the still disc, in bouts) - rig: black male mouth area changes on 433/1008 glass frames (HEAD 316), female 113 - but
+  it is nearly invisible at game size (mean pixel change 2-5/255 on a ~10 px disc). Before today the brown female's glass
+  picture came from the wrong sheet (the load race), which may have looked "active".
+  **New rasp (owner OK'd the mock-up `AFNICA_Anc100_rasp_mock.png`)**: `jaw99` (V17.42 fin code) now slides the two jaw
+  halves (body side / snout side of the inner disc) apart along the fish axis and back, the dark mouth opening between
+  them; lip ring still; smooth tanh push (sh .38 ri, soft .2 ri), same bouts and 3 Hz strokes. Cached per record
+  (`r.j100`: src ImageData taken once from r.base, warped per frame on a ~27x27 patch). .22 was too small at game
+  resolution (~2.2 px per css px); .6 breaks up. Measured: mouth change black male mean 4.3 (was 2.2, peak 20 vs 5.4),
+  female 704/1202 glass frames moving (was 113). Images: `AFNICA_Anc100_rasp_game.png` (game resolution x10),
+  `AFNICA_Anc100_rasp_game_burst.jpg` (12 frames of a burst from the game canvas). Mock-up script
+  `D:\ClaudeWork\scratch100\rasp_mock100.py`, probe `probe_rasp100.py`. Reviewer: no blockers; patch now snapped to
+  whole pixels (no soft mouth at a bout start); 40 s rerun black male: 660/1008 glass frames moving, mean 6.7. Still to
+  eyeball in the pane: a faint double edge at the patch rim at peak opening (non-premultiplied alpha).
+- Open: male stalk between pelvics and fan is a bit narrow/soft at the photo→render join; female not checked on the
+  glass in this session; fight walk-in aborts.
+
+# Earlier (2026-10-18: V17.99 ANCISTRUS FIXES, all 7 owner points APPROVED, NOT committed)
 
 ## V17.99 bristlenose fixes (owner's 7 complaints; spec `docs/ANCISTRUS_SPEC.md`, sources + targets)
 Order done: 2 → 3 → 4 → 7 → 6 → 5 → 1, each measured, one frame grid each (`AFNICA_Anc99_*_grid.jpg` in the root),

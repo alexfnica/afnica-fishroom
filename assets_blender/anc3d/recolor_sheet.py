@@ -58,11 +58,14 @@ if __name__ == '__main__':
             sx = np.nonzero((side[..., 3] > 60).sum(0))[0][0]; L = xb - xl
             fan = side[:, sx:sx + L]; ys = np.nonzero((fan[..., 3] > 60).sum(1))[0]; fan = fan[ys[0]:ys[-1] + 1]
             nh = max(6, int(fan.shape[0] * .7)); yi = (np.arange(nh) * fan.shape[0] / nh).astype(int); fan = fan[yi]   # V17.99 (owner: the tail looked corrupted, a stick with a blob): pressed flat on the glass, ~70 % of the side fan
-            fan[..., 3] *= np.clip((np.arange(L) - L * .0) / (L * .15), 0, 1)[None, :] * .95   # soft where it meets the stick root
             cy = int(np.average(np.nonzero(bel[:, xl:xb, 3] > 60)[0]))
+            # V17.100 (owner: "the caudal looks like a double tail"): the render's edge-on stick lay OVER the fan (a line through
+            # it) and poked out past the fan's notch (a spike). Now the stick is erased up to its last 20 % (the join to the
+            # stalk, fading in), and the fan lies on top.
+            keep = np.clip((np.arange(L) - L * .8) / (L * .15), 0, 1); bel[:, xl:xb, 3] *= keep[None, :]; bel[:, :xl, 3] = 0   # faint stick tip left of the fan too
             y0 = cy - nh // 2; reg = bel[y0:y0 + nh, xl:xb]
             fa = fan[..., 3:] / 255.; ra = reg[..., 3:] / 255.
-            out_a = ra + fa * (1 - ra); rgb = (reg[..., :3] * ra + fan[..., :3] * fa * (1 - ra)) / np.maximum(out_a, 1e-6)
+            out_a = fa + ra * (1 - fa); rgb = (fan[..., :3] * fa + reg[..., :3] * ra * (1 - fa)) / np.maximum(out_a, 1e-6)
             bel[y0:y0 + nh, xl:xb, :3] = rgb; bel[y0:y0 + nh, xl:xb, 3] = out_a[..., 0] * 255
             A[br0:br1, x0:x0 + CW] = bel.clip(0, 255).astype(np.uint8)
             print('tail fan', col, 'stick', xl, xb, 'fan h', nh)

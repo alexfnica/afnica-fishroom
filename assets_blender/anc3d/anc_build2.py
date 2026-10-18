@@ -10,6 +10,7 @@ import anc_build as B
 INC = os.path.join(B.HERE, '..', 'incoming')
 LEN = {'M': 3.39, 'F': 3.30, 'JO': 3.39, 'JB': 3.30}   # juveniles sit in the male / female column of the sheet
 EMIT = .22                                     # photo brightness added on top of the lighting
+HANG = False                                   # V17.100 turn frames: paired fins + chin bristles hang below the belly like the photo (no ground clamp; the caller lifts the fish)
 FIN_REACH = .5                                 # how far out the paired fins reach the sand (smaller = steeper, more visible from the side)                    # snout -> caudal tip in units (1 unit = 32.5 game px), like the old sprites
 
 # Measured on the cut photos (px). Side: snout x S, ground (belly line) G, caudal tip x; body rows = (side x, back y, belly y,
@@ -192,14 +193,16 @@ def build_fish(sex='M', name='anc', fold=0.0, spread=1.0, sweep=0.0, bend=0.0, b
     # and tilted outward (spread 1 = ~29 deg from vertical, small spread = folded against the body, e.g. in the cave)
     if paired == 'side':
         tilt = .5 * spread + 1.15 * (1 - spread)               # folding = laid flat against the belly, not hanging down
+        if HANG and spread > 1: tilt = .5 * spread            # V17.100: spread > 1 = props wider out, never steeper
         for k_, (x0, x1, y0, y1) in enumerate(sp['sfins']):
             for side in (1, -1):
                 def f_sf(sx, sy, side=side):
                     top, bot, hwt = table(sp, sx); syb = bot - 4; d = max(0., sy - syb) * K
                     zb_ = (G - syb) * K; hw3 = hwt * Kt * .88
                     rr = .2 + .8 * spread                                    # folded: most of the fin's length lies back along the body
+                    if HANG: rr = min(1., rr)                                # V17.100: never longer than in the photo
                     sw = sweep * d + (1 - spread) * .85 * d
-                    return bendp((sx - S) * K - sw, side * (hw3 + d * math.sin(tilt) * rr), max(.012, zb_ - d * math.cos(tilt) * rr))
+                    return bendp((sx - S) * K - sw, side * (hw3 + d * math.sin(tilt) * rr), (zb_ - d * math.cos(tilt) * rr) if HANG else max(.012, zb_ - d * math.cos(tilt) * rr))
                 plane('%s_sfin%d%d' % (name, k_, side), (x0, x1, y0, y1), f_sf, sideuv, As, ms, 22, 16)
     for key, btx in ((('pect', sp['pect_base']), ('pelv', sp['pelv_base'])) if paired == 'top' else ()):
         fx0, fx1, fy0 = sp[key]; bsx = S - (tS - btx) * kt; top, bot, hwt = table(sp, bsx)
@@ -222,7 +225,7 @@ def build_fish(sex='M', name='anc', fold=0.0, spread=1.0, sweep=0.0, bend=0.0, b
         for k_, ang_ in enumerate((0, .6, -.6)):
             def f_br(sx, sy, ang_=ang_):
                 X, Z = to3(sx, sy); dx_ = X - hx_
-                return bendp(hx_ + dx_ * math.cos(ang_), dx_ * math.sin(ang_), max(Z, .012))   # chin bristles rest on the ground, never sink into it
+                return bendp(hx_ + dx_ * math.cos(ang_), dx_ * math.sin(ang_), Z if HANG else max(Z, .012))   # chin bristles rest on the ground, never sink into it
             plane('%s_bris%d' % (name, k_), (x0, x1, y0, y1), f_br, sideuv, As, ms, 24, 22)
     elif sp['bristles']:
         bmat = B.mat_plain(name + '_bristle', (.42, .36, .16), .55, .3)

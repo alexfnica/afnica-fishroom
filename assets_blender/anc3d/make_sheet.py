@@ -26,13 +26,20 @@ BELLY = {'M': ('fr_M/M_glass01.png', 241.0, 96.8, 45.0, 535 + MDX, 907, 22 + MDX
 ops = []
 for s, (img, S, tip, G, oS, oT, oG, cx) in SIDE.items():
     k = (oS - oT) / (S - tip); ops.append(dict(src=u(os.path.join(INC, img)), k=k, x=oT - tip * k, y=oG - G * k, clip=[cx, 38 * F, 627, 70 * F]))
+RI = {}
 for s, (img, mx, my, tx, oMx, oMy, oTx, cx) in BELLY.items():
-    k = (oMx - oTx) / (mx - tx); ops.append(dict(src=u(os.path.join(OUT, img)), k=k, x=oMx - mx * k, y=oMy - my * k, clip=[cx, 138 * F, 627, 70 * F]))
+    k = (oMx - oTx) / (mx - tx); RI[s] = len(ops); ops.append(dict(src=u(os.path.join(OUT, img)), k=k, x=oMx - mx * k, y=oMy - my * k, clip=[cx, 138 * F, 627, 70 * F]))
 # belly PHOTO over the render, mouth -> vent (sharp mouth disc for the rasping); photo is head-up, turned to head-right
 PH = {'M': ('anc_mfull_belly_cut.png', 258, 135, 560, 1.063 * 1.40 * SIDE['M'][4 - 0] * 0 + 1.063 * 1.40 * (590 - 14) / (1225 - 5), 535 + MDX, 907, 0),
       'F': ('anc_ffull_belly_cut.png', 705, 80, 520, 1.07 * 1.38 * (1227 - 643) / (1270 - 5), 1175, 915 + FDY, 627)}
+# V17.100 (owner: "2 sets of bottom fins"): the photo used to fade out AT the vent, cutting its pelvic fins (they reach
+# ~45 photo px past it), and the 3D render's own pectorals/pelvics showed round them. Now the photo runs on to just past
+# its pelvic tips (SEAM: photo y where it is gone, fade length), and the render only shows behind that seam (stalk + tail).
+SEAM = {'M': (650, 35), 'F': (580, 35)}
 for s_, (img, mx, my, vy, k, oMx, oMy, cx) in PH.items():
-    ops.append(dict(src=u(os.path.join(INC, img)), photo=[mx, my, vy, k, oMx, oMy], clip=[cx, 138 * F, 627, 70 * F]))
+    sv, L = SEAM[s_]; xv = oMx - (sv - my) * k
+    ops.append(dict(src=u(os.path.join(INC, img)), photo=[mx, my, sv, k, oMx, oMy, L * k], clip=[cx, 138 * F, 627, 70 * F]))
+    ops[RI[s_]]['mask'] = [xv + L * k - 2, xv + L * k + 6]   # render stays under the whole fade (no see-through dip)
 # V17.91 young rows (css y): fry side 238, fry belly 338 (juvenile side 438, belly 538 when its photos arrive); sheet 240x620 css
 FRY = 200 * F                                      # the fry rows sit 200 css px below the adult rows
 for cx, oT, oS, oG, oM, oTail, oMy in ((0, 14, 590, 400, 535, 22, 907), (627, 643, 1227, 432, 1175, 650, 915)):
@@ -58,11 +65,14 @@ for cx, (img, mx, my, vy, k, oMx, oMy) in JB.items():
 SHEET_H = round(620 * F)
 JS = r"""(async (ops,SH)=>{const c=document.createElement('canvas');c.width=1254;c.height=SH;const g=c.getContext('2d');g.imageSmoothingQuality='high';
 for(const o of ops){if(o.copies){for(const [sx,sy,w,h,dx,dy] of o.copies)g.drawImage(c,sx,sy,w,h,dx,dy,w,h);continue;}const im=new Image();im.src=o.src;await im.decode();
- if(o.photo){const [mx,my,vy,k,X,Y]=o.photo,T=document.createElement('canvas');T.width=1254;T.height=SH;const t=T.getContext('2d');t.imageSmoothingQuality='high';
+ if(o.photo){const [mx,my,vy,k,X,Y,FL]=o.photo,T=document.createElement('canvas');T.width=1254;T.height=SH;const t=T.getContext('2d');t.imageSmoothingQuality='high';
   t.save();t.translate(X,Y);t.scale(k,k);t.rotate(Math.PI/2);t.translate(-mx,-my);t.drawImage(im,0,0);t.restore();
-  const xv=X-(vy-my)*k,gr=t.createLinearGradient(xv,0,xv+28,0);gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(1,'rgba(0,0,0,1)');   /* soft seam at the vent */
+  const xv=X-(vy-my)*k,gr=t.createLinearGradient(xv,0,xv+(FL||28),0);gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(1,'rgba(0,0,0,1)');   /* soft seam at the vent */
   t.globalCompositeOperation='destination-in';t.fillStyle=gr;t.fillRect(0,0,1254,SH);
   g.save();g.beginPath();g.rect(...o.clip);g.clip();g.drawImage(T,0,0);g.restore();continue;}
+ if(o.mask){const T=document.createElement('canvas');T.width=1254;T.height=SH;const t=T.getContext('2d');t.imageSmoothingQuality='high';t.drawImage(im,o.x,o.y,im.naturalWidth*o.k,im.naturalHeight*o.k);
+  const gr=t.createLinearGradient(o.mask[0],0,o.mask[1],0);gr.addColorStop(0,'rgba(0,0,0,1)');gr.addColorStop(1,'rgba(0,0,0,0)');   /* V17.100: render only behind the photo seam */
+  t.globalCompositeOperation='destination-in';t.fillStyle=gr;t.fillRect(0,0,1254,SH);g.save();g.beginPath();g.rect(...o.clip);g.clip();g.drawImage(T,0,0);g.restore();continue;}
  g.save();g.beginPath();g.rect(...o.clip);g.clip();g.drawImage(im,o.x,o.y,im.naturalWidth*o.k,im.naturalHeight*o.k);g.restore();}
 return c.toDataURL('image/webp',.93);})"""
 c = Chrome(400, 300, 1, port=int(os.environ.get('AF_PORT', '9495')))

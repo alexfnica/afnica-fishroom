@@ -23,3 +23,6 @@ assets_blender/anc3d/out/*
 # owner (2026-10-18): no session clips / frame grids in git
 /AFNICA_Anc9*.mp4
 /AFNICA_Anc9*.jpg
+/AFNICA_Anc1*.mp4
+/AFNICA_Anc1*.jpg
+/AFNICA_Anc1*.png

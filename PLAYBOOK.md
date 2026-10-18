@@ -26,6 +26,13 @@ try{st.broods45=(st.broods45||[]).filter(b=>b.tank!=='main')}catch(e){}
 switchTankV8('main');
 ```
 - Ages: adult = `S[sp].adult` (+4 days to be safe); full grown ≈ 2.2 × adult (xipho: 36 is full grown). `fullGrownV1763(f)`.
+- Bristlenose: the same `mk('anc','M',36,'a1',90)` works; real saved anc have exactly these fields (nothing anc-only). The
+  colour (olive 'o' / black 'b') comes from a hash of the `id`, so keep ids fixed to get the same colours each run.
+  Adult = 16 days. Fights: `window.anc96Force=1` + clear `anc90Debug().CD96` (3 min cooldown per pair); a male on the glass
+  or in the cave cycle is not "free" and never starts one.
+- Short window (e.g. 1024x768 at the page top): the fixed bottom nav used to cover the tank's sand strip, so bottom fish
+  showed as fragments. Since V17.100 boot and `switchTankV8` scroll the tank bottom clear of the nav; if you scroll
+  yourself, call `tankClearV17100()`.
 - Control systems: `courtshipV1744.main={next:0}` (court now) / `{next:1e15}` (none); `fightDebugV1748().NEXT.main=0` (fight now) / `1e15`; `showOffDebugV1752().NX.main=1e15`; `huntDebugV1746().NEXT.main=1e15`.
 - Force fight moves: `const f=fightDebugV1748().FIGHT.main; f.seq=['spin','slap','nip']; f.si=0; f.seg='spin'; f.segT=performance.now(); f.segEnd=f.segT+3000;`
 - Keep a looping scene with `setInterval` re-triggering (and clear `f.inseminatedDay/spermBroods/gestStart` on females to keep courtship going).

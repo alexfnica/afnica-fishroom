@@ -242,12 +242,12 @@
   /* V17.95 pivot turn (replaces the V17.94 walking U-turn, which walked 39 px out and back = 6.2 px/frame): the fish turns
      almost on the spot (render_turn3.py: belly down, pectorals spread, gentle curve, head away, tail sweeping toward the
      viewer); the photo drawing cross-fades in place over the first/last 15 % */
-  const u=tu.u,kf=24*u,k=Math.min(24,Math.floor(kf)),k2=Math.min(24,k+1),mix=kf-k,a3=u<.15?u/.15:u>.85?(1-u)/.15:1,sg=u<.5?tu.from:tu.to;
-  setSign(sg);el.style.setProperty('clip-path','none','important');el.classList.add('anc90');fade(tank,el,1-a3);
+  const u=tu.u,kf=48*u,k=Math.min(48,Math.floor(kf)),k2=Math.min(48,k+1),mix=kf-k,a3=u<.15?u/.15:u>.85?(1-u)/.15:1,sg=u<.5?tu.from:tu.to;
+  setSign(sg);el.style.setProperty('clip-path','none','important');el.classList.add('anc90');fade(tank,el,u<.5?Math.min(1,Math.max(0,(.25-u)/.1)):Math.min(1,Math.max(0,(u-.75)/.1)));   /* V17.100 (owner: graphic glitch when they turn): the photo stays opaque UNDER the 3D while it fades in (and out) and only fades itself while the 3D is fully opaque on top - no see-through fish (two half-faded layers were ~75 % opaque) */
   if(f.tx94){f.tx94=0;el.style.removeProperty('translate');}
   const c=turnCanvas(el,sex),g=c.getContext('2d');c.style.display='block';g.clearRect(0,0,480,220);
   c.style.translate='none';
-  const AT97=recol97(ATL.T,rc97(el)),mir=(tu.from<0)!==(sg<0);blit(g,AT97,sex+'_turn'+String(k).padStart(2,'0'),mir,a3,220);if(mix>.02&&k2!==k)blit(g,AT97,sex+'_turn'+String(k2).padStart(2,'0'),mir,a3*mix,220);   /* right->left as rendered, left->right mirrored */
+  const AT97=recol97(ATL.T,rc97(el)),mir=(tu.from<0)!==(sg<0);blit(g,AT97,sex+'_turn'+String(k).padStart(2,'0'),mir,a3,220);   /* V17.100: 49 turn frames (render_turn3 N 48), half the step between blended neighbours */if(mix>.02&&k2!==k)blit(g,AT97,sex+'_turn'+String(k2).padStart(2,'0'),mir,a3*mix,220);   /* right->left as rendered, left->right mirrored */
  }
 
  const prev=window.ancPostV1789;

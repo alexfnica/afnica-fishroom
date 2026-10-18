@@ -14,8 +14,10 @@ os.makedirs(OUT, exist_ok=True)
 FW, FH, PX = 240, 110, 32.5; PIV = (110., 64.); R = .12          # R: small drift into the tank (~4 px), no walk
 sc, cam = B.scene_setup(res=(FW * 2, FH * 2), ortho=FW / PX, pitch=3, target=(0, 0, 0), samples=SAMP)
 B2.EMIT = .75; bpy.data.objects['sun'].data.energy = 1.4
+B2.HANG = True   # V17.100 (owner: "the fins vanish for a moment when they turn"): fins + chin bristles hang like in the photo
+SHY0 = None
 cam.data.shift_x = .5 - PIV[0] / FW; cam.data.shift_y = (.5 - (1 - PIV[1] / FH)) * FH / FW
-L = B2.LEN[SEX]; N = 24
+L = B2.LEN[SEX]; N = int(os.environ.get('TURN_N', '48'))   # V17.100: 49 frames (was 25: neighbours ~14 deg apart at peak yaw, blended into a pale mid-turn halo)
 for k in range(N + 1):
     u = k / N; ss5 = lambda q: (lambda t: t * t * t * (t * (t * 6 - 15) + 10))(min(1., max(0., q)))   # smootherstep
     # V17.99 (owner: "it turns rigid and straight, as one flat piece; a real fish bends into a C, head leading"): the head
@@ -35,5 +37,12 @@ for k in range(N + 1):
     half = L / 2
     f.rotation_euler = (0, 0, th); f.location = (cx + half * math.cos(th), cy + half * math.sin(th), 0)
     bpy.context.view_layer.update()
+    # V17.100: the photo's fins hang below its belly (= ground) line; the shadow-catcher floor at z 0 hid them, so the fish is
+    # lifted until the lowest fin tip touches the floor and the camera moves up the same amount (body stays where the photo has it)
+    mz = min((o.matrix_world @ v.co).z for o in bpy.data.objects if o.name.startswith('fish') and o.type == 'MESH' for v in o.data.vertices)
+    lift = max(0., -mz); f.location.z = lift; bpy.context.view_layer.update()
+    if SHY0 is None: SHY0 = cam.data.shift_y
+    cam.data.shift_y = SHY0 + lift / cam.data.ortho_scale
+    print('LIFT', k, round(lift, 3), flush=True)
     sc.render.filepath = os.path.join(OUT, '%s_turn%02d.png' % (SEX, k)); bpy.ops.render.render(write_still=True)
     print('FRAME', k, flush=True)
