@@ -31,6 +31,13 @@ uncommitted (see below).
   `grid99.py` (GRID=roll|cave|glass|tent|fight|turn, SEX=M). `measure_fight96.py` needs SEED set (else a JS error).
 - Open / not checked: female + juvenile on the glass (fins/jaws), bristle pop at the roll start/end, frame cost with 3+
   males, walking out of the cave hand-over, cheek odontodes not modelled (fights), fight walk-in took 12.8 s once.
+- **Perf (after the push, commit 43071fb)**: 3 males cost ~2.6 ms/frame more than 4 females (bristle layer). Fixed a
+  ~1.3 s freeze at the first cave approach (xfade99 read the huge atlas on the CPU → precomputed CEN99; recol97 no
+  willReadFrequently; atlas99_C2 repacked 8160x4620). STILL OPEN: 0.3-0.5 s hitch in busy tanks when the cave male first
+  draws / a fight starts = Chrome re-decoding an evicted atlas (~150 MB RGBA) in drawCave blit's restore (profile:
+  `trailer/probe_prof99.py A B`). Tried: smaller repack (no help), 1 px keep-warm draw every 2 s (worse: re-decode each
+  time, reverted). Untried: createImageBitmap per atlas (~270 MB kept decoded) - owner to decide. Rig `probe_cost99.py`.
+- Owner: no session clips / frame grids in git (ignored `/AFNICA_Anc9*.mp4|jpg`, kept on disk); atlases/sheet/maps tracked.
 - **Owner's C: drive is full** (81 MB free): `C:\Users\Alexandru Nica\.claude\file-history` = 3.9 GB of Claude edit
   backups; suggested robocopy /MOVE to D:\ClaudeData + mklink /J (owner does it with the app closed). Scratch now in
   `D:\ClaudeWork\scratch99`.
