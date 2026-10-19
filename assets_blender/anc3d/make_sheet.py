@@ -14,7 +14,8 @@ HERE = os.path.dirname(os.path.abspath(__file__)); INC = os.path.join(HERE, '..'
 u = lambda p: 'data:image/png;base64,' + base64.b64encode(open(p, 'rb').read()).decode()
 F = 1254 / 240                                   # sheet natural px per css px
 # side placement: (photo, snout x, tip x, ground y) -> (old snout x, old tip x, old ground y)
-SIDE = {'M': ('anc_mfull_side_cut.png', 1225, 5, 412, 590, 14, 400, 0),
+SIDE = {'M': ('anc_mfull_side_cut_clean100.png',   # V17.100 (owner: dark smudges under the fins): leftover background block under the pectoral + loose specks removed (original kept)
+              1225, 5, 412, 590, 14, 400, 0),
         'F': ('anc_ffull_side_cut.png', 1270, 5, 425, 1227, 643, 432, 627)}
 # belly placement: render frame mouth (x,y) and tail-tip x -> old mouth (x,y) and tail x
 # V17.99 (owner: "parts are cut off on the glass"): the male's bristles ended at 121.5 css px of a 120 px cell and the

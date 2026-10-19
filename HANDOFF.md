@@ -144,9 +144,13 @@
   switches it off). Males only; female glass tail not done yet. Owner: "the tail duplicates" = the separate side-view fan
   overlay sat beside the wagging sheet caudal → overlay removed; the caudal columns (u > .85) themselves get taller with
   the twist (x 1 + open·2.2), one tail (`AFNICA_Anc100_wag_game2` = scratch wag2.jpg).
-- Open (owner noticed): dark smudges under the male's fins on the sand = ~2000 leftover dark background px below the
-  belly line in `incoming/anc_mfull_side_cut.png` (since V17.98 or earlier; side cell, not today's work) → clean the
-  cut-out and rebuild the sheet.
+- Dark smudges under the male's fins on the sand (owner): leftover background in `incoming/anc_mfull_side_cut.png`
+  (since V17.98 or earlier). Cleaned copy `incoming/anc_mfull_side_cut_clean100.png` (original kept): the flat dark block
+  under the pectoral edge (x 902-933, y 413-441, max rgb < 55 → transparent, 564 px) + loose pieces not connected to the
+  fish below the belly line and behind the head (y >= 395, x < 1130: under the pelvic, a speck under the head; 806 px in
+  all - the bristle tips that look detached stay). make_sheet SIDE M uses the clean copy. Dark opaque px under the
+  pectoral 83 → 19 (olive) / 32 (black) = the fin's own. `AFNICA_Anc100_side_clean.png`. 3D renders still use the
+  original photo (not needed).
 - Open: male stalk between pelvics and fan is a bit narrow/soft at the photo→render join; female not checked on the
   glass in this session; fight walk-in aborts.
 
