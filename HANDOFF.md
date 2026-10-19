@@ -91,6 +91,62 @@
   `D:\ClaudeWork\scratch100\rasp_mock100.py`, probe `probe_rasp100.py`. Reviewer: no blockers; patch now snapped to
   whole pixels (no soft mouth at a bout start); 40 s rerun black male: 660/1008 glass frames moving, mean 6.7. Still to
   eyeball in the pane: a faint double edge at the patch rim at peak opening (non-premultiplied alpha).
+  After the commit (4d3a126), NOT committed: rasp slowed 3 → 1.8 strokes/s (owner: "a little too fast"); male belly tail
+  (owner: "the tail looks wrong" - thin render neck then a small fan): make_sheet SEAM M (690, 14), no render in the
+  male belly cell; recolor_sheet male branch hangs the side photo's caudal on the end of the photo's broad stalk.
+  Owner feedback rounds: (690 seam + 110 px fan) put the fan right behind the pelvics, body looked short → final: SEAM M
+  (733, 12) = the photo stalk to its end (long, like the real belly), fan `FAN_L` 88 px / `FAN_H` .85, 15 % overlap,
+  and every fan column re-centred on the body axis (owner: "the caudal must look straight, not diagonal"). Female
+  unchanged. Images `AFNICA_Anc100_tail_long.png` / `_tail_straight.png`. Backups `out/sheet9x_v100a_backup.webp`.
+  Then the owner's reference photos (real bristlenose seen from below): resting, the caudal stands upright against the
+  glass → seen edge-on, a thin line continuing the tapering stalk; moving, the tail curves. → `FAN_H` .22 (edge-on
+  caudal, `AFNICA_Anc100_tail_edge.png`) and drawVentral(..., bend): the tail lags glass turns as a C-bend (gain .16 BL at
+  90 deg/s, max .2, from the element's rotation speed smoothed; sign worked out for both scaleX) and the crawl sway is
+  .055 (was .032, bristle layer too). Rig `D:\ClaudeWork\scratch100\probe_bend100.py` → `AFNICA_Anc100_tail_bend.jpg`:
+  curves while turning, straight at rest, no errors. Female glass tail still the old fan (her photo curls).
+  Owner: "the tail looks very shortened" → make_sheet `MK100` .86: the male belly photo drawn 14 % smaller around the
+  mouth (same cell length, mouth spot unchanged), the stalk ends at x 149 and the edge-on caudal fills the cell to the
+  tail edge (`FAN_L` auto = (xe-6)/.85, max 170). Tail ≈ 40 % of the fish from the pelvic tips (reference ~45 %).
+  `AFNICA_Anc100_tail_prop.png`, `_tail_bend2.jpg`. Watch: FIN99 pectoral zone (u .23-.62) and the t99 bristle cut-outs
+  were tuned on the old scale (pectorals now ~.03 u nearer the snout) - looked fine in the rig, not measured.
+  Owner: "a thinner part between tail and body" = the squashed caudal root (12 px) under the stalk end (29 px) →
+  every caudal column at least a straight taper from the stalk's end height (measured 10 px inside the stalk) over 45 %
+  of the caudal; root no longer faded. Height along the tail now 47 → 34 → 24 → 16, caudal tip ~24
+  (`AFNICA_Anc100_tail_join.png`).
+  Owner: "visual corruption" at the join (per-column squash/re-centre = jagged, streaky; fin root lines; the photo's
+  feathered cut edge). Male caudal rebuilt in recolor_sheet.py as one smooth shape: anchored at the first clean stalk
+  column xg = stalk end + 25 px (the last 25 px are the photo's feathered cut edge, trimmed and covered), outline =
+  one taper from the stalk's height at xg to ~10 px at the tip (no waist/spearhead), fin texture mapped across it
+  (anti-aliased), root textured with the stalk's last 30 px mirrored back and forth (scutes continue) blending into the
+  fin texture toward the tip, root fade over 15 px of clean stalk. Height along the tail 54 → 13 px, monotonic.
+  `AFNICA_Anc100_tail_join2.png` (zoom), `AFNICA_Anc100_tail_final.png`.
+  Owner: "the end of the tail doesn't look right" = the tip was cut flat by the cell edge (caudal started at x < 0).
+  Now Lf = stalk end - 4 (tip 4 px inside the cell) and the taper ends in a soft ~3 px point.
+  Owner's reference pair (still on the glass = thin edge-on tail; moving = curved tail + the caudal turned into view as a
+  fan): drawVentral(..., bend, fan) - males only: the fan is the fish's own side-view caudal (cropped once at runtime
+  from the side record 'anc|col|38', 21 % of its BL, cached as r.fan100, retried until the side record exists), drawn
+  from the fin root (.17 BL from the tip) along the bent tail, height edge-on → full with `open`; open = smoothed
+  (rate 4/s) min(1, stroke*.8 + |bend|/.1) → closes when he holds still. `AFNICA_Anc100_tail_fan_moving.jpg`.
+  Not yet: the female (her glass tail is still the old fan), the fan's own flutter.
+  **REJECTED by the owner ("that's not how a bristlenose moves his tail", "like a helicopter")**: the turn bend and the
+  opening fan were invented, not copied from footage. Both switched OFF (test flags `window.ANC100BEND` /
+  `window.ANC100FAN`, never set by the game); crawl sway back to .032. Kept: the thin edge-on tail at rest (from the
+  owner's photo). Next: get a real clip of a bristlenose crawling/turning on the glass (belly to camera), copy it frame
+  by frame, show a still/few frames first.
+  Owner's clip: `C:\Users\Alexandru Nica\Downloads\The Ancistrus catfish dances on the glass...mp4` (copy in
+  `D:\ClaudeWork\anc_clip\clip.mp4`, 18 s, 720x1280; frames via headless Chrome `D:\ClaudeWork\scratch100\clip_frames.py`,
+  no ffmpeg on the laptop). Read at 15.0-15.8 s (15 fps): head + body stiff to the pelvics, only the stalk + caudal (rear
+  45 %) wag side to side ~2.1 Hz, tip ±~12 % BL, tip lagging; caudal edge-on crossing the middle, ~half open at each end;
+  only while moving, still = straight + edge-on. Implemented behind the test switch `window.ANC100WAG` (off): wag term in
+  drawVentral (rear 45 %, ^1.6, lag .9 rad), envelope from the real glass speed (bounding-box centre, smoothed) or the
+  stroke gate, the side-view caudal drawn as the twisting fan (open .5·|sin|). Rig `probe_wag100.py` →
+  `AFNICA_Anc100_wag_game.jpg` vs `AFNICA_Anc100_wag_clip.jpg`. Owner OK'd → ON by default (`window.ANC100WAG=false`
+  switches it off). Males only; female glass tail not done yet. Owner: "the tail duplicates" = the separate side-view fan
+  overlay sat beside the wagging sheet caudal → overlay removed; the caudal columns (u > .85) themselves get taller with
+  the twist (x 1 + open·2.2), one tail (`AFNICA_Anc100_wag_game2` = scratch wag2.jpg).
+- Open (owner noticed): dark smudges under the male's fins on the sand = ~2000 leftover dark background px below the
+  belly line in `incoming/anc_mfull_side_cut.png` (since V17.98 or earlier; side cell, not today's work) → clean the
+  cut-out and rebuild the sheet.
 - Open: male stalk between pelvics and fan is a bit narrow/soft at the photo→render join; female not checked on the
   glass in this session; fight walk-in aborts.
 

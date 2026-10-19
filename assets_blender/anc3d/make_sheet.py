@@ -30,16 +30,21 @@ RI = {}
 for s, (img, mx, my, tx, oMx, oMy, oTx, cx) in BELLY.items():
     k = (oMx - oTx) / (mx - tx); RI[s] = len(ops); ops.append(dict(src=u(os.path.join(OUT, img)), k=k, x=oMx - mx * k, y=oMy - my * k, clip=[cx, 138 * F, 627, 70 * F]))
 # belly PHOTO over the render, mouth -> vent (sharp mouth disc for the rasping); photo is head-up, turned to head-right
-PH = {'M': ('anc_mfull_belly_cut.png', 258, 135, 560, 1.063 * 1.40 * SIDE['M'][4 - 0] * 0 + 1.063 * 1.40 * (590 - 14) / (1225 - 5), 535 + MDX, 907, 0),
+# V17.100 (owner: "the tail looks very shortened"): seen from below, vent to caudal tip is ~half the fish; at the mouth->vent
+# scale the tail had only ~37 % of the cell. The male belly photo is drawn 14 % smaller around the mouth (same cell length),
+# the freed room goes to the stalk and the edge-on caudal (recolor_sheet.py fills the rest of the cell).
+MK100 = float(os.environ.get('MK100', '.86'))
+PH = {'M': ('anc_mfull_belly_cut.png', 258, 135, 560, MK100 * 1.063 * 1.40 * (590 - 14) / (1225 - 5), 535 + MDX, 907, 0),
       'F': ('anc_ffull_belly_cut.png', 705, 80, 520, 1.07 * 1.38 * (1227 - 643) / (1270 - 5), 1175, 915 + FDY, 627)}
 # V17.100 (owner: "2 sets of bottom fins"): the photo used to fade out AT the vent, cutting its pelvic fins (they reach
 # ~45 photo px past it), and the 3D render's own pectorals/pelvics showed round them. Now the photo runs on to just past
 # its pelvic tips (SEAM: photo y where it is gone, fade length), and the render only shows behind that seam (stalk + tail).
-SEAM = {'M': (650, 35), 'F': (580, 35)}
+SEAM = {'M': (733, 12), 'F': (580, 35)}   # V17.100: male photo stalk to its end - the real stalk is long (owner: the fan sat right behind the pelvics, body looked short)   # V17.100 (owner: "the tail looks wrong" - a thin render neck before the fan): the male photo's broad stalk runs to its end; recolor_sheet.py hangs the fan on it
 for s_, (img, mx, my, vy, k, oMx, oMy, cx) in PH.items():
     sv, L = SEAM[s_]; xv = oMx - (sv - my) * k
     ops.append(dict(src=u(os.path.join(INC, img)), photo=[mx, my, sv, k, oMx, oMy, L * k], clip=[cx, 138 * F, 627, 70 * F]))
     ops[RI[s_]]['mask'] = [xv + L * k - 2, xv + L * k + 6]   # render stays under the whole fade (no see-through dip)
+    if s_ == 'M': ops[RI[s_]]['mask'] = [-20, -10]   # male: no render at all in the belly cell (photo stalk + fan only)
 # V17.91 young rows (css y): fry side 238, fry belly 338 (juvenile side 438, belly 538 when its photos arrive); sheet 240x620 css
 FRY = 200 * F                                      # the fry rows sit 200 css px below the adult rows
 for cx, oT, oS, oG, oM, oTail, oMy in ((0, 14, 590, 400, 535, 22, 907), (627, 643, 1227, 432, 1175, 650, 915)):

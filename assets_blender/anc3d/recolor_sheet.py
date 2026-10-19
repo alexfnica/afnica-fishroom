@@ -55,6 +55,58 @@ if __name__ == '__main__':
             side, bel = A[sr0:sr1, x0:x0 + CW].astype(float), A[br0:br1, x0:x0 + CW].astype(float)
             ha = (bel[..., 3] > 60).sum(0); xs = np.nonzero(ha)[0]; xl = xs[0]
             xb = xl + int(np.argmax(ha[xl:] > 22))                  # where the thin line meets the body
+            if col == 0:
+                # V17.100 male glass tail (owner's reference photos + feedback rounds): the belly photo's own long stalk runs to
+                # its end (make_sheet SEAM M 733, photo 14 % smaller - MK100, no render); after it the caudal, seen edge-on
+                # (upright against the glass = a thin line, FAN_H .22 of the side photo's fin height), straight along the axis,
+                # filling the cell to the tail edge. Built as a smooth shape (owner: "visual corruption" at the join with the
+                # first per-column version): the outline = the stalk's taper (from its end height, over 45 % of the caudal)
+                # merged with the fin's own smoothed profile; the fin texture is mapped across that outline (anti-aliased
+                # edges); the root cross-fades over the stalk's fully opaque part (no see-through, no seam).
+                xe = xl; Lf = int(os.environ.get('FAN_L', '0')) or max(60, xe - 4); ov = int(Lf * .15)   # tip 4 px inside the cell (owner: the tail end looked cut flat)
+                # the photo's last ~25 px of stalk are its feathered cut edge (a flat light band): the caudal is anchored at the
+                # first clean stalk column xg and covers the ragged end; it fades out over 15 px of clean stalk
+                fx0 = xe - Lf; xg = xe + 25; Lg = xg - fx0; ov = 15
+                sx = np.nonzero((side[..., 3] > 60).sum(0))[0][0]
+                src = side[:, sx:sx + Lg + ov]; W_ = src.shape[1]
+                c_ = np.full(W_, np.nan); h_ = np.full(W_, np.nan)
+                for j in range(W_):
+                    rr = np.nonzero(src[:, j, 3] > 60)[0]
+                    if len(rr) > 1: c_[j] = (rr[0] + rr[-1] + 1) / 2; h_[j] = rr[-1] + 1 - rr[0]
+                ok_ = ~np.isnan(c_); c_ = np.interp(np.arange(W_), np.nonzero(ok_)[0], c_[ok_]); h_ = np.interp(np.arange(W_), np.nonzero(ok_)[0], h_[ok_])
+                sm = lambda v, n: np.convolve(np.pad(v, n // 2, mode='edge'), np.ones(n) / n, mode='valid')
+                c_ = sm(c_, 9); h_ = sm(h_, 9)
+                hs = float((bel[:, xg:xg + 4, 3] > 60).sum(0).mean())
+                # one taper from the stalk's end height (+8 %: covers the photo's ragged cut edge) to ~10 px at the tip, like the
+                # owner's resting reference (no waist, no spearhead); the fin texture is still mapped along it
+                Hc = sm(3 + (hs - 3) * np.clip(np.arange(W_) / Lg, 0, 1) ** 1.15, 5)   # down to a soft ~3 px point at the tip
+                nh = int(np.ceil(Hc.max())) + 4; mid = nh / 2; yy = np.arange(nh) + .5 - mid
+                fan = np.zeros((nh, W_, 4))
+                # the stalk's own texture (a fully opaque column 12 px inside it) carries on into the root and gives way to the
+                # fin texture toward the tip (owner: the fin texture's own root lines made a "V" at the join)
+                cyb = np.average(np.nonzero(bel[:, xg:xg + 8, 3] > 60)[0])
+                for j in range(W_):
+                    sr = np.clip(c_[j] + (yy / max(Hc[j], 1)) * h_[j], 0, src.shape[0] - 1.001); r0 = sr.astype(int); f = (sr - r0)[:, None]
+                    px = src[r0, j] * (1 - f) + src[np.minimum(r0 + 1, src.shape[0] - 1), j] * f
+                    dd = int(max(0, xg - (fx0 + j))) % 60; scx = xg + (dd if dd < 30 else 60 - dd)   # the stalk's last 30 px mirrored back and forth
+                    sc2 = bel[:, scx]; o2 = np.nonzero(sc2[:, 3] > 60)[0]; c2 = (o2[0] + o2[-1] + 1) / 2 if len(o2) > 1 else cyb; h2 = max(2., len(o2))
+                    qr = np.clip(c2 + (yy / max(Hc[j], 1)) * h2, 0, bel.shape[0] - 1.001); q0 = qr.astype(int); g_ = (qr - q0)[:, None]
+                    pq = sc2[q0] * (1 - g_) + sc2[np.minimum(q0 + 1, bel.shape[0] - 1)] * g_
+                    ws = float(np.clip((j - .5 * Lg) / (.4 * Lg), 0, 1))
+                    fan[:, j, :3] = px[:, :3] * (1 - ws) + pq[:, :3] * ws; fan[:, j, 3] = 255 * np.clip(Hc[j] / 2 - np.abs(yy) + .5, 0, 1)
+                xs_ = fx0 + np.arange(W_)
+                fan[..., 3] *= np.clip((xg + ov - xs_) / ov, 0, 1)[None, :]   # root fades out over clean, opaque stalk
+                cy = int(round(cyb)); y0 = cy - nh // 2
+                # trim the photo's ragged cut edge (the stalk's last columns) to the taper's outline
+                hr = hs / 2 + 1; rows_ = np.arange(bel.shape[0])[:, None]; band = np.abs(rows_ + .5 - cy) <= hr
+                bel[:, xe - 2:xg, 3] *= band
+                fx0c = max(0, fx0); fan = fan[:, fx0c - fx0:]
+                reg = bel[y0:y0 + nh, fx0c:fx0c + fan.shape[1]]
+                fa = fan[..., 3:] / 255.; ra = reg[..., 3:] / 255.
+                out_a = fa + ra * (1 - fa); rgb = (fan[..., :3] * fa + reg[..., :3] * ra * (1 - fa)) / np.maximum(out_a, 1e-6)
+                bel[y0:y0 + nh, fx0c:fx0c + fan.shape[1], :3] = rgb; bel[y0:y0 + nh, fx0c:fx0c + fan.shape[1], 3] = out_a[..., 0] * 255
+                A[br0:br1, x0:x0 + CW] = bel.clip(0, 255).astype(np.uint8)
+                print('tail fan male: stalk end', xe, 'caudal', fx0c, '..', fx0c + fan.shape[1], 'h', nh); continue
             sx = np.nonzero((side[..., 3] > 60).sum(0))[0][0]; L = xb - xl
             fan = side[:, sx:sx + L]; ys = np.nonzero((fan[..., 3] > 60).sum(1))[0]; fan = fan[ys[0]:ys[-1] + 1]
             nh = max(6, int(fan.shape[0] * .7)); yi = (np.arange(nh) * fan.shape[0] / nh).astype(int); fan = fan[yi]   # V17.99 (owner: the tail looked corrupted, a stick with a blob): pressed flat on the glass, ~70 % of the side fan
