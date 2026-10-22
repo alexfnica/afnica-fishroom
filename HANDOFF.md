@@ -1,4 +1,120 @@
-# Handoff — where work stopped (2026-10-18: V17.100 belly view + nav overlap, NOT committed)
+# Handoff — where work stopped (2026-10-22: V17.101c fight + V17.102 arc turn COMMITTED and pushed; the fight is still not liked - see NEXT)
+
+## V17.102 bristlenose ARC TURN (owner: "turn naturally like a normal ancistrus"; "don't lift the specimen")
+- Investigation (ref. B7RksQ1xU18 25.0-27.75 s, grid `D:\ClaudeWork\scratch101\turnref_grid.jpg`): the real fish walks
+  forward round a curve while turning (~0.5 BL), body bent, tail swinging wide; ours (V17.95 pivot) spun on the spot and
+  passed through a flat head-on frame. Owner OK'd the still `AFNICA_Anc102_turn_still.jpg`.
+- `anc3d/render_turn4.py` (replaces render_turn3 for the T atlas): mid-body walks a half ellipse (RX .3 L forward, RZ .15 L
+  toward the viewer), heading = path tangent (head first), C-bend from the path ahead/behind (cap 1.05, 0 at both ends),
+  fin lift measured once on frame 0 and kept (no lift / bob), camera follows the fish's depth so the sand line stays put.
+  4 types → `out/turn102_raw` → `lut_match_photo100.py` → `out/turn102` (brightness 90/67/81/42 vs photo 91/68/82/43) →
+  `out/atlas102_T` (same layout as atlas100b_T, 2.2 MB). install90 packs it. **Commit: `git add -f
+  assets_blender/anc3d/out/atlas102_T.*`**.
+- block90.js turn draw: quick hand-over (3D in by u .06, photo gone by .1, reverse at the end; the old .15-.25 timing
+  showed a ghost double fish because the 3D walks off at once); at the glass the 3D is held back by the overshoot (nose
+  against the glass, reach 24 → 10 px, 7 px clear).
+- Measured (`trailer/probe_turn102.py`, FID/SEX/WALL=1): 2.0 s turns, max step 3.6-3.8 px/frame, belly line range 2 px,
+  end drift <= 1.6 px, 0 backward, 0 errors; natural 3 min (`measure_turn95.py`): 6 turns incl. a moving 1 s follow turn,
+  no errors. Video `AFNICA_Anc102_turns.mp4` (`trailer/film_turn102.py`).
+- Reviewer: no blockers. Not tested: a turn reversed mid-way (small vertical pop possible), juveniles in the game (frames
+  checked offline only), click target / shadow during the turn (they stay at the photo spot, up to ~24 px from the 3D).
+- **V17.102b (owner: "it hovers during the turn and highlights / changes colour - don't")**: measured in the game
+  (`D:\ClaudeWork\scratch101\probe_turnho.py`, FID/SEX): the baked turn shadow reached ~5 px below the fish (the photo has
+  NO shadow - the game's ancContactShadow is display:none in older code ~HTML 7960) and the lit 3D was 3-7 % brighter,
+  drifting as it turned. Fixes: anc_build2 `FLAT` option (texture as pure emission, no light; default False);
+  render_turn4 sets FLAT and hides the shadow-catcher floor; `norm_frames102.py` scales each turn frame to its frame 00
+  brightness; block90: ctx.filter brightness .967 (black male, MB) / .965 (females), female turn canvas 2 px lower.
+  After: black male / olive male / both female colours - fish bottom within ~1 px of the photo, luma within ~1.5 %.
+  Not measured: juveniles (JO/JB). Reviewer: no blockers (a shadow-walking attempt was a no-op and was removed).
+- **V17.102c (owner: "the image doubles when he turns")**: the V17.100 neighbour-frame blend (frame k + k2 at `mix`)
+  drew two frames a few px / degrees apart over each other mid-turn = a ghost double fish (semi-transparent px peak
+  1293 vs 689 without; rig `D:\ClaudeWork\scratch101\probe_ghost.py`, MIX=0). Now: no blend, 61 frames (render_turn4
+  TURN_N 60), the nearest one per game frame (one per frame of the 2 s turn); atlas102_T 244 cells 6240x4180, 1.26 MB
+  (~104 MB decoded, was ~88). The brightness filters were removed again (the blend had added opacity). After: ghost px =
+  baseline (max 701), max step 5 px/frame, colour within 2-3 % of the photo for both males and both female colours,
+  ground line within ~1.3 px, 0 backward, 0 errors. `window.ANC102MIX` hook gone with the blend.
+- Fight stills with the same rules (FLAT skin, everything on the sand, pair turned 30 deg) were rendered
+  (`AFNICA_Anc102_fight_still.jpg`, render_fight.py now has FLAT + no lifts/rears) but NOT animated or installed -
+  the owner's "no hover / no highlight" message was about the turn; ask before continuing the fight.
+- NEXT (owner chose "turn first"): the fight - owner: "doesn't look good", "they hover like airplanes". Plan agreed in
+  chat: far male stays on the sand (no .32 lift / nose-up), pair turned more toward the viewer instead; no gliding -
+  approach / break-away as real crawling baked in the frames, pushes move only a few px with visible effort.
+
+## V17.101 bristlenose male fight, head to head (owner's ref. youtube.com/watch?v=FbPG89ootMs; all 3 phases OK'd up to the grid)
+- Clip read (45 frames, 720p): males lie side by side facing the SAME way, flanks pressed, heads level (25-27 s, 69-83 s);
+  V / T / one over the other's back at 31-59 s; long near-still shoving holds, short ~1 s whirl bursts (81.2-82.2 s);
+  dorsals up, pectorals spread; slow pair pivot over ~60 s; ends apart, no chase. Cheek odontodes not visible at 720p.
+- Still (owner OK'd): `anc3d/still_fight101.py` → `AFNICA_Anc101_fight_stills.jpg` (clip 25.4 / 82.2 s next to the renders).
+  The game camera is side-on, so the pair is turned 18 deg toward the viewer and the far male rides up on the near one's
+  shoulder (lift .32, front up 10 deg), else he is hidden.
+- `render_fight.py` rewritten (old: `out/render_fight_v99_backup.py`): S settle 12 (photos → hold pose), H hold 16 cyclic
+  (push: far male presses in, near braces, slow tail sway, ±2 deg pair drift), W whirl 15 (tails thrown apart, two whips,
+  back to the hold). Layers P1 = near male, P2 = far. `out/fight101_raw` → `lut_match99.py out/fight97_raw out/fight97 ...`
+  → `out/fight101` → `out/atlas101_P` (86 cells, 7200x2080, 1.24 MB; atlas99_P was 1.86 MB / 7200x2600). install90 packs it.
+  **Commit needs `git add -f assets_blender/anc3d/out/atlas101_P.*`.**
+- block90.js fight: `SEQ101(T)` (T 20-28 s, runs 18-30 s): S, then rounds of H (2-4 pushes at 10 fps = 3.2-6.4 s) + W
+  (25 % two in a row), last push, S backwards to the photos. Walk-in: the intruder walks to the rival's x (from in front:
+  16 px past, then one pivot - the HTML move code ~7939 backs a fish up instead of turning for targets < 14 px behind,
+  that was the old "stacked 2-4 px apart" walk-in failure); follows a still-gliding rival; one "walk on" retry if stopped
+  the wrong way round; aligned = same facing, |dx| <= 12. Canvas on the intruder, mirrored with him when facing left
+  (`F.sg`). Ending unchanged: winner rests, loser darts on.
+- Measured (`trailer/measure_fight101.py`, headless, 2 adult males, no female, noon; LEFT=1 makes them face left first):
+  right + left fights "done" in 21.6-25.8 s, walk-in 11-14 s, backward frames 0, photo step max 2.58 px/frame outside
+  darts, 3D pair centroid max 3.3 px/frame (whirl), photos 0 % under the 3D, errors 0. Grid `AFNICA_Anc101_fight_grid.jpg`.
+- Reviewer: no blockers. Watch: a rival resting < 70 px from a wall can't be lined up (go96 clamp) → clean 'misaligned',
+  30 s cooldown, may retry fruitlessly; tank switch / water change mid-fight not re-tested (same release paths as V17.96).
+  Not done: the slow pair rotation over the fight, cheek-spine hooking, the T / on-top variants (only one hold pose).
+- **Hand-over fix (owner: "they teleport in and out of the animation")**, block90.js (backup `out/block90_v101a_backup.js`):
+  (1) the 3D pair stands on flat sand: no fight when the rival lies on / beside the cave tube (V17.89 ramp zone
+  `s.cave89` ±56 px, where `ovl89` lifts an arriving fish up to ~50-64 px) - roles swap if the other male is free, else a
+  15 s cooldown; after arrival they wait up to 2.5 s for `ovl89/ovA89/lift89` to settle, else 'uneven'. (2) layer 1 (near)
+  = the photo drawn on top (z-index, then DOM order), so the colours never swap. (3) fades: the 3D fades in over the
+  still-opaque photos (.4 s), the photos go (.2 s); at the end the reverse - no half see-through frames (a first
+  version blanked both for 2 frames, fixed). (4) each male's layer starts / ends on his own photo (dx, dy) and eases to
+  the pair spot over the 0.8 s settle. (5) the loser lies still 0.8-1.3 s before leaving (`P101` queue in tank96).
+  Rigs: `D:\ClaudeWork\scratch101\probe_ho2.py` (start/end every 0.1 s → `ho2_grid.jpg`), `probe_uneven.py`.
+  Re-measured right + left: "done", 0 backward, 2.58 px/frame max outside darts, 0 errors. Reviewer: one bug fixed
+  (loser pulled into a new fight lost his hold), rest minor (P101 is global across tanks but only touches its own fish).
+- **V17.101b movement (owner: "they overlap before the fight; during it they stay on one spot" → "do all")**
+  (backups `out/block90_v101b_backup.js`, `out/render_fight_v101a_backup.py`):
+  - Walk-in: the intruder stops 0.9 BL BEHIND the rival (F.D0); if he is in front, the rival pivots round first (leg 3)
+    so nobody walks through anybody.
+  - New frames (render_fight.py): A approach (pose only; A00 held 0.6 s while the photos go, then the game slides the far
+    male's layer in from 0.9 BL over 1.5 s), Q pivot (pair turns 30 deg more toward us, played forward + back),
+    Y / Z break-away (near / far male leaves; game slides him 0.75 BL forward in 0.9 s, done before the photos return).
+    A/Y/Z rendered `solo` (5th arg; no holdout - a sliding layer with holdout holes showed fragments); the game draws the
+    far layer first. S dropped. Layers: P1 = rival (near, canvas host), P2 = intruder (far).
+  - Drift: plan101 gives each push / whirl a shove (8-22 px per push, .3 BL per whirl, 60 % in the facing direction),
+    kept off the walls (room for the break-away) and out of the cave tube zone; the pair travels ~100 px in a fight.
+    At the break-away start (photos hidden) both photos are moved to where the 3D ends.
+  - Canvas 880x260 (440 css), cell drawn at +140 px. atlas101_P: 172 cells, 7200x3900, 2.5 MB (~112 MB decoded, was ~54).
+  - Measured (`measure_fight101.py`, now FISH env, LEFT=1|R nudges, fixed no-SEED bug): 5 headless fights + 3 in the
+    pane "done" 20-26 s, 0 backward frames, photo steps <= 2.58 px/frame, 3D pair <= 4.65 px/frame (whirl lunge), 0 errors.
+    All of them happened to face LEFT (the scenes put the intruder on the right); the right-facing path is the same code
+    with sg = +1, checked by hand, not seen running since this change.
+    Grid `AFNICA_Anc101b_fight_grid.jpg`; start/end rig `D:\ClaudeWork\scratch101\probe_ho2.py`.
+  - Reviewer fixes: a start spot near a wall / the tube makes plan101 shove the pair out of it, and the loser's
+    break-away spot is clamped to 70..W-70; the intruder's y offset is eased back in at the end too; an abort mid-fight
+    puts the photos where the pair drifted to. Left as is (minor): fixed layer order (rival always near), leg 3 when
+    the rival is against the wall can still walk through him (rare). **Memory**: recol97 caches a 600x260 canvas per
+    cell per colour key with no eviction - a black male fighting adds up to ~100 MB over many fights on top of the
+    ~112 MB decoded atlas; check on phones / Safari, an LRU in recol97 is the obvious fix.
+- **V17.101c (owner: "they don't fight with the head / the horns any more, only tails"; "a highlight on the body at the
+  start, still a small teleport")**:
+  - Measured the start (`D:\ClaudeWork\scratch101\probe_start101.py`, photo vs 3D A00 per fish, clip x3): 3D dorsal
+    6-10 px lower (START had fold .3), olive 3D body 3.6 px lower, local specular shine on head/back.
+  - anc_build2.py: module vars `ROUGH, SHINE` (defaults unchanged .55/.28); render_fight.py renders matte (.85/.06),
+    START fold 0. New phase K (18 frames, 12 fps): head / bristle strikes - the far male swings his head (about his
+    mid-body, `turn_mid`) into the near one's snout, front up, the near one's head knocked away; then the near one
+    rears and strikes back. All 208 frames re-rendered → `out/fight101c` (LUT) ×1.06 brightness → atlas101_P
+    (7200x4680, 3.1 MB, ~135 MB decoded). Game: bursts K 65 % (30 % twice) / W 35 %, K drift .12 BL; near layer -2 px,
+    far +2 px y nudge eased over the first / last .8 s. After: olive 3D vs photo luma 89.9/90.5, centroid within ~1 px;
+    black male 3D 4.7 % lighter (his colour comes from the shared MB map - not touched).
+  - Measured: 3 fights "done", 0 backward, 3D pair <= 4.6 px/frame, 0 errors; sequences like AHWHKHKHZ.
+    Video `AFNICA_Anc101_fight.mp4` (`trailer/film_fight101.py`, ZOOM=2.6, SEED 3).
+  - Reviewer: no blockers. Black male's fight layers drawn with `ctx.filter brightness(.955)` (key MB) → luma 68.5 vs
+    photo 68.3 (no effect where ctx.filter is unsupported). Fights now run ~22-31 s (double K bursts overrun the
+    20-28 s plan a little). Memory: atlas101_P ~135 MB decoded - still the open item above.
 
 ## V17.100 (owner: "fish only a fragment on the sand"; "2 sets of bottom fins, double tail")
 - **Fragment on the sand (real cause)**: a load race in the V17.42 fin code. The V17.90 block swaps the bristlenose CSS to

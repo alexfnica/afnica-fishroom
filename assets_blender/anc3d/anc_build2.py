@@ -10,6 +10,8 @@ import anc_build as B
 INC = os.path.join(B.HERE, '..', 'incoming')
 LEN = {'M': 3.39, 'F': 3.30, 'JO': 3.39, 'JB': 3.30}   # juveniles sit in the male / female column of the sheet
 EMIT = .22                                     # photo brightness added on top of the lighting
+FLAT, FLAT_E = False, 1.0                      # V17.102 (owner: "no highlight, it must not change colour during the animation"): the skin shows the photo texture as pure emission, no lighting on it (the lights still cast the shadow)
+ROUGH, SHINE = .55, .28                        # V17.101c: body shine (render_fight sets a matte skin: the photos have no highlight)
 HANG = False                                   # V17.100 turn frames: paired fins + chin bristles hang below the belly like the photo (no ground clamp; the caller lifts the fish)
 FIN_REACH = .5                                 # how far out the paired fins reach the sand (smaller = steeper, more visible from the side)                    # snout -> caudal tip in units (1 unit = 32.5 game px), like the old sprites
 
@@ -84,8 +86,8 @@ def masked(sp, which):
 
 def mat_body(name, sp):
     m = bpy.data.materials.new(name); m.use_nodes = True; nt = m.node_tree; nt.nodes.clear(); N, L = nt.nodes, nt.links
-    out = N.new('ShaderNodeOutputMaterial'); bs = N.new('ShaderNodeBsdfPrincipled'); bs.inputs['Roughness'].default_value = .55
-    try: bs.inputs['Specular IOR Level'].default_value = .28
+    out = N.new('ShaderNodeOutputMaterial'); bs = N.new('ShaderNodeBsdfPrincipled'); bs.inputs['Roughness'].default_value = ROUGH
+    try: bs.inputs['Specular IOR Level'].default_value = SHINE
     except Exception: pass
     def tex(im, uv):
         t = N.new('ShaderNodeTexImage'); t.image = im; t.interpolation = 'Cubic'; t.extension = 'EXTEND'
@@ -96,15 +98,25 @@ def mat_body(name, sp):
     wt = N.new('ShaderNodeMapRange'); wt.inputs['From Min'].default_value = .45; wt.inputs['From Max'].default_value = .85; L.new(sep.outputs['Z'], wt.inputs['Value'])
     m1 = N.new('ShaderNodeMix'); m1.data_type = 'RGBA'; L.new(wt.outputs['Result'], m1.inputs['Factor']); L.new(ts.outputs['Color'], m1.inputs[6]); L.new(tt.outputs['Color'], m1.inputs[7])
     m2 = N.new('ShaderNodeMix'); m2.data_type = 'RGBA'; L.new(wb.outputs['Result'], m2.inputs['Factor']); L.new(m1.outputs[2], m2.inputs[6]); L.new(tb.outputs['Color'], m2.inputs[7])
-    L.new(m2.outputs[2], bs.inputs['Base Color']); L.new(m2.outputs[2], bs.inputs['Emission Color']); bs.inputs['Emission Strength'].default_value = EMIT
+    if FLAT: bs.inputs['Base Color'].default_value = (0, 0, 0, 1); bs.inputs['Roughness'].default_value = 1.
+    else: L.new(m2.outputs[2], bs.inputs['Base Color'])
+    if FLAT:
+        try: bs.inputs['Specular IOR Level'].default_value = 0.
+        except Exception: pass
+    L.new(m2.outputs[2], bs.inputs['Emission Color']); bs.inputs['Emission Strength'].default_value = FLAT_E if FLAT else EMIT
     L.new(bs.outputs['BSDF'], out.inputs['Surface']); return m
 
 def mat_fin(name, im):
     m = bpy.data.materials.new(name); m.use_nodes = True; nt = m.node_tree; nt.nodes.clear(); N, L = nt.nodes, nt.links
-    out = N.new('ShaderNodeOutputMaterial'); bs = N.new('ShaderNodeBsdfPrincipled'); bs.inputs['Roughness'].default_value = .6
+    out = N.new('ShaderNodeOutputMaterial'); bs = N.new('ShaderNodeBsdfPrincipled'); bs.inputs['Roughness'].default_value = max(.6, ROUGH)
     t = N.new('ShaderNodeTexImage'); t.image = im; t.interpolation = 'Cubic'; t.extension = 'CLIP'
     u = N.new('ShaderNodeUVMap'); u.uv_map = 'uv'; L.new(u.outputs['UV'], t.inputs['Vector'])
-    L.new(t.outputs['Color'], bs.inputs['Base Color']); L.new(t.outputs['Color'], bs.inputs['Emission Color']); bs.inputs['Emission Strength'].default_value = EMIT
+    if FLAT:
+        bs.inputs['Base Color'].default_value = (0, 0, 0, 1); bs.inputs['Roughness'].default_value = 1.
+        try: bs.inputs['Specular IOR Level'].default_value = 0.
+        except Exception: pass
+    else: L.new(t.outputs['Color'], bs.inputs['Base Color'])
+    L.new(t.outputs['Color'], bs.inputs['Emission Color']); bs.inputs['Emission Strength'].default_value = FLAT_E if FLAT else EMIT
     L.new(t.outputs['Alpha'], bs.inputs['Alpha']); L.new(bs.outputs['BSDF'], out.inputs['Surface'])
     try: m.surface_render_method = 'DITHERED'
     except Exception: pass

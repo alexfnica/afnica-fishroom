@@ -65,7 +65,7 @@
  function turnCanvas(el,sex){
   let c=el.querySelector(':scope>canvas.anc94t');
   if(!c){c=document.createElement('canvas');c.className='anc94t';c.width=480;c.height=220;el.appendChild(c);}
-  c.style.top=((sex==='F'||sex==='JB'?-4:-10)+48.4-64)+'px';return c;
+  c.style.top=((sex==='F'?-2:sex==='JB'?-4:-10)+48.4-64)+'px';return c;   /* V17.102b: measured - the female's 3D sat 2 px above her photo (looked lifted) */
  }
  function canvasFor(el,sex){
   let c=el.querySelector(':scope>canvas.anc90c');
@@ -242,12 +242,17 @@
   /* V17.95 pivot turn (replaces the V17.94 walking U-turn, which walked 39 px out and back = 6.2 px/frame): the fish turns
      almost on the spot (render_turn3.py: belly down, pectorals spread, gentle curve, head away, tail sweeping toward the
      viewer); the photo drawing cross-fades in place over the first/last 15 % */
-  const u=tu.u,kf=48*u,k=Math.min(48,Math.floor(kf)),k2=Math.min(48,k+1),mix=kf-k,a3=u<.15?u/.15:u>.85?(1-u)/.15:1,sg=u<.5?tu.from:tu.to;
-  setSign(sg);el.style.setProperty('clip-path','none','important');el.classList.add('anc90');fade(tank,el,u<.5?Math.min(1,Math.max(0,(.25-u)/.1)):Math.min(1,Math.max(0,(u-.75)/.1)));   /* V17.100 (owner: graphic glitch when they turn): the photo stays opaque UNDER the 3D while it fades in (and out) and only fades itself while the 3D is fully opaque on top - no see-through fish (two half-faded layers were ~75 % opaque) */
+  const u=tu.u,k=Math.min(60,Math.round(60*u)),a3=u<.06?u/.06:u>.94?(1-u)/.06:1,sg=u<.5?tu.from:tu.to;
+  setSign(sg);el.style.setProperty('clip-path','none','important');el.classList.add('anc90');fade(tank,el,u<.5?Math.min(1,Math.max(0,(.1-u)/.04)):Math.min(1,Math.max(0,(u-.9)/.04)));   /* V17.102 arc turn: the 3D walks off at once, so the hand-over is quick (3D in by u .06, photo gone by .1; reverse at the end) - else a ghost double fish */   /* V17.100 (owner: graphic glitch when they turn): the photo stays opaque UNDER the 3D while it fades in (and out) and only fades itself while the 3D is fully opaque on top - no see-through fish (two half-faded layers were ~75 % opaque) */
   if(f.tx94){f.tx94=0;el.style.removeProperty('translate');}
   const c=turnCanvas(el,sex),g=c.getContext('2d');c.style.display='block';g.clearRect(0,0,480,220);
-  c.style.translate='none';
-  const AT97=recol97(ATL.T,rc97(el)),mir=(tu.from<0)!==(sg<0);blit(g,AT97,sex+'_turn'+String(k).padStart(2,'0'),mir,a3,220);   /* V17.100: 49 turn frames (render_turn3 N 48), half the step between blended neighbours */if(mix>.02&&k2!==k)blit(g,AT97,sex+'_turn'+String(k2).padStart(2,'0'),mir,a3*mix,220);   /* right->left as rendered, left->right mirrored */
+  /* V17.102 (reviewer): the arc walks the head ~.3 BL forward; at the glass he turns with his nose against it instead of
+     walking through it - the 3D is held back by the overshoot (screen px -> the fish element's own frame) */
+  let tx102=0;if(s&&isFinite(s.x)){const sk=scl||1,BLt=112*sk,q=Math.min(1,Math.max(0,u)),e5=q*q*q*(q*(q*6-15)+10),fw=.3*BLt*Math.sin(Math.PI*e5),head=s.x+tu.from*(.5*BLt+fw),lim=tu.from>0?(tank.clientWidth||960)-6:6,ov=Math.max(0,tu.from*(head-lim));tx102=-tu.from*ov/sk*sg;
+   /* V17.102b (owner: "it hovers during the turn"): the 3D frames carry no baked shadow any more - like the photo, whose game
+      contact shadow is hidden by older code (display none) */}
+  c.style.translate=tx102?tx102.toFixed(2)+'px 0':'none';
+  const AT97=recol97(ATL.T,rc97(el)),mir=(tu.from<0)!==(sg<0);g.filter='none';   /* V17.102b: the black male's map came out 3 % lighter than his photo */blit(g,AT97,sex+'_turn'+String(k).padStart(2,'0'),mir,a3,220);/* V17.102c (owner: "the image doubles when he turns"): no neighbour-frame blend any more - the arc walks and rotates fast mid-turn, so two frames drawn over each other read as a double fish (ghost px peak 1293 -> 689); 61 frames = one per game frame instead */   /* right->left as rendered, left->right mirrored */
  }
 
  const prev=window.ancPostV1789;
@@ -396,69 +401,114 @@
     close. Then both photos fade out and the 3D pair (render_fight.py, both fish in one frame) plays: settle, 3-6 tail
     sweeps, a head shove (1 s, always moving), spine strikes (V17.98, was half a circle); 30 % play it twice. The winner (cave holder > size > health +
     luck) stays and rests, the loser darts away (V17.95 dart). Visual only: health stays with ancTerritorialClashCheck40.
-    The pair canvas hangs on the right-facing fish (its scale, never mirrored); fish state only in memory (s.fight96).
+    The pair canvas hangs on the intruder (V17.101; mirrored with his element when the pair faces left - the photo anchor 57.7 and the pair centre flip about the same x, so they stay lined up); fish state only in memory (s.fight96).
+    V17.101: now HEAD TO HEAD (see SEQ101 / start96); the walk-in, sequence and frames above are the V17.96-99 version.
     Switch: window.ANC96=false; debug: anc90Debug().F96 */
  const F96={},CD96={},R96={},C96={calls:0,ticks:0,males:0,close:0,starts:0};let N96=0;
- const SEQ96=n=>{const q=[['A',12]];for(let i=0;i<n;i++)q.push(['B',12]);q.push(['C',15],['D',21]);return q;};
+ /* V17.101 (owner's ref. youtube FbPG89ootMs, poses OK'd in AFNICA_Anc101_fight_stills.jpg): HEAD TO HEAD - both face the
+    same way side by side (render_fight.py S/H/W). S settle 0.8 s, then rounds of a long shoving hold (H, 16-frame push
+    cycle at 10 fps, 2-4 pushes = 3.2-6.4 s) and a 1 s whirl burst (W, 25 % two in a row), about 20-28 s in all; the end is
+    one more push and S played backwards, back to the two photos. Entries {ph,n,fps,mod,rev}. */
+ /* V17.101b (owner: "they overlap before the fight, and during it they stay on one spot"): A = the intruder slides in
+    from 0.9 BL behind (2 s, the game moves his layer), then rounds of H pushes + W whirls with one or two slow pivots (Q
+    forward + back), the last push, then a break-away (Y near male leaves / Z far male leaves, 1.5 s, the game moves the
+    leaver's layer). Every entry may carry dv = how far the whole pair is shoved along the sand (planned in plan101). */
+ const SEQ101=(T,X)=>{const q=[{ph:'A',n:1,fps:1/.6},{ph:'A',n:15,fps:7.5}];let t=2.6,piv=Math.random()<.5?2:1;
+  while(t<T-4.2){const c=Math.max(2,Math.min(2+Math.floor(Math.random()*3),Math.floor((T-3.1-t)/1.6)));q.push({ph:'H',n:16*c,fps:10,mod:16,c});t+=1.6*c;
+   if(piv&&t>5&&t<T-8&&Math.random()<.6){piv--;q.push({ph:'Q',n:10,fps:6},{ph:'Q',n:10,fps:6,rev:1});t+=3.3;continue;}
+   if(Math.random()<.65){const k=Math.random()<.3&&t<T-6?2:1;for(let j=0;j<k;j++)q.push({ph:'K',n:18,fps:12});t+=1.5*k;continue;}   /* V17.101c (owner: "they fight with the head, the horns"): head / bristle strikes, the far male hits, the near one strikes back */
+   const w=Math.random()<.25&&t<T-5?2:1;for(let j=0;j<w;j++)q.push({ph:'W',n:15,fps:15});t+=w;}
+  q.push({ph:'H',n:16,fps:10,mod:16,c:1},{ph:X,n:15,fps:10});return q;};
+ function plan101(F,W){                                     /* drift: the stronger push wins ground; never closer than the break-away needs to a wall */
+  const BL=F.BL,sg=F.sg,lo=70+.6*BL+(sg<0?F.D1:0),hi=W-70-.6*BL-(sg>0?F.D1:0);let x=F.px0;
+  const tb=F.R.s.cave89,bad=v=>v<lo||v>hi||!!tb&&[v,v+sg*F.D1].some(w=>w>tb[0]-60-.5*BL&&w<tb[1]+60+.5*BL);   /* nor into the cave tube's ramp zone */
+  for(const e of F.q){let d=0;if(e.ph==='H')d=(Math.random()<.6?sg:-sg)*(8+Math.random()*14)*e.c;else if(e.ph==='W')d=(Math.random()<.6?sg:-sg)*.3*BL;else if(e.ph==='K')d=(Math.random()<.6?sg:-sg)*.12*BL;
+   if(bad(x)&&d){const m=Math.abs(d),c=(lo+hi)/2;d=!bad(x+m)?m:!bad(x-m)?-m:(x<c?m:-m);}   /* reviewer: start spot too near a wall / the tube - shove out of it */
+   else{if(bad(x+d))d=-d;if(bad(x+d))d=0;}e.dv=d;x+=d;}
+ }
  function free96(e){const s=e.s;return e.fish&&e.fish.sex==='M'&&!s.young&&sandOk95(s)&&!s.cavePhase&&!s.turn&&(s.mode==='graze'||s.mode==='rest'||s.mode==='move'||s.fight96);}
  function hold96(s){return s.cave96&&performance.now()-s.cave96<120000;}
  function release96(F,why){
+  if(why!=='done'&&F.ph==='fight'&&F.px!=null&&!F.xs){const Wd=F.a.tank.clientWidth||960;for(const e of [F.R,F.O]){const s=e.s;s.x=clamp(e===F.R||F.t>2.2?F.px:s.x,70,Wd-70);s.tx=s.x;}}   /* reviewer: aborted mid-fight - the photos come back where the pair drifted to */
   for(const e of [F.a,F.b]){const s=e.s;s.fight96=null;if(s.wait>100)s.wait=1+Math.random()*2;fade(e.tank,e.el,1);}
   const m=R96[F.tid]||{};for(const e of [F.a,F.b]){const n=m[e.fish.id];if(n&&n.el!==e.el)fade(n.tank,n.el,1);}   /* the tank was redrawn: new elements */
   if(F.cv)F.cv.remove();delete F96[F.tid];CD96[F.key]=performance.now()+(why==='done'?180000:30000);F.end=why;window.__f96last=F;
  }
  function go96(e,tx){const s=e.s;s.mode='move';s.tx=clamp(tx,70,(e.tank.clientWidth||960)-70);s.ty=s.y;s.wait=0;s.dk95=s.tx;s.force95=null;s.fg=null;}
  function stop96(e){const s=e.s;if(s.mode!=='rest'||s.wait<100){s.mode='rest';s.wait=999;s.tx=s.x;s.ty=s.y;s.fg=null;s.nudgeV=0;s.raspV=0;}}
+ const flat101=s=>(s.ovl89||0)<1&&Math.abs(s.ovA89||0)<1&&!((s.lift89||0)>.05);   /* V17.101 (owner: teleport into the fight): on flat sand, not lifted over / tilted on the cave tube */
  function start96(tid,a,b,now){
-  const BL=112*(a.sc||1),rf=b.s.face<0?-1:1,W=a.tank.clientWidth||960,behind=(a.s.x-b.s.x)*rf<0;
+  const ok=e=>{const t=e.s.cave89;return flat101(e.s)&&!(t&&e.s.x>t[0]-56&&e.s.x<t[1]+56);};
+  if(!ok(b)){if(ok(a)){const t=a;a=b;b=t;}else{CD96[[a.fish.id,b.fish.id].sort().join('|')]=performance.now()+15000;return;}}   /* the other one comes to him instead */   /* V17.101: the rival lies on / beside the cave tube (its ramp zone, V17.89 ovl89 lifts anyone arriving there) - no fight there, the 3D pair stands on flat sand */
+  const BL=112*(a.sc||1),rf=b.s.face<0?-1:1;
   const F={tid,a,b,key:[a.fish.id,b.fish.id].sort().join('|'),ph:'walk',t:0,leg:2,rf,BL,n:++N96,tmax:10+Math.abs(a.s.x-b.s.x)/20};
-  /* V17.99 (owner: "they spin against each other"): no walk round the rival's head and U-turn back (that was the circling).
-     If both face the same way and the intruder is behind, the territorial male turns to face him (one pivot), then the
-     intruder slides in alongside; otherwise the intruder comes straight in (turning once himself if he must). */
-  const fa=a.s.face<0?-1:1;
-  if(fa===rf&&behind){F.leg=3;stop96(a);go96(b,b.s.x-rf*6);}else{F.leg=2;go96(a,b.s.x-rf*4);}
-  a.s.fight96=b.s.fight96=F;F96[tid]=F;if(F.leg!==3)stop96(b);   /* V17.99: unless he first turns to face the intruder */           /* the rival lies still, as in the clip */
+  /* V17.101: head to head (ref. FbPG89ootMs) - the intruder comes in alongside the rival facing the same way: from behind
+     straight in; from in front 16 px past the rival's middle, then one pivot to the rival's way and a short step. */
+  F.D0=.9*BL;F.D1=.75*BL;                                    /* V17.101b: he stops 0.9 BL behind the rival (the 3D approach slides him in), the loser breaks away 0.75 BL */
+  const ahead=(a.s.x-b.s.x)*rf>-F.D0;F.off=rf*(F.D0+(ahead?16:0));
+  if((a.s.x-b.s.x)*rf>.5*F.D0){F.leg=3;F.tr=b.s.face;stop96(a);go96(b,b.s.x-rf*16);}   /* V17.101b: he is in front of the rival - the rival turns round (a pivot) so the intruder comes from behind, never walking through him */
+  else go96(a,b.s.x-F.off);   /* from in front: 16 px past the spot, then a pivot - the move code backs a fish up (no turn) for a target < 14 px behind */
+  a.s.fight96=b.s.fight96=F;F96[tid]=F;if(F.leg!==3)stop96(b);   /* the rival lies still, as in the clip */
  }
  function step96(F,dt,now){
   const a=F.a,b=F.b,A=a.s,Bs=b.s;F.t+=dt;
   if(!a.el.isConnected||!b.el.isConnected||F.cv&&F.cv.parentElement!==F.R.el||!free96(a)&&!A.turn||!free96(b)&&!Bs.turn){release96(F,'abort');return;}
-  if(F.ph==='walk'){if(F.leg===3){if(F.t>F.tmax){release96(F,'timeout');return;}if(Bs.mode==='move'||Bs.turn)return;F.rf=Bs.face<0?-1:1;if(F.rf===(A.face<0?-1:1)){release96(F,'misaligned');return;}F.leg=2;F.t=0;F.tmax=10+Math.abs(A.x-Bs.x)/20;stop96(b);go96(a,Bs.x-F.rf*4);return;}   /* reviewer: no turn happened (wall) -> no pointless walk; fresh walk timer */   /* V17.99: the rival has turned to face him */
+  if(F.ph==='walk'){
+   if(F.leg===3){if(F.t>6){release96(F,'timeout');return;}if(Bs.mode==='move'||Bs.turn)return;stop96(b);F.rf=Bs.face<0?-1:1;F.leg=2;   /* the rival has turned (or could not: wall) */
+    const ah=(A.x-Bs.x)*F.rf>-F.D0;F.off=F.rf*(F.D0+(ah?16:0));go96(a,Bs.x-F.off);F.tmax=F.t+10+Math.abs(A.x-Bs.x)/20;return;}
    if(Math.abs(A.x-Bs.x)<1.8*F.BL)stop96(b);
    if(F.t>F.tmax){release96(F,'timeout');return;}
+   if(A.mode==='move'){const tx=clamp(Bs.x-(F.leg===2?F.off:F.rf*F.D0),70,(a.tank.clientWidth||960)-70);if(Math.abs(A.tx-tx)>6){A.tx=tx;A.dk95=tx;}}   /* V17.101: the rival may still be gliding when it starts - follow him, never walk to where he was */
    if(A.mode==='move'||A.turn)return;
    const fa=A.face<0?-1:1,fb=Bs.face<0?-1:1;
-   if(fa===fb||Math.abs(A.x-Bs.x)>12){release96(F,'misaligned');return;}
+   F.rf=fb;if(fa!==fb&&F.leg===2&&!F.re&&Math.abs(A.x-(Bs.x-fb*(F.D0+16)))>6){F.re=1;F.off=fb*(F.D0+16);go96(a,Bs.x-F.off);return;}   /* V17.101: stopped beside him the wrong way round (e.g. already stacked on him): walk on to 16 px past his middle first */
+   if(fa!==fb&&F.leg===2){F.leg=4;go96(a,Bs.x-fb*F.D0);return;}   /* V17.101: came in from the front - pivot to the rival's way, short step alongside */
+   if(fa!==fb||Math.abs(A.x-(Bs.x-fb*F.D0))>12){release96(F,'misaligned');return;}
    stop96(a);stop96(b);
-   const R=fa>0?a:b,O=R===a?b:a,tw=Math.random()<.3;
-   F.ph='fight';F.t=0;F.R=R;F.O=O;F.q=SEQ96(3+Math.floor(Math.random()*4)).concat(tw?SEQ96(2+Math.floor(Math.random()*3)).slice(1):[]);
-   F.T=F.q.reduce((t,x)=>t+x[1],0)/15;F.nD=0;   /* V17.98: D = spine strikes, nobody changes sides (was a half circle) */F.k1=rc97(R.el);F.k2=rc97(O.el);   /* V17.97: each male in his own colour (fish 1 = the right-facing one) */
+   if(!flat101(A)||!flat101(Bs)||Math.abs(a.el.offsetTop-b.el.offsetTop)>3){F.wf=(F.wf||0)+dt;if(F.wf>2.5)release96(F,'uneven');return;}   /* still easing down off the cave tube: wait, give up after 2.5 s */
+   const R=b,O=a;                                            /* V17.101b: the rival is the near male (layer 1, canvas host), the intruder slides in on the far side and rides up on his shoulder */
+   F.ph='fight';F.t=0;F.R=R;F.O=O;F.sg=fa;F.px0=Bs.x;F.s=R.sc||1;F.nD=0;
    const sc=e=>(hold96(e.s)?2:0)+(+e.fish.age||0)/40+(+e.fish.health||0)/100+Math.random();F.win=sc(a)>=sc(b)?a:b;
-   const c=document.createElement('canvas');c.className='anc96p';c.width=600;c.height=260;R.el.appendChild(c);F.cv=c;
+   F.q=SEQ101(20+Math.random()*8,F.win===R?'Z':'Y');plan101(F,a.tank.clientWidth||960);
+   F.T=F.q.reduce((t,x)=>t+x.n/x.fps,0);F.k1=rc97(R.el);F.k2=rc97(O.el);   /* V17.97: each male in his own colour */
+   F.e2=A.x-(Bs.x-fa*F.D0);F.dy2=(O.el.offsetTop-R.el.offsetTop)/F.s;   /* the intruder's photo vs where the approach starts: eased out over the first 0.8 s */
+   const c=document.createElement('canvas');c.className='anc96p';c.width=880;c.height=260;R.el.appendChild(c);F.cv=c;   /* 440 css px: room for the layers sliding in / out */
    return;
   }
   if(F.ph==='fight'){
    stop96(a);stop96(b);
-   const t=Math.min(F.t,F.T),al=Math.min(1,t/.3,(F.T-t)/.3);
-   let f=t*15,k=0;while(k<F.q.length-1&&f>=F.q[k][1]){f-=F.q[k][1];k++;}
-   const [ph,n]=F.q[k],i=Math.min(n-1,Math.floor(f));F.cur=ph+i;
-   F.al=al;for(const e of [a,b])fade(e.tank,e.el,1-al);
-   if(F.nD%2&&!F.flipped&&F.t>=F.T-.3){                    /* odd number of half circles: the two swapped sides - the photos fade back in turned round */
-    F.flipped=1;for(const e of [a,b]){const q=e.s;q.face=q.face<0?1:-1;q.fv=q.face;q.turn=null;const f=ST.get(e.el);if(f){f.df=q.face;f.turn=null;}}
-    const t=F.R;F.R=F.O;F.O=t;F.R.el.appendChild(F.cv);      /* the canvas always hangs on the right-facing fish (never mirrored) */
-   }
-   const c=F.cv,R=F.R,O=F.O,s=R.sc||1,dx=(O.s.x-R.s.x)/2/s;
-   c.style.left=(57.7-150+dx).toFixed(2)+'px';c.style.top=(38.4-84)+'px';
-   const g=c.getContext('2d');g.clearRect(0,0,600,260);const nm=ph+String(i).padStart(2,'0');blit(g,recol97(ATL.P,F.k1),'P1_'+nm,false,al);blit(g,recol97(ATL.P,F.k2),'P2_'+nm,false,al);
+   /* V17.101 (owner: "teleports in and out"): the 3D fades in over the still-opaque photos (.4 s), then the photos go (.2 s);
+      at the end the photos come back under the opaque 3D, then the 3D fades out - never two half see-through layers */
+   const t=Math.min(F.t,F.T),al=sm(Math.min(1,t/.4,(F.T-t)/.4)),po=Math.max(0,Math.min(1,Math.max(1-(t-.4)/.2,1-(F.T-.4-t)/.2)));
+   let r=t,k=0,px=F.px0;while(k<F.q.length-1&&r>=F.q[k].n/F.q[k].fps){r-=F.q[k].n/F.q[k].fps;px+=F.q[k].dv||0;k++;}
+   const e=F.q[k],ph=e.ph,dur=e.n/e.fps;let i=Math.min(e.n-1,Math.floor(r*e.fps));if(e.mod)i%=e.mod;if(e.rev)i=e.n-1-i;F.cur=ph+i;
+   px+=(e.dv||0)*sm(r/dur);F.px=px;                          /* V17.101b: the pair is shoved along the sand */
+   F.al=al;F.po=po;for(const q of [a,b])fade(q.tank,q.el,po);
+   const R=F.R,O=F.O,s=F.s,sg=F.sg,L=F.win===R?O:R;
+   if((ph==='Y'||ph==='Z')&&!F.xs){F.xs=1;                   /* the break-away starts (photos hidden): put both photos where the 3D will end */
+    const Wd=a.tank.clientWidth||960;for(const q of [R,O]){q.s.x=clamp(q===L?px+sg*F.D1:px,70,Wd-70);q.s.tx=q.s.x;q.s.ty=q.s.y;q.el.style.setProperty('left',(q.s.x-60)+'px','important');}}
+   const c=F.cv,rx=parseFloat(R.el.style.left);const Rex=isFinite(rx)?rx+60:R.s.x;
+   c.style.left=(57.7-220+(px-Rex)/s*sg).toFixed(2)+'px';c.style.top=(38.4-84)+'px';
+   const g=c.getContext('2d');g.clearRect(0,0,880,260);const nm=ph+String(i).padStart(2,'0');
+   const kk=1-sm(Math.min(1,t/.8)),ky=1-sm(Math.min(1,t/.8,(F.T-t)/.8));let o1=0,o2=2*F.e2*sg/s*kk,y1=-2*2*ky,y2=2*F.dy2*ky+2*2*ky;   /* y: the intruder's photo row at both ends; V17.101c measured hand-over: the near 3D male sits 2 px low, the far one 2 px high vs their photos */   /* canvas px (2x), in the fish's own (unmirrored) frame */
+   if(ph==='A')o2-=2*F.D0/s*(1-sm((t-.6)/1.5));             /* once the photos are gone (.6 s) he slides in from 0.9 BL behind over 1.5 s (peak ~3.6 px/frame) - no double image */
+   if(ph==='Y')o1+=2*F.D1/s*sm(r/.9);if(ph==='Z')o2+=2*F.D1/s*sm(r/.9);   /* the loser breaks away forward, there before the photos come back (T-.6) */
+   const fk=k=>k==='MB'?'brightness(.955)':'none';   /* V17.101c: the fight frames are x1.06 for the olive photo; a black male's (MB map) came out 4.7 % lighter than his photo */
+   g.save();g.filter=fk(F.k2);g.translate(140+o2,y2);blit(g,recol97(ATL.P,F.k2),'P2_'+nm,false,al);g.restore();   /* far male first: A/Y/Z frames are whole fish (no holdout), the near one covers him */
+   g.save();g.filter=fk(F.k1);g.translate(140+o1,y1);blit(g,recol97(ATL.P,F.k1),'P1_'+nm,false,al);g.restore();
    if(F.t>=F.T){
-    const L=F.win===a?b:a,W2=F.win,fl=L.s.face<0?-1:1,BL=F.BL;release96(F,'done');
+    const W2=F.win,fl=L.s.face<0?-1:1,BL=F.BL;release96(F,'done');
     W2.s.mode='rest';W2.s.wait=3+Math.random()*3;
     const ahead=room95(L.s,fl),back=room95(L.s,-fl),dir=ahead>BL?fl:back>BL?-fl:0;
-    if(dir){L.s.mode='move';L.s.tx=L.s.x+dir*Math.min(dir===fl?ahead:back,1.4*BL);L.s.ty=L.s.y;L.s.wait=0;L.s.force95=L.s.tx;L.s.dk95=null;}
-    else{L.s.mode='rest';L.s.wait=4;}
+    L.s.mode='rest';L.s.wait=dir?30:4;L.s.tx=L.s.x;L.s.ty=L.s.y;
+    if(dir)P101.push({L,at:now+800+Math.random()*500,tx:L.s.x+dir*Math.min(dir===fl?ahead:back,1.4*BL)});   /* V17.101: he lies still a moment (0.8-1.3 s) after the 3D hands back, then leaves */
    }
   }
  }
+ const P101=[];
  function tank96(tid,now,dt){
+  for(let j=P101.length-1;j>=0;j--){const p=P101[j],s=p.L.s;if(now<p.at)continue;P101.splice(j,1);
+   if(!s.fight96&&s.mode==='rest'&&p.L.el.isConnected&&sandOk95(s)){s.mode='move';s.tx=p.tx;s.ty=s.y;s.wait=0;s.force95=s.tx;s.dk95=null;}else if(!s.fight96&&s.mode==='rest'&&s.wait>20)s.wait=1;}
   const list=Object.values(R96[tid]||{});
   const F=F96[tid];if(F){step96(F,dt,now);return;}
   if(window.ANC96===false||!ready(ATL.P))return;
@@ -477,7 +527,7 @@
   if(s.cavePhase||CAVEMODES[s.mode]||s.mode==='cave-approach')s.cave96=performance.now();
   const now=performance.now(),m=R96[tank.id]||(R96[tank.id]={});
   m[fish.id]={tank,el,s,fish,sc,seen:now};
-  if(s.fight96&&s.fight96.ph==='fight'&&s.fight96.al!=null)fade(tank,el,1-s.fight96.al);   /* after this fish's own drawing pass */
+  if(s.fight96&&s.fight96.ph==='fight'&&s.fight96.po!=null)fade(tank,el,s.fight96.po);   /* after this fish's own drawing pass */
   if(blocked)return;
   for(const k in m)if(now-m[k].seen>1500)delete m[k];
   if(Object.keys(m)[0]!==String(fish.id))return;            /* once per frame per tank: on the first fish still there */
@@ -515,6 +565,6 @@
   'html .ancArt.ancFemale .ancGlass::after{clip-path:circle(6.4px at 104.9px 37.1px)!important;transform-origin:104.9px 37.1px!important;transform:scale(calc(1.17 - .17*var(--anc-mouth,1)))!important}';   /* females: a smaller, milder pulse inside the disc (the faint second ring around it is left alone) */   /* V17.97 rasping on the glass: the oral disc swells up to 10 % (a copy, clipped to the disc, always covering the original); the old squashed oval smeared the tentacles */
  css.textContent+='html .ancArt:not([data-stage91]):not(.ancFemale) .ancGlass::after{clip-path:circle(8.6px at 97.4px 35.6px)!important;transform-origin:97.4px 35.6px!important}'+   /* V17.99: the adult belly cells moved inside the cell (make_sheet.py MDX/FDY); fry/juvenile rows did not */
    'html .ancArt.ancFemale:not([data-stage91]) .ancGlass::after{clip-path:circle(6.4px at 104.9px 35.1px)!important;transform-origin:104.9px 35.1px!important}';
-  css.textContent+='canvas.anc96p{position:absolute;width:300px;height:130px;pointer-events:none;transform:none!important}';
+  css.textContent+='canvas.anc96p{position:absolute;width:440px;height:130px;pointer-events:none;transform:none!important}';
  window.anc90Debug=()=>({ATL,ST,TK,Q91,D95,F96,CD96,C96,R96,recol97});
 })();
