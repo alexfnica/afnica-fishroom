@@ -5,7 +5,7 @@ import os, json, base64, re
 HERE = os.path.dirname(os.path.abspath(__file__)); OUT = os.path.join(HERE, 'out')
 GAME = os.path.join(HERE, '..', '..', 'AFNICA_Aquarium_V17_40_Bristlenose_Breeding.html')
 js = open(os.path.join(HERE, 'block90.js'), encoding='utf-8').read()
-for key, pre in (('T', 'atlas102_T'), ('C2', 'atlas99_C2'), ('P', 'atlas101_P')):
+for key, pre in (('T', 'atlas104_T'), ('C2', 'atlas99_C2'), ('P', 'atlas101_P')):
     idx = json.load(open(os.path.join(OUT, pre + '.json')))
     url = 'data:image/webp;base64,' + base64.b64encode(open(os.path.join(OUT, pre + '.webp'), 'rb').read()).decode()
     small = json.dumps(dict(w=idx['w'], h=idx['h'], names=idx['names'], pos=idx['pos']), separators=(',', ':'))

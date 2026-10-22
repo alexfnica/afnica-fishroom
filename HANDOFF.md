@@ -1,4 +1,64 @@
-# Handoff — where work stopped (2026-10-22: V17.101c fight + V17.102 arc turn COMMITTED and pushed; the fight is still not liked - see NEXT)
+# Handoff — where work stopped (2026-10-22: V17.104 photo-warp turn + V17.105 sand rasp/hitch/burst + no contact shadow, committed; owner watching the 1M+2F test tank)
+
+## V17.104 bristlenose TURN = the photo itself, warped (owner: "don't swap the picture")
+- Path taken today (all rejected on the way, for the record): V17.103 arc + camera rising to 20 deg ("turns like a
+  shark"), V17.104 3D snap turn from render_turn6.py (motion liked, but "a highlight / corruption / outline when it
+  turns"). The 3D skin differs from the photo however it is matched (raw Blender frames: white speckle all over, lighter
+  fins, loose specks under the chin); every swap photo -> 3D -> photo read as a flash. Tone/texture/edge matching scripts
+  from that attempt stay in anc3d/ (norm_frames103, screen_match104, soften104, edge104) but are no longer in use.
+- Now (block90.js turn draw): the fish's own live photo canvas (`.ancArt canvas[data-wk^="anc|"]`, with its moving fins)
+  is cut into 36 strips laid along a spine that rotates PI in 0.6 s (`ancTurnSecV1789=.6`) about a point .22 BL behind
+  the snout (the owner's calico clip `D:\ClaudeWork\calico\clip.mp4`, 6.6-7.4 s: head holds its spot, the tail kicks
+  round in a C, ~0.5 s); tail lags (C-bend from the turn rate), strips narrow edge-on (+30 % of the body width so no
+  paper sliver; 90 % made a box) and mirror past it, far strips first. The fish's x is carried .56 BL forward with the
+  body (`tt.x104/h104`, held back at the glass); turn canvas widened to 360 css (720 backing), mirror axis
+  4*(OX+60). Measured on screen (`D:\ClaudeWork\scratch104\probe_hl.py`): start 0.5 px / end 0.3 px from the photo,
+  luma and p99 = the photo's all through, max step ~11 px/frame mid-turn (the snap), 0 errors.
+- Contact shadow removed (owner: "remove the shadow under it, looks weird"): block90 hides `[data-anc-shadow]`.
+- atlas104_T (3D turn frames, render_turn6 TURN_SIDE=1) is still packed by install90 but NOT drawn any more - drop it
+  (and the @@ATLAS_T@@ slot) to save ~0.45 MB when convenient. Backups: `out/block90_v103_backup.js`,
+  `out/block90_v104_3d_backup.js` (3D snap turn), `out/block90_v104_backup.js` (before V17.105).
+- Not tested: juveniles/fry turning (same code path, own photo canvas), a turn reversed mid-way, WebGL photo canvas
+  (gl89=1: bbox read falls back to the full canvas width).
+
+## V17.105 bristlenose ON THE SAND: rasp, hitch, burst (owner: "sometimes it walks like a shark"; "they rasp much more,
+## on the substrate and the glass"; "jerks, bursts sometimes, like in the clip")
+- Ref B7RksQ1xU18 0:15-0:22.5 (frames `D:\ClaudeWork\scratch101\mv2`): >6 s parked rasping, then a C-snap burst out
+  of frame in < 0.5 s. Ours before: grazing = continuous slow slide ("mow"), trips > 1.3 BL = steady 0.75 BL/s cruise.
+- block90.js section V17.105 (after V17.95; switch `window.ANC105=false`, counters `anc90Debug().D105`): graze rasp
+  4-10 s, every mow/shift -> one hitch (0.12-0.25 BL in 0.3-0.45 s); graze sessions 20-45 s; glass patch held 10-18 s,
+  next one half as far; sand trips = pause / hitch / burst (> .9 BL: up to 2.5-3.2 BL/s, decay ~.24 s, swim flag only
+  in the burst), V17.95's slow dart replaced; spontaneous burst every 25-60 s. Fights, cave, breeder, glass trips untouched.
+- Measured (measure_move95.py, 180 s, female): grazing 91 -> 110-138 s, moving 28 % -> 12-18 %, bouts 0.4 s, bursts
+  1 -> 3, max step 7.9 px/frame, 0 errors. NOTE: measure_move95's `AT1` env is a JS snippet, `AT1=1` does nothing.
+- Clip `AFNICA_Anc105_sand.mp4` (2 females, `D:\ClaudeWork\scratch104\film_sand105.py`). Owner is watching a 1 male +
+  2 female test tank in the Browser pane (launch.json "afnica", save() blocked) - no verdict yet.
+- Reviewer NOT run on the V17.104 photo warp or V17.105 (owner asked to push first) - run it next.
+
+## V17.103 bristlenose TURN, seen from above (owner: "the turn looks bad, not realistic"; then "do whatever pleases the players' eyes")
+- Comparison (clip B7RksQ1xU18 25.7-27.5 s vs ours, 10 frames each ~0.2 s apart; clip frames grabbed at 0.1 s with
+  `D:\ClaudeWork\scratch101\yt_frames_b7.py` -> `scratch101\turnref103`, no robot check): `AFNICA_Anc103_turn_compare.jpg`
+  (before) / `AFNICA_Anc103_turn_after.jpg` (after), root, git-ignored. Composer `D:\ClaudeWork\scratch103\comp103.py`.
+- Diagnosis: the turn is pre-rendered (atlas T, block90 draws one of 61 frames per game frame, quick photo hand-over, no
+  flip conflict). The 3 deg side camera made mid-turn a thin head-on sliver; the real fish is seen from a little above
+  (broad back + flat head + legs-wide pectorals), walks a wider arc and keeps a long C-bend.
+- `anc3d/render_turn5.py` (from render_turn4): camera pitch 3 -> PMAX 20 deg mid-turn (sin^2, 3 deg at both ends = the
+  photo; shift keeps the mid-body ground point fixed), arc RX .40 / RZ .30 L (was .30/.15), smoothstep timing (yaw spread
+  over the turn, was bunched mid-turn), C-bend cap 1.3 gain 2.2 full 22-78 %, pectorals 1+.55*flare. -> `out/turn103_raw`
+  -> lut_match_photo100 -> norm_frames102 -> `out/atlas103_T` (same layout, 1.09 MB; pack q .8). install90 packs it.
+  block90 glass hold-back uses .4 BL + smoothstep. **Commit: `git add -f assets_blender/anc3d/out/atlas103_T.*`**.
+- Measured (probe_turn102.py, a1/a2 males, f2 female, WALL=1): 1.97 s, max step 4.35 px/frame (was 4.97), end drift
+  <= 2.4 px, 0 backward, 0 errors, 7.6 px clear of the glass. The lowest drawn point dips 12.5 px mid-turn (snout toward
+  the viewer seen from above - intended; if the owner reads it as sinking, lower PMAX, e.g. PMAX=14, re-run the pipeline).
+- **V17.103b (owner: "a dubious highlight when it turns - keep shape, colour, contrast")**: the mid-turn 3D views were
+  milky (male p10 38 -> 50, p98 187 -> 168, sd 42 -> 33; norm_frames102 only held the mean). New `norm_frames103.py`
+  (replaces norm_frames102 in the pipeline): quantile-maps every frame's fish luma onto frame 00 as an RGB gain (hue kept).
+  After: sd 41.8-42.2 on every frame, p10/p50/p98 fixed; in the game (probe_turnho) fish luma 65.1-66.8 vs photo 66.8
+  (male), 63.6-64.8 vs 64.7 (female). atlas103_T 1.12 MB. Clip `AFNICA_Anc103_turns.mp4` (root, ignored; filmed with
+  `D:\ClaudeWork\scratch103\film_turn103.py`). Shape still changes as it must in a 3D turn; if the owner wants less,
+  lower PMAX.
+- Reviewer: no blockers. Untested: juveniles in the game, a reversal at u~.5 (biggest pose change), the dip at the lowest
+  sand row / near the bottom nav, click target stays at the photo spot (up to .4 BL away mid-turn, as before).
 
 ## V17.102 bristlenose ARC TURN (owner: "turn naturally like a normal ancistrus"; "don't lift the specimen")
 - Investigation (ref. B7RksQ1xU18 25.0-27.75 s, grid `D:\ClaudeWork\scratch101\turnref_grid.jpg`): the real fish walks

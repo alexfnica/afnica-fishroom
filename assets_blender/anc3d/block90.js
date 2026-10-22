@@ -12,7 +12,8 @@
    Not done yet: the spawning visit (both fish inside) keeps the old drawing; fry/young use the adult frames scaled. */
 (function(){
  window.ANC90=true;
- window.ancTurnSecV1789=2;                                   /* V17.95: a slow, even pivot (ref. B7RksQ1xU18 0:25.4-0:27.8, ~2.4 s) */
+ try{const st104=document.createElement('style');st104.textContent='[data-anc-shadow]{display:none !important}';document.head.appendChild(st104);}catch(e){console.error('AFNICA V17.104 shadow',e);}   /* V17.104 (owner: "remove the shadow under it, looks weird"): the contact-shadow ellipse the older code draws under every bristlenose on the sand is hidden */
+ window.ancTurnSecV1789=.6;                                  /* V17.104: a quick snap round the head (the owner's calico clip: ~0.5 s); V17.95-103 were a slow 2 s pivot / arc */
  window.ANC3D_V1789=false;                                  /* the V17.89 shader path drew the sprite without the stepping fins; turns are 3D frames now */
  const SHEET='@@SHEET@@';
  try{const P=window.ancDebugV1789&&ancDebugV1789().PFIN;if(P)for(const k of Object.keys(P))P[k]=[];}catch(e){console.error('AFNICA V17.93 fins',e);}   /* the photos already show the fins as they lie: no erase-and-redraw (it cut them) */
@@ -56,7 +57,7 @@
 
   '.tank.anc90cave .ancBreedingCave,.tank.anc90cave .ancCaveRim,.tank.anc90cave .ancCaveShade89,.tank.anc90cave canvas.ancBrood89{opacity:0!important}'+
   'canvas.anc90c{position:absolute;left:-20px;top:-10px;width:160px;height:90px;pointer-events:none;transform:none!important}'+
-  'canvas.anc94t{position:absolute;left:-52.3px;width:240px;height:110px;pointer-events:none;transform:none!important;display:none}'+
+  'canvas.anc94t{position:absolute;left:-112.3px;width:360px;height:110px;pointer-events:none;transform:none!important;display:none}'+
   'canvas.anc90cv{position:absolute;width:340px;height:110px;pointer-events:none;z-index:42}canvas.anc90cv.front{z-index:47}';   /* front: his part outside the tube, closer than the fish lane */
  document.head.appendChild(css);
 
@@ -64,7 +65,7 @@
  /* V17.94 turn canvas: 240x110 game px, the fish's mid-body ground point at the start of the turn at (110,64) */
  function turnCanvas(el,sex){
   let c=el.querySelector(':scope>canvas.anc94t');
-  if(!c){c=document.createElement('canvas');c.className='anc94t';c.width=480;c.height=220;el.appendChild(c);}
+  if(!c){c=document.createElement('canvas');c.className='anc94t';c.width=720;c.height=220;el.appendChild(c);}   /* V17.104e: 360 css wide (the warp turn steps .56 BL forward; 240 cut the tail) */
   c.style.top=((sex==='F'?-2:sex==='JB'?-4:-10)+48.4-64)+'px';return c;   /* V17.102b: measured - the female's 3D sat 2 px above her photo (looked lifted) */
  }
  function canvasFor(el,sex){
@@ -226,7 +227,7 @@
   if(f.df==null)f.df=face;
   const tr97=glass>.02||TRANS97[mode];                      /* V17.98: no 3D turn while going onto / off the glass (it was cut after a few frames: the fish vanished, side frames over the belly view) */
   if(f.wf!==(f.mv||face)){f.wf=f.mv||face;f.wt=0;}else f.wt=(f.wt||0)+dt;   /* how long the wanted facing has held */
-  if(s&&s.turn&&!tr97){tu={u:clamp(s.turn.t/T,0,1),from:s.turn.from<0?-1:1,to:s.turn.to<0?-1:1};f.df=tu.to;f.turn=null;}
+  if(s&&s.turn&&!tr97){tu={u:clamp(s.turn.t/T,0,1),from:s.turn.from<0?-1:1,to:s.turn.to<0?-1:1,st:s.turn};f.df=tu.to;f.turn=null;}
   else{
    const wantF=f.mv||face;
    if(tr97){f.df=wantF;f.turn=null;}
@@ -242,17 +243,45 @@
   /* V17.95 pivot turn (replaces the V17.94 walking U-turn, which walked 39 px out and back = 6.2 px/frame): the fish turns
      almost on the spot (render_turn3.py: belly down, pectorals spread, gentle curve, head away, tail sweeping toward the
      viewer); the photo drawing cross-fades in place over the first/last 15 % */
-  const u=tu.u,k=Math.min(60,Math.round(60*u)),a3=u<.06?u/.06:u>.94?(1-u)/.06:1,sg=u<.5?tu.from:tu.to;
-  setSign(sg);el.style.setProperty('clip-path','none','important');el.classList.add('anc90');fade(tank,el,u<.5?Math.min(1,Math.max(0,(.1-u)/.04)):Math.min(1,Math.max(0,(u-.9)/.04)));   /* V17.102 arc turn: the 3D walks off at once, so the hand-over is quick (3D in by u .06, photo gone by .1; reverse at the end) - else a ghost double fish */   /* V17.100 (owner: graphic glitch when they turn): the photo stays opaque UNDER the 3D while it fades in (and out) and only fades itself while the 3D is fully opaque on top - no see-through fish (two half-faded layers were ~75 % opaque) */
+  const u=tu.u,k=Math.min(30,Math.round(30*u)),a3=u<.03?u/.03:u>.97?(1-u)/.03:1,sg=u<.5?tu.from:tu.to;
+  setSign(sg);el.style.setProperty('clip-path','none','important');el.classList.add('anc90');fade(tank,el,0);   /* V17.104e (owner: "don't swap the picture"): the photo's own live canvas is warped for the whole turn (below), so the old drawing is only hidden - no 3D frames, nothing can change colour or texture */
   if(f.tx94){f.tx94=0;el.style.removeProperty('translate');}
-  const c=turnCanvas(el,sex),g=c.getContext('2d');c.style.display='block';g.clearRect(0,0,480,220);
-  /* V17.102 (reviewer): the arc walks the head ~.3 BL forward; at the glass he turns with his nose against it instead of
-     walking through it - the 3D is held back by the overshoot (screen px -> the fish element's own frame) */
-  let tx102=0;if(s&&isFinite(s.x)){const sk=scl||1,BLt=112*sk,q=Math.min(1,Math.max(0,u)),e5=q*q*q*(q*(q*6-15)+10),fw=.3*BLt*Math.sin(Math.PI*e5),head=s.x+tu.from*(.5*BLt+fw),lim=tu.from>0?(tank.clientWidth||960)-6:6,ov=Math.max(0,tu.from*(head-lim));tx102=-tu.from*ov/sk*sg;
-   /* V17.102b (owner: "it hovers during the turn"): the 3D frames carry no baked shadow any more - like the photo, whose game
-      contact shadow is hidden by older code (display none) */}
+  const c=turnCanvas(el,sex),g=c.getContext('2d');c.style.display='block';g.clearRect(0,0,720,220);
+  /* V17.104 snap turn (render_turn6): the head holds its spot and the body swings round it, so the mid-body ends
+     2*.28 BL further along. A standing turn (s.turn) carries s.x with the drawn mid-body (the photo hands back exactly
+     where the 3D ends, the click target follows); the canvas cancels the element's own move. Near the glass the whole
+     turn is held back so the tail never swings through it. A facing-follow turn (the engine moves the fish) keeps the
+     drawn mid-body on the element instead. */
+  const ac104=el.querySelector('.ancArt canvas[data-wk^="anc|"]');if(!ac104||!ac104.width){oldDraw(tank,el,f);return;}
+  const key104=tu.st||f.turn;
+  if(f.w104k!==key104||!f.w104){f.w104k=key104;const cs=getComputedStyle(ac104),cw=parseFloat(cs.width)||120,ch=parseFloat(cs.height)||88,R=ac104.width/cw;let x0=1e9,x1=-1;
+   try{const d=ac104.getContext('2d').getImageData(0,0,ac104.width,ac104.height).data,AW=ac104.width,AH=ac104.height;for(let x=0;x<AW;x++)for(let y=0;y<AH;y+=2)if(d[(y*AW+x)*4+3]>40){if(x<x0)x0=x;if(x>x1)x1=x;break;}}catch(e){}
+   if(!(x1>x0)){x0=0;x1=ac104.width;}f.w104={R,cw,ch,ax:parseFloat(cs.left)||0,ay:parseFloat(cs.top)||0,x0:x0/R,x1:(x1+1)/R};}   /* once per turn: the photo canvas's opaque x range = the body length in css px */
+  const W104=f.w104;
+  let tx102=0;if(s&&isFinite(s.x)){const sk=scl||1,BLr=(W104.x1-W104.x0)*sk,D=.56*BLr,q=Math.min(1,Math.max(0,u)),q7=Math.pow(q,.75),E=q7*q7*(3-2*q7),m=(1-Math.cos(Math.PI*E))/2;
+   const tt=tu.st;let scr;
+   if(tt){if(tt.x104==null){tt.x104=s.x;const lim=tu.from>0?(tank.clientWidth||960)-6:6;tt.h104=Math.min(D,Math.max(0,tu.from*(s.x+tu.from*(D+.5*BLr))-lim));}
+    scr=tt.x104-s.x-tu.from*tt.h104*m;s.x=tt.x104+tu.from*(D-tt.h104)*m;}
+   else scr=-tu.from*D*m;
+   tx102=scr/sk*sg;}
   c.style.translate=tx102?tx102.toFixed(2)+'px 0':'none';
-  const AT97=recol97(ATL.T,rc97(el)),mir=(tu.from<0)!==(sg<0);g.filter='none';   /* V17.102b: the black male's map came out 3 % lighter than his photo */blit(g,AT97,sex+'_turn'+String(k).padStart(2,'0'),mir,a3,220);/* V17.102c (owner: "the image doubles when he turns"): no neighbour-frame blend any more - the arc walks and rotates fast mid-turn, so two frames drawn over each other read as a double fish (ghost px peak 1293 -> 689); 61 frames = one per game frame instead */   /* right->left as rendered, left->right mirrored */
+  /* V17.104e photo warp (owner: "don't swap the picture"; the calico clip: the head holds its spot, the tail swings round
+     in a C, ~0.5 s): the fish's own photo canvas, cut into 36 vertical strips laid along a spine that rotates PI about a
+     point .22 BL behind the snout; the tail lags (C-bend from the turn rate), each strip narrows as its part of the body
+     turns edge-on and mirrors past it; farther strips drawn first. u=0 and u=1 are the photo itself (straight, facing
+     from / to) - pixel for pixel the same picture, so nothing can flash, change colour or outline. Drawn in the
+     element's frame at the start (head to the right), mirrored about the element centre once the element flips. */
+  {const R=W104.R,Lb=W104.x1-W104.x0,SP=.22,xp=W104.x1-SP*Lb,q=Math.min(1,Math.max(0,u)),Ef=v=>{v=Math.min(1,Math.max(0,v));const a=Math.pow(v,.75);return a*a*(3-2*a);},
+    phi=Math.PI*Ef(q),dE=(Ef(q+.07)-Ef(q+.05))/.02,bt=1.15*Math.min(1,dE/1.9)*Math.min(1,q/.08,(1-q)/.08),
+    XS=v=>{const a=phi+bt*(SP-v);return Math.abs(bt)<1e-4?xp-(v-SP)*Lb*Math.cos(phi):xp-Lb*(Math.sin(phi)-Math.sin(a))/bt;},
+    ZS=v=>{const a=phi+bt*(SP-v);return Math.abs(bt)<1e-4?-(v-SP)*Math.sin(phi):-(Math.cos(a)-Math.cos(phi))/bt;},
+    top=parseFloat(c.style.top)||0,OX=112.3,N=36,st=[],BW=v=>Lb*Math.max(.05,.2-.17*Math.max(0,v-.3)/.45);   /* body width seen from above (wide flat head, thin tail stem) */
+   for(let i=0;i<N;i++){const s0=i/N,s1=(i+1)/N,xa=XS(s0),xb=XS(s1),sm=(s0+s1)/2,ps=phi+bt*(SP-sm),cx=(xa+xb)/2,w=Math.hypot(xa-xb,.3*BW(sm)*Math.sin(ps))*(xa-xb<0?-1:1);st.push({s0,s1,xa:cx+w/2,xb:cx-w/2,z:ZS(sm)});}   /* edge-on a strip still shows the body's width - no paper-thin fish */
+   st.sort((a,b)=>b.z-a.z);g.save();g.globalAlpha=1;g.filter='none';
+   if(sg!==tu.from){g.translate(4*(OX+60),0);g.scale(-1,1);}   /* mirror about the element centre (backing x 2*(OX+60)) */
+   for(const t of st){const sw=(t.s1-t.s0)*Lb,dw=t.xa-t.xb;if(Math.abs(dw)<.02)continue;const sx=W104.x1-t.s1*Lb;
+    g.save();g.translate(2*(t.xb+OX),2*(W104.ay-top));g.scale(dw/sw,1);g.drawImage(ac104,sx*R,0,sw*R+R*.6,ac104.height,0,0,2*(sw+.6),2*W104.ch);g.restore();}
+   g.restore();}
  }
 
  const prev=window.ancPostV1789;
@@ -392,6 +421,59 @@
   let k=R95.get(fe)||0;k+=((rest?1:0)-k)*Math.min(1,dt*(rest?.6:3));R95.set(fe,k);
   if(k>.01){r.fold=r.fold+(1-r.fold)*k;r.sway*=1-k;}
   return r;
+ };
+ /* ================= V17.105 BRISTLENOSE ON THE SAND: RASP, HITCH, BURST (owner: "sometimes it walks like a shark";
+    "bristlenose rasp much more, on the substrate and the glass"; "they have jerks, bursts, sometimes, like in the clip";
+    ref. youtube B7RksQ1xU18 0:15-0:22.5: >6 s parked on one spot rasping, head down, then a C-snap burst out of frame in
+    <0.5 s). Measured before (3 min): grazing = a continuous slow slide (mow 3-6 s at 2-4 px/s), trips over 1.3 BL = a
+    steady 0.75 BL/s cruise (the "shark" glide), ~1 burst per fish per 3 min.
+    Now: grazing = rasp 4-10 s parked, then a hitch (0.12-0.25 BL in 0.3-0.45 s, pectorals push), rasp again; grazing
+    sessions 20-45 s; on the glass a patch is held 10-18 s and the next one is half as far. Trips on the sand = pauses
+    with hitches, or for more than 0.9 BL a burst (up to ~3 BL/s, decaying in ~0.3 s, tail beating) then a pause; a
+    spontaneous burst every 25-60 s. Switch: window.ANC105=false. Fights / cave / breeder / glass trips are untouched. */
+ const ok105=s=>window.ANC105!==false&&sandOk95(s)&&!s.cavePhase&&!s.fight96;
+ const R105=(a,b)=>a+Math.random()*(b-a),D105={burst:0,hitch:0,rasp:0};
+ const sand105=window.ancSandSpeedV1789;
+ if(sand105)window.ancSandSpeedV1789=function(s,d,thrust,dt,scale,key){
+  if(key==null)key=s.tx;
+  const v0=sand105.apply(this,arguments),trip=s.mode==='move'||s.mode==='toWall';
+  if(!trip||!ok105(s)||s.turn||!(thrust>0)){if(!trip)s.mv105=null;return v0;}
+  if(s.dart95){if(s.bg&&s.dart95.sw0!=null)s.bg.swim=s.dart95.sw0;s.dart95=null;}   /* V17.95's slow 1.6 s dart is replaced by the burst below */
+  const BL=Math.max(12,112*scale);let m=s.mv105;
+  if(!m||Math.abs(m.key-key)>1)m=s.mv105={key,ph:'pause',t:0,dur:R105(.12,.35)};
+  m.t+=dt;
+  if(m.t>=m.dur){
+   if(m.ph!=='pause'){m.ph='pause';m.t=0;m.dur=m.big?R105(.5,1.4):R105(.35,1.1);m.big=0;}
+   else if(d>.9*BL){m.ph='burst';m.t=0;m.dur=.8;m.P=R105(2.5,3.2);m.big=1;D105.burst++;}
+   else{m.ph='hitch';m.t=0;m.dur=R105(.3,.45);m.h=Math.min(d,R105(.12,.25)*BL);D105.hitch++;}
+  }
+  if(s.bg)s.bg.swim=m.ph==='burst';                       /* tail beating only in the burst */
+  let v=0;
+  if(m.ph==='burst'){const t=m.t;v=m.P*BL*(t<.08?t/.08:Math.exp(-(t-.08)/.24))*Math.min(1,d/(.3*BL)+.15);if(t>.15&&v<.12*BL)m.t=m.dur;}
+  else if(m.ph==='hitch')v=m.h*(Math.PI/2)*Math.sin(Math.PI*Math.min(1,m.t/m.dur))/m.dur;
+  return Math.min(v,d/Math.max(dt,.001))*thrust;
+ };
+ function life105(s,sc){
+  if(!s)return;
+  if(!ok105(s)&&!(window.ANC105!==false&&s.surface==='glass')){s.pg105=s.mode;return;}
+  const BL=112*(sc||1),A=ACT95();
+  if(s.surface==='substrate'&&s.mode==='graze'){
+   if(s.pg105!=='graze')s.wait=Math.max(s.wait||0,R105(20,45)*A);   /* longer grazing sessions */
+   const g=s.fg;
+   if(g&&g!==s.fg105){s.fg105=g;
+    if(g.k==='rasp'){g.d=R105(4,10)*(s.young?.6:1);D105.rasp++;}
+    else{g.k='shift';g.t=0;g.d=R105(.3,.45);g.v=R105(.12,.25)*BL;D105.hitch++;}   /* the slide becomes one pectoral hitch */
+   }
+  }
+  if(s.surface==='glass'&&s.mode==='graze'&&s.patch&&s.patch!==s.pt105&&Number.isFinite(s.time)){const p=s.patch;s.pt105=p;
+   p.x=s.x+(p.x-s.x)*.5;p.y=s.y+(p.y-s.y)*.5;p.until=s.time+R105(10,18);}
+  if(s.nd95!=null&&s.nd95!==s.nd105&&Number.isFinite(s.time)&&s.nd95>s.time+60*A){s.nd95=s.time+R105(25,60)*A;}   /* spontaneous bursts more often */
+  s.nd105=s.nd95;s.pg105=s.mode;
+ }
+ const prev105=window.ancPostV1789;
+ window.ancPostV1789=function(tank,el,s,fish,dt,sc,blocked,via){
+  prev105.apply(this,arguments);
+  if(via!=='breed')try{life105(s,sc);}catch(e){console.error('AFNICA V17.105 anc sand',e);}
  };
  /* ================= V17.96 BRISTLENOSE MALE FIGHTS (owner OK'd plan + still; ref. youtube shorts R6KUQ73HhlI) =================
     Two adult males on the sand of the same tank (not the breeder) may fight: about once per 20 s of being within 2.5
@@ -566,5 +648,5 @@
  css.textContent+='html .ancArt:not([data-stage91]):not(.ancFemale) .ancGlass::after{clip-path:circle(8.6px at 97.4px 35.6px)!important;transform-origin:97.4px 35.6px!important}'+   /* V17.99: the adult belly cells moved inside the cell (make_sheet.py MDX/FDY); fry/juvenile rows did not */
    'html .ancArt.ancFemale:not([data-stage91]) .ancGlass::after{clip-path:circle(6.4px at 104.9px 35.1px)!important;transform-origin:104.9px 35.1px!important}';
   css.textContent+='canvas.anc96p{position:absolute;width:440px;height:130px;pointer-events:none;transform:none!important}';
- window.anc90Debug=()=>({ATL,ST,TK,Q91,D95,F96,CD96,C96,R96,recol97});
+ window.anc90Debug=()=>({ATL,ST,TK,Q91,D95,D105,F96,CD96,C96,R96,recol97});
 })();
