@@ -13400,7 +13400,7 @@ window.addEventListener('load',function(){
  try{const old=window.ancCaveMarkupV1728;window.ancCaveMarkupV1728=function(){return caveSVG();};   /* new caves and rims */
   const cs=document.createElement('style');cs.textContent='.ancCaveRim{-webkit-mask-image:radial-gradient(ellipse 7.2px 23px at 13.8px 42px,transparent 90%,black 100%)!important;mask-image:radial-gradient(ellipse 7.2px 23px at 13.8px 42px,transparent 90%,black 100%)!important}.ancBreedingCave{filter:none!important}.ancCaveShade89{display:none!important}';
   document.head.appendChild(cs);}catch(e){console.error('AFNICA V17.89 cave',e);}
- function caveGeo(cave){useCave(cave);const L=parseFloat(cave.style.left)||0,T=parseFloat(cave.style.top)||0;return {L,T,cy:T+46};}
+ function caveGeo(cave){useCave(cave);const L=parseFloat(cave.style.left)||0,T=parseFloat(cave.style.top)||0;return {L,T,cy:T+61};}   /* V17.107 (owner, twice: "still too up"): the fish lies on the tube's floor - the opening reads dark down to ~T+67 at the mouth; T+46 left an 18 px gap under the tail */
  function place(el,x,yBody,face,sc,narrow,cl,z,op){
   const cy=yBody-3*sc,top=cy-35,f=face<0?-1:1,k=narrow==null?1:narrow;
   /* clip (local, pre-transform px): everything left of the log, and inside the log only below its top edge and short of
@@ -13955,14 +13955,16 @@ window.addEventListener('load',function(){
   const tr=el.style.transform||'',m=/scaleX\(([-\d.e]+)\)/.exec(tr),face=s&&s.face!=null?(s.face<0?-1:1):(m&&+m[1]<0?-1:1);
   const scm=/scale\(([-\d.e]+)\)/.exec(tr),scl=scm?+scm[1]:(sc||1),now=performance.now(),mode=el.dataset.ancMode||'';
   if(!f){f={df:face,turn:null};ST.set(el,f);}
+  let c106=null;   /* V17.106 */
   life91(tank,el,s,mode,now);
   /* cave (adult male): drawn by the cave canvas; his own element fades out as the cave layers fade in */
   if(cave&&(CAVEMODES[mode]||mode==='cave-approach')&&!spawning()&&fish&&fish.sex==='M'&&!stg91){
    if(mode==='cave-enter'&&face>0&&s&&!s.p91done){const dIn=+el.dataset.ancX+56*scl-((parseFloat(cave.style.left)||0)+13.8);if(dIn>=-3){s.p91done=1;s.p91until=now+800+Math.random()*600;}}   /* V17.91: pause at the mouth */
+   if(window.ANC106!==false)c106=cave106(el,s,f,mode);else{   /* V17.106: his own drawing (below), the cave canvas only draws the tube */
    const cs=caveState(el,cave,face,scl,mode);if(cs)xfade99(tank,el,f,cs,dt);   /* V17.99 */
    if(cs){let t=TK.get(tank);if(!t){t={};TK.set(tank,t);}t.m=cs.hide?null:cs;if(cs)cs.rc=rc97(el);t.at=now;
     const a=cs.hide?1:cs.a;el.style.setProperty('opacity',(1-a).toFixed(3),'important');f.hid=1;f.df=face;f.turn=null;f.x=+el.dataset.ancX;f.vx=0;f.mv=0;
-    const c=el.querySelector(':scope>canvas.anc90c');if(c)c.style.display='none';fade(tank,el,1);return;}
+    const c=el.querySelector(':scope>canvas.anc90c');if(c)c.style.display='none';fade(tank,el,1);return;}}
   }
   f.x99=null;   /* V17.99: outside the cave drawing - the next hand-over measures afresh */
   if(f.hid){f.hid=0;el.classList.remove('anc90hid');el.style.setProperty('opacity','1','important');}
@@ -13975,9 +13977,12 @@ window.addEventListener('load',function(){
   /* V17.92 turn: the old turn's own timer (s.turn, during which the fish stays put) or a facing-follow turn of our own */
   const T=Math.max(.5,window.ancTurnSecV1789||1),TF=Math.min(T,1);let tu=null;   /* V17.95: TF = facing-follow turns (the fish keeps moving) stay short */
   if(f.df==null)f.df=face;
+  f.k106p=c106&&c106.tu?f.k106p:null;   /* V17.106: one key per cave turn */
   const tr97=glass>.02||TRANS97[mode];                      /* V17.98: no 3D turn while going onto / off the glass (it was cut after a few frames: the fish vanished, side frames over the belly view) */
   if(f.wf!==(f.mv||face)){f.wf=f.mv||face;f.wt=0;}else f.wt=(f.wt||0)+dt;   /* how long the wanted facing has held */
-  if(s&&s.turn&&!tr97){tu={u:clamp(s.turn.t/T,0,1),from:s.turn.from<0?-1:1,to:s.turn.to<0?-1:1,st:s.turn};f.df=tu.to;f.turn=null;}
+  if(c106&&c106.tu){if(!f.k106p)f.k106p={};tu=Object.assign(c106.tu,{k106:f.k106p});f.df=tu.to;f.turn=null;}   /* V17.106: the turn outside the mouth, timed by the cave cycle */
+  else if(c106){f.df=face;f.turn=null;f.mv=0;}   /* V17.106: never turns inside the tube (the cycle flips him deep inside, out of sight) */
+  else if(s&&s.turn&&!tr97){tu={u:clamp(s.turn.t/T,0,1),from:s.turn.from<0?-1:1,to:s.turn.to<0?-1:1,st:s.turn};f.df=tu.to;f.turn=null;}
   else{
    const wantF=f.mv||face;
    if(tr97){f.df=wantF;f.turn=null;}
@@ -14003,7 +14008,7 @@ window.addEventListener('load',function(){
      turn is held back so the tail never swings through it. A facing-follow turn (the engine moves the fish) keeps the
      drawn mid-body on the element instead. */
   const ac104=el.querySelector('.ancArt canvas[data-wk^="anc|"]');if(!ac104||!ac104.width){oldDraw(tank,el,f);return;}
-  const key104=tu.st||f.turn;
+  const key104=tu.st||tu.k106||f.turn;
   if(f.w104k!==key104||!f.w104){f.w104k=key104;const cs=getComputedStyle(ac104),cw=parseFloat(cs.width)||120,ch=parseFloat(cs.height)||88,R=ac104.width/cw;let x0=1e9,x1=-1;
    try{const d=ac104.getContext('2d').getImageData(0,0,ac104.width,ac104.height).data,AW=ac104.width,AH=ac104.height;for(let x=0;x<AW;x++)for(let y=0;y<AH;y+=2)if(d[(y*AW+x)*4+3]>40){if(x<x0)x0=x;if(x>x1)x1=x;break;}}catch(e){}
    if(!(x1>x0)){x0=0;x1=ac104.width;}f.w104={R,cw,ch,ax:parseFloat(cs.left)||0,ay:parseFloat(cs.top)||0,x0:x0/R,x1:(x1+1)/R};}   /* once per turn: the photo canvas's opaque x range = the body length in css px */
@@ -14034,10 +14039,71 @@ window.addEventListener('load',function(){
    g.restore();}
  }
 
+ /* ================= V17.106 CAVE WITH THE IN-GAME MODEL (owner: "the fish visibly changes look going in or out",
+    "the tail fans like a stiff board") =================
+    The male is no longer swapped for the Blender cave frames (atlas C2 now only gives the empty tube): his own photo
+    drawing (V17.42 canvas + 3D body) shows the whole cycle, so his look never switches.
+    - Behind the mouth plane he shows only through the mouth opening (the ellipse 7 x 22.6 at the mouth that the C2 '_in'
+      layer used), in front of it he is whole: never drawn over the clay.
+    - Fanning: his model is the 2D photo canvas (the V17.89 3D body is off since V17.9x), so the tail is redrawn in
+      strips with a wave running from the tail base to the tip: seen from the side a sideways beat shows as each part of
+      the fin turning edge-on (narrower, a little darker) one after the other, plus a slight vertical flex. Replaces the
+      V17.89 squash of the whole fin at once (the stiff board). Beats in bouts of 4-8 at ~2.3 Hz, 0.4-1.2 s pauses.
+    - No turns inside the tube; the turn outside the mouth (cave-turn) is the V17.104 photo-warp turn, timed by the cycle.
+    Breeding, the cave cycle itself, save data and fights are untouched (drawing only). Switch: window.ANC106=false. */
+ const A106=.6,K106=4.2,V106=.02;   /* sideways tip amplitude (x tail length), wave number along the tail, vertical flex (x canvas height) */
+ function g106(s){try{const D=window.ancDebugV1789&&ancDebugV1789();return D&&D.G?D.G.get(s):null;}catch(e){return null;}}
+ function cave106(el,s,f,mode){
+  if(mode==='cave-approach')return null;   /* still walking on the sand: ordinary turns */
+  if(mode==='cave-turn'){const g=g106(s);if(g&&g.ph==='turn'){el.dataset.psi89='0';return {tu:{u:clamp(g.t/.55,0,1),from:-1,to:1}};}}
+  return {hold:1};
+ }
+ function post106(tank,el,s,fish,dt,sc,cave){
+  const f=ST.get(el);if(!f)return;
+  const art=el.querySelector('.ancArt'),mode=el.dataset.ancMode||'';
+  const on=window.ANC106!==false&&window.ANC90&&cave&&fish&&fish.sex==='M'&&art&&!art.dataset.stage91&&!(spawning()&&tank.id==='tank-breeder');
+  const L=on?parseFloat(cave.style.left)||0:0,Mx=L+13.8,My=(on?parseFloat(cave.style.top)||0:0)+42,x=+el.dataset.ancX;
+  const cyc=on&&CAVEMODES[mode],app=on&&mode==='cave-approach'&&Number.isFinite(x)&&x<Mx&&!(s&&s.ovl89>1);
+  /* fanning rhythm: bouts and pauses (the V17.89 beat was continuous); read by the fin canvas through fanPh89/fanEnv89 */
+  if(on&&mode==='fanning'&&el.classList.contains('ancFanning')){
+   const R=f.r106||(f.r106={ph:0,n:3,p:0,e:.1,t:0}),TW=2*Math.PI;R.t+=dt;
+   if(R.p>0){R.p-=dt;R.e+=(.08-R.e)*Math.min(1,dt*6);R.ph+=TW*.25*dt;if(R.ph>=TW)R.ph-=TW;if(R.p<=0)R.n=4+Math.floor(Math.random()*5);}
+   else{R.ph+=TW*2.3*(1+.05*Math.sin(R.t*.7))*dt;R.e+=(1-R.e)*Math.min(1,dt*5);if(R.ph>=TW){R.ph-=TW;if(--R.n<=0)R.p=.4+Math.random()*.8;}}
+   el.dataset.fanPh89=R.ph.toFixed(3);el.dataset.fanEnv89=R.e.toFixed(3);el.dataset.fan106='1';
+  }else if(el.dataset.fan106)delete el.dataset.fan106;
+  /* clip: whole in front of the mouth plane, only through the opening behind it (tank px -> the element's local px) */
+  if(cyc||app){
+   const tr=el.style.transform||'',m1=/scaleX\(([-\d.e]+)\)/.exec(tr),m2=/scale\(([-\d.e]+)\)/.exec(tr),sy=m2?+m2[1]:(sc||1),sx0=sy*(m1?+m1[1]:1),sx=Math.abs(sx0)<.02?(sx0<0?-.02:.02):sx0;   /* never 0 (a squashed turn frame): the polygon stays finite */
+   const cx=(parseFloat(el.style.left)||0)+60,cy=(parseFloat(el.style.top)||0)+35;
+   const Q=[[Mx-3000,cy-600],[Mx,cy-600]];for(let i=0;i<=16;i++){const a=-Math.PI/2+Math.PI*i/16;Q.push([Mx+7*Math.cos(a),My+22.6*Math.sin(a)]);}Q.push([Mx,cy+600],[Mx-3000,cy+600]);
+   el.style.setProperty('clip-path','polygon('+Q.map(([px,py])=>((px-cx)/sx+60).toFixed(1)+'px '+((py-cy)/sy+35).toFixed(1)+'px').join(',')+')','important');f.c106=1;
+  }else if(f.c106){f.c106=0;el.style.removeProperty('clip-path');}
+ }
+ /* the tail wave (V17.42 pectoral hook ancPectV1789, sprite facing right, tail at the left): the old squash is skipped
+    (fanPh89 hidden from it), then the tail region x0..x0+.255 BL is redrawn in strips laid from the base to the tip */
+ function warp106(c,r,fe){
+  const env=clamp(+fe.dataset.fanEnv89||0,0,1),ph=+fe.dataset.fanPh89||0;if(env<.01||!r||!(r.BL>0))return;
+  const x0=Math.max(0,Math.floor(r.x0)),px=Math.round(r.x0+.255*r.BL),Lt=px-x0,H=c.height;if(Lt<8||px>c.width)return;
+  const T=warp106.t||(warp106.t=document.createElement('canvas'));if(T.width!==px||T.height!==H){T.width=px;T.height=H;}
+  const tg=T.getContext('2d');tg.clearRect(0,0,px,H);tg.drawImage(c,0,0,px,H,0,0,px,H);
+  const g=c.getContext('2d');g.save();g.clearRect(0,0,px,H);
+  const N=20,A=A106*env,V=V106*env*H,sw=Lt/N;let X=px;
+  for(let i=0;i<N;i++){const um=(i+.5)/N,w=ph-K106*um,sl=A*(2*um*Math.sin(w)-K106*um*um*Math.cos(w)),k=1/Math.sqrt(1+sl*sl),dw=sw*k,dy=V*um*um*Math.sin(w-.6);
+   g.globalCompositeOperation='source-over';g.drawImage(T,px-(i+1)*sw,0,sw+.6,H,X-dw,dy,dw+.6,H);
+   if(k<.97){g.globalCompositeOperation='source-atop';g.fillStyle='rgba(10,8,5,'+(.45*(1-k)).toFixed(3)+')';g.fillRect(X-dw,0,dw+.6,H);}
+   X-=dw;}
+  g.restore();
+ }
+ {const p3=window.ancPectV1789;if(p3&&!p3.w106){const w=function(c,r,s){const fe=s&&s.fe;
+   if(!(fe&&fe.dataset.fan106&&fe.classList.contains('ancFanning')&&window.ANC106!==false))return p3.apply(this,arguments);   /* a stale flag never warps */
+   const ph=fe.dataset.fanPh89;delete fe.dataset.fanPh89;let res;try{res=p3.apply(this,arguments);}finally{if(ph!=null)fe.dataset.fanPh89=ph;}
+   if(res)try{warp106(c,r,fe);}catch(e){console.error('AFNICA V17.106 tail',e);}return res;};w.w106=1;window.ancPectV1789=w;}}
+
  const prev=window.ancPostV1789;
  window.ancPostV1789=function(tank,el,s,fish,dt,sc,blocked,via,cave){
   if(prev)prev.apply(this,arguments);
   try{drawFish(tank,el,s,fish,dt,sc,blocked,via,cave||(tank&&tank.querySelector('.ancBreedingCave')));}catch(e){console.error('AFNICA V17.90 anc 3D',e);}
+  try{post106(tank,el,s,fish,blocked?0:dt,sc,cave||(tank&&tank.querySelector('.ancBreedingCave')));}catch(e){console.error('AFNICA V17.106 cave',e);}
  };
  /* ================= V17.91 BRISTLENOSE LIFE 2 (owner: "do all - make it more realistic") =================
     Drives the old animated drawing (V17.42 fin canvas, hook ancCanvasV1791) from what the fish is doing:

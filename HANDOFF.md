@@ -1,5 +1,23 @@
 # Handoff — where work stopped (2026-10-22: V17.104 photo-warp turn + V17.105 sand rasp/hitch/burst + no contact shadow, committed; owner watching the 1M+2F test tank)
 
+## V17.106 bristlenose CAVE with the in-game model (2026-10-22, NOT committed; owner to review)
+- Owner: entry/exit was a static pose and used the Blender render (look switched at the mouth); fanning tail "stiff board".
+- Diagnosis: V17.90 drawFish hid the male (opacity 1-a) in CAVEMODES + cave-approach and drew atlas C2 frames instead
+  (entry swap 4 frames, render up to 8.9 px off the photo, steps 3.9 px/frame; exit/turn = flat mirror flips). Fan tail =
+  render_cave2 single-curvature bend + 2-frame cross-fade; the in-game V17.89 fallback squashed the whole caudal at once.
+  NOTE: the live anc model is the 2D photo canvas (ANC3D_V1789=false, sprite 260x192), so shader/psi tricks do nothing.
+- Now (block90.js, V17.106, switch `window.ANC106=false`): his own element stays visible all cycle; `post106` clips it
+  (whole left of the mouth plane L+13.8, only through the mouth ellipse 7x22.6 behind it); no turns inside the tube; the
+  turn outside the mouth = V17.104 photo-warp timed by the V17.89 cycle (`cave106`); fanning rhythm = bouts of 4-8 beats
+  at ~2.3 Hz with 0.4-1.2 s pauses (fanPh89/fanEnv89 rewritten); `warp106` (in the ancPectV1789 wrapper) redraws the tail
+  region in 20 strips with a wave base->tip (strip foreshortening + shading + slight vertical flex; A106/K106/V106).
+  Atlas C2 is now only used for the empty tube (C_tube00) - candidate to slim the ~150 MB decoded atlas.
+- Measured (`trailer/measure_cave106.py`, 1M+1F+cave, fan/guard shortened): max drawn step 2.5 px/frame in all cave
+  phases, 0 fish px over the tube unclipped, 0 errors; breeder with eggs: stays fanning, no errors. Reviewer: no blockers
+  (fixed: scaleX 0 guard in the clip, stale fan106 flag). The ref clip QqU5RsqYAOI 4:30-5:00 shows fry feeding, not fanning.
+- V17.107 (owner: "too up" entering/fanning): V17.89 caveGeo body line T+46 -> T+61 (T+53 was still "too up"), so the fish rests on the tube
+  floor: the opening reads dark down to ~T+67; fanning tail now spans y 330-357 (was 322-349). Affects all cave poses incl. female/spawning.
+
 ## V17.104 bristlenose TURN = the photo itself, warped (owner: "don't swap the picture")
 - Path taken today (all rejected on the way, for the record): V17.103 arc + camera rising to 20 deg ("turns like a
   shark"), V17.104 3D snap turn from render_turn6.py (motion liked, but "a highlight / corruption / outline when it
