@@ -198,7 +198,7 @@
  function drawFish(tank,el,s,fish,dt,sc,blocked,via,cave){
   stage91(el,fish);
   let f=ST.get(el);
-  if(!window.ANC90||(spawning()&&tank.id==='tank-breeder')){oldDraw(tank,el,f);return;}
+  if(!window.ANC90||(spawning()&&tank.id==='tank-breeder'&&!el.dataset.sp108)){oldDraw(tank,el,f);return;}   /* V17.108: the spawning pair keeps the V17.90 drawing (pivot turns) */
   const art91=el.querySelector('.ancArt'),stg91=art91&&art91.dataset.stage91;
   if(stg91==='fry'){oldDraw(tank,el,f);return;}   /* fry: tiny, the plain flat turn is enough */
   const sex=stg91==='juv'?(art91.dataset.col91==='b'?'JB':'JO'):(fish&&fish.sex==='F'?'F':'M');if(!ready(ATL.T)){oldDraw(tank,el,f);return;}
@@ -222,7 +222,7 @@
   /* never drawn crawling backwards: on the sand a clear, sustained movement decides the facing (head first) */
   const x=+el.dataset.ancX,dx=Number.isFinite(x)&&Number.isFinite(f.x)&&dt>0&&dt<.2?x-f.x:0;f.x=x;   /* no velocity across a gap */
   f.vx=(f.vx||0)+((dt>0?dx/dt:0)-(f.vx||0))*Math.min(1,dt*6);
-  const th=Math.max(2,9*scl),opp=glass<.3&&!blocked&&!TRANS97[mode]&&Math.abs(f.vx)>th&&Math.sign(f.vx)!==face;f.ot=opp?(f.ot||0)+dt:0;   /* thresholds scale with the fish: young hop slowly */
+  const th=Math.max(2,9*scl),opp=glass<.3&&!blocked&&!TRANS97[mode]&&Math.abs(f.vx)>th&&Math.sign(f.vx)!==face&&el.dataset.back108!=='1';f.ot=opp?(f.ot||0)+dt:0;   /* thresholds scale with the fish: young hop slowly */
   if(glass<.3&&!blocked&&!TRANS97[mode]){if(f.ot>(scl<.8?.3:.6))f.mv=Math.sign(f.vx);   /* young react quicker (short hops) */else if(Math.abs(f.vx)<th/3)f.mv=0;else if(f.mv&&Math.sign(f.vx)!==f.mv)f.mv=0;}else f.mv=0;   /* V17.99 (owner: turns flat): the corner moves of attach/detach slide the body, they are not walking - they flipped him flat */
   /* V17.92 turn: the old turn's own timer (s.turn, during which the fish stays put) or a facing-follow turn of our own */
   const T=Math.max(.5,window.ancTurnSecV1789||1),TF=Math.min(T,1);let tu=null;   /* V17.95: TF = facing-follow turns (the fish keeps moving) stay short */
@@ -311,7 +311,7 @@
  function post106(tank,el,s,fish,dt,sc,cave){
   const f=ST.get(el);if(!f)return;
   const art=el.querySelector('.ancArt'),mode=el.dataset.ancMode||'';
-  const on=window.ANC106!==false&&window.ANC90&&cave&&fish&&fish.sex==='M'&&art&&!art.dataset.stage91&&!(spawning()&&tank.id==='tank-breeder');
+  const on=window.ANC106!==false&&window.ANC90&&cave&&fish&&fish.sex==='M'&&art&&!art.dataset.stage91&&!(spawning()&&tank.id==='tank-breeder'&&el.dataset.sp108!=='fan');   /* V17.108: the spawning male fans with the V17.106 tail */
   const L=on?parseFloat(cave.style.left)||0:0,Mx=L+13.8,My=(on?parseFloat(cave.style.top)||0:0)+42,x=+el.dataset.ancX;
   const cyc=on&&CAVEMODES[mode],app=on&&mode==='cave-approach'&&Number.isFinite(x)&&x<Mx&&!(s&&s.ovl89>1);
   /* fanning rhythm: bouts and pauses (the V17.89 beat was continuous); read by the fin canvas through fanPh89/fanEnv89 */

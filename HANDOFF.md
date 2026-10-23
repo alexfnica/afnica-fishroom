@@ -1,4 +1,34 @@
-# Handoff — where work stopped (2026-10-22: V17.104 photo-warp turn + V17.105 sand rasp/hitch/burst + no contact shadow, committed; owner watching the 1M+2F test tank)
+# Handoff — where work stopped (2026-10-23: V17.108 bristlenose spawning in the cave, NOT committed; owner to review)
+
+## V17.108 bristlenose SPAWNING in the cave (2026-10-23, NOT committed)
+- Spec + sources: `docs/ANCISTRUS_SPAWNING_SPEC.md`. No source supports the female entering tail first, so the owner
+  OK'd choreography B: male invites head out → walks out and aside → she slides in HEAD FIRST to the back → he follows
+  head first and lies over and behind her (6 px higher, tail out of the mouth), fanning with the V17.106 bouts and soft
+  tail → she backs out under him, pivots outside and leaves → he is already head in / tail out = the V17.89 egg guard.
+  Owner-approved still of the poses: `docs/spawn108_still.jpg` (rig `trailer/still_spawn108.py`).
+- Code: `assets_blender/anc3d/block108.js`, installed by `anc3d/install108.py` between `<!-- V17.108 BEGIN/END -->`
+  right after the V17.90 block (install90 leaves it alone). It wraps `ancBreedingMotion40` and owns the pair in the breeder
+  while `st.ancClutch.stage==='spawning'`: same phases, same save fields and eggs code as V17.40, positions in a runtime
+  Map (no new st fields). It is a target-based state machine, so a reload mid-spawn resumes; trapped/laying/exit snap to
+  the pose. It hands the male's position to the V17.89 cave cycle (`HAND` → `g.ph=null,g.x,g.y`). Speeds: walk 28, slide
+  13, back 18 px/s (body 112 px). It keeps the cave/rim placed like V17.40. Switch: `window.ANC108=false`. Test hook
+  `window.__T108={inv:s}`. An error hands that clutch back to V17.40 (`ERR`, logged once).
+- Hooks in older code: V17.89 `ancDebugV1789()` exports place/caveGeo/fanOn/ys/tailPiece/malePos, and the V17.89 post
+  returns early while `data-sp108` is set. In block90.js (reinstalled): `drawFish` no longer skips the pair (it used to
+  skip all spawning fish, so they only got flat flips), the facing-follow ignores `data-back108` (backing out), and
+  post106 runs for the male with `sp108==='fan'`.
+- Turns: still fish use the V17.104 standing pivot (`s.turn`, which carries s.x). The male's turn deep inside the tube is
+  an instant hidden flip (`anc90Debug().ST` df), because a pivot there would swing the tail out of the closed end.
+- Measured (`trailer/measure_spawn108.py`, 1M+1F+cave, hour 12, 2 loops forced, trapped cut to 6 s, invite 4 s): max
+  drawn step ≤ 2.4 px/frame outside turns; the V17.104 pivots 8.9–9.9 px/frame mid-snap (the approved turn, V17.104 measured
+  ~11); 0 fish px over the tube, 0 faded frames, 0 errors. V17.106 tail on in all 662 spawning frames. The ~10 px/frame
+  after the eggs is the female's ordinary V17.105 sand burst. Grid: `docs/spawn108_grid.jpg`.
+- Reviewer: no blockers. Fixed: a stall if the fish scale is above 1.01, the error latch, cave/rim placement. Open (low): the pair waits on
+  each other through the runtime map, so if one of them is not rendered (8+ fish in the tank) the sequence pauses. Not
+  tested: a reload in each phase, water change mid-spawn, cancel by disease (all reasoned OK by the reviewer). The
+  invite phase is long (~28 s) when the male first has to walk to the cave from the far side.
+
+# Earlier (2026-10-22: V17.104 photo-warp turn + V17.105 sand rasp/hitch/burst + no contact shadow, committed; owner watching the 1M+2F test tank)
 
 ## V17.106 bristlenose CAVE with the in-game model (2026-10-22, NOT committed; owner to review)
 - Owner: entry/exit was a static pose and used the Blender render (look switched at the mouth); fanning tail "stiff board".
