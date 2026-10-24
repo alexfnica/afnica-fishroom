@@ -23,6 +23,39 @@
   drawn step ≤ 2.4 px/frame outside turns; the V17.104 pivots 8.9–9.9 px/frame mid-snap (the approved turn, V17.104 measured
   ~11); 0 fish px over the tube, 0 faded frames, 0 errors. V17.106 tail on in all 662 spawning frames. The ~10 px/frame
   after the eggs is the female's ordinary V17.105 sand burst. Grid: `docs/spawn108_grid.jpg`.
+- Owner round 2 (in the pane: "corruption", "male too high in the water column", "bodies still collide with the cave"),
+  NOT committed yet:
+  - The female's belly went below the opening and through the front lip. The rim layer does NOT hide fish here.
+    New `mouthClip` is an even-odd `path()`: all of the fish left of the mouth plane, minus the tube's front face
+    (half-ellipse 12 x 34), plus the opening (7 x 22.6). Bodies inside: the female's dy is -4 (the sprite's fins reach
+    ~9 px under the box centre; the opening's bottom is T+64.6), the male lies on her at dy -9, and she goes less deep
+    (snout +108), so her tail shows under his.
+  - The male no longer lifts 18 px "aside". He walks out past her on the sand line, drawn behind her (z 42), and turns
+    behind her. She waits at snout -40.
+  - `ancInCave` (V17.89 fanning look: 65 % brightness and its own clip) is now only on the fanning male, and there is one
+    mode label for all walks: both used to switch at the mouth. The female hands back through V17.89's `g.leave` blend
+    (it was a 4.6 px drop). Re-measured: same numbers, the hand-back step is gone, 0 overlap, 0 errors. Close-ups rig:
+    `trailer/probe_back108.py`.
+  - Owner round 3 ("the ancistrus can still be seen through the cave"): the opening showed the fish inside. Now
+    `mouthClip` = left of the tube photo's REAL outline (left edge per row from the cave img alpha, cached in `SIL`),
+    with no opening; it is re-applied after the chain, so it also replaces V17.106's fan clip for the spawning male
+    (only his tail outside shows). Close-ups clean (`probe_back108.py`).
+  - Owner rounds 4-5: every clip line failed (vanishing on the terracotta / passing behind / body over the ring /
+    seam). Measured with `probe_back108.py TRIPLE=1` (same frame: current clip, no fish clip, rim hidden): the V17.89
+    rim layer (z 45) DOES hide fish behind the terracotta. The real problem was the opening: a transparent hole in the
+    rim, so a fish inside showed through fully lit. FINAL (owner OK'd the close-ups): no special clip (V17.89 place()
+    tube-wall clip only), plus `.anc108shade` = a dark gradient over the opening (z 45, clear at the mouth, near black
+    inside), kept with the breeder cave (also for the egg guard). Cave line for passing the mouth = geo.cy-11 (centred
+    on the opening); the male settles back to geo.cy for the guard.
+  - FINAL after rounds 6-10 (owner OK'd in the pane on 2026-10-24; supersedes the shadow version above). The owner's rule: "the
+    fish goes in through the opening, its body is visible as it goes in, never through the ceramic; the inside looks
+    real". Fish at the cave are drawn OVER the rim layer (z 46-48; he walks behind her at 46) and `mouthClip` decides:
+    left of the tube's outer edge (per row from the cave photo alpha, `SIL`), plus at the opening's height up to the
+    opening's FAR edge (ellipse 7.6 x 23 at 13.8,42). `.anc108inner` (z 42, right after the cave) = inner terracotta wall
+    fading into shadow; `.anc108shade` (z 49) = light depth shade over the fish in the opening. Line at the mouth
+    cyO = geo.cy-5 (owner: "lower"); female dy +2, the male on her back dy 0, he settles to geo.cy (+5) for the guard.
+    Rejected along the way: clip at the outer edge (looked like going behind), clip at the mouth plane (seam / body over
+    the ring), transparent opening (see-through), black opening (unrealistic).
 - Reviewer: no blockers. Fixed: a stall if the fish scale is above 1.01, the error latch, cave/rim placement. Open (low): the pair waits on
   each other through the runtime map, so if one of them is not rendered (8+ fish in the tank) the sequence pauses. Not
   tested: a reload in each phase, water change mid-spawn, cancel by disease (all reasoned OK by the reviewer). The
