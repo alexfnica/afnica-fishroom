@@ -1,4 +1,29 @@
-# Handoff — where work stopped (2026-10-23: V17.108 bristlenose spawning in the cave, NOT committed; owner to review)
+# Handoff — where work stopped (2026-10-24: V17.109 bristlenose EYE follows the light, NOT committed; owner to review)
+
+## V17.109 bristlenose eye: round at night, crescent by day (2026-10-24, NOT committed)
+- Research (no blink; dorsal iris operculum; slow light-driven pupil, Douglas/Collin/Corrigan 2002): the pupil is a
+  crescent under the lobe in bright light, round in the dark. The photos only have the day crescent baked in.
+- Code: hook at the end of V17.42 `draw()` (`ancEyeV17109(g,r,c,dyF,belly,pad)`, try/catch, switch off on error) + new
+  block `<!-- V17.109 BEGIN/END -->` at the end of the file. It covers the baked pupil with iris colour (read once per record
+  from `r.base`, cached `r.eye109`) and paints pupil + lobe. Eye in 260 px record space: male olive/black (198.8, 57, R 1.9),
+  female (209.2, 70.5, R 2.4); y follows `dyF` + the belly stretch. Light = `ancDayNightFactorV17()` (honours
+  `window.__afHourOverride`), smoothstep((f-.25)/.5), eased with tau 25 s (`window.ANC109TAU`), ONE shared level for all
+  fish; nothing saved. Switch `window.ANC109=false`; debug `ancEyeDebugV17109()`.
+- Follow-up checks (2026-10-28, no game edits): belly forced to -.25/0/+.25 (`trailer/measure_eye109b.py`): painted eye within
+  .25 px of the baked one (the belly shift at the eye is only ~.2 px by the formula, u=.225). Digging: `nose` only moves u<.13,
+  the eye is at u=.225, so no change. Turn/cave: they cut the same live canvas, so the eye is inherited (not filmed).
+  Young fish (`trailer/dump_young109.py` -> `docs/young109_dump.png`): fry eye ~ (215, 28), juvenile ~ (213, 36) in record
+  space. Then added (owner: "add young"): EYE entries anc|120|238 (214.7,55.9,R1.6; |0|238 aliased), anc|120|438 (211.4,71.6,1.5),
+  anc|0|438 (206.4,59.9,1.6). Grid `docs/eye109_young_grid.png` (`trailer/measure_eye109c.py`): round -> half -> slit, aligned, 0 errors,
+  syntax 0. The young pupil is only ~3 px wide, so day reads as a smaller slit rather than a clear crescent.
+- Not covered: 3D fight frames (baked), the glass roll `drawRoll`. Young fish ARE covered (see below).
+  The eye is tiny in game (pupil ~2 px of a 260 px record) - the change reads as round vs dark crescent, not detail.
+  No tank-lamp / lights-off state exists yet; only the clock / hour override.
+- Measured (`trailer/measure_eye109.py`, headless, 1M+1F): hour 12 -> 23, level 1.00 -> 0.82 (5 s) -> 0.30 (30 s) -> 0.09
+  (60 s), monotone; pupil dark px male 6 -> 10 -> 13, female 31 -> 42 -> 47 (night / dusk / day), pupil centroid rises as
+  it rounds; 0 errors. Grid `docs/eye109_grid.png` (rows night / dusk / day, male | female). Syntax check 0 errors.
+
+# Earlier (2026-10-23: V17.108 bristlenose spawning in the cave, NOT committed; owner to review)
 
 ## V17.108 bristlenose SPAWNING in the cave (2026-10-23, NOT committed)
 - Spec + sources: `docs/ANCISTRUS_SPAWNING_SPEC.md`. No source supports the female entering tail first, so the owner

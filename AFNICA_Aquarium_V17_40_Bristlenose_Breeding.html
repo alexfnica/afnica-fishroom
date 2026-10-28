@@ -8440,6 +8440,7 @@ let BEND=0,SIG=0,SFL=0,SWRG=null,DFOLD=0;   /* DFOLD (V17.91): bristlenose dorsa
     g.drawImage(base,ax,y,aw,hh,ax+dx,pad+dyb+y,aw,hh);
    }
   }
+  if(window.ancEyeV17109){try{ancEyeV17109(g,r,c,dyF,belly,pad);}catch(e){window.ancEyeV17109=null;console.error('AFNICA ancEye',e);}}   /* V17.109 bristlenose eye: pupil follows the light */
  }
  /* V17.55 PECTORAL FINS. Small fish scull with their pectorals all the time when they hover or swim slowly (balance,
      braking, fine turns) and fold them against the flank when they swim fast. The fin is lifted out of the sprite with a
@@ -14657,4 +14658,59 @@ window.addEventListener('load',function(){
 })();
 </script>
 <!-- V17.108 END -->
+<!-- V17.109 BEGIN -->
+<script>
+/* ===== V17.109 BRISTLENOSE EYE: the pupil follows the light =====
+   Loricariids do not blink. They have a dorsal iris operculum (a flap in the upper iris): in bright light the pupil
+   slowly narrows to a crescent under the flap, in the dark it opens round (Douglas, Collin & Corrigan 2002; the real
+   change takes 35-40 min, here it eases over ~25 s). The photos only have the daylight crescent baked in, so after the
+   V17.42 strip draw of every bristlenose side canvas the old pupil is covered with iris colour (read once from the photo)
+   and a pupil + lobe is painted at the eye. Light = ancDayNightFactorV17() (V17.41, honours window.__afHourOverride);
+   the state is shared by all fish (light-driven, not random), nothing is saved. The turn, the cave and the glass roll use
+   this canvas, so the eye follows them. Switches: window.ANC109=false, window.ANC109TAU (seconds). The 3D fight frames keep
+   their baked eye. */
+(function(){
+ window.ANC109=true;
+ /* eye in 260 px record space [x, y, pupil radius]; the black male / brown female are recoloured copies of the same photos */
+ const EYE={'anc|0|38':[198.8,57,1.9],'anc|120|38':[209.2,70.5,2.4]};EYE['anc|240|38']=EYE['anc|0|38'];EYE['anc|360|38']=EYE['anc|120|38'];
+ /* young rows: fry (|238, one photo for both sexes) and juveniles (|438: olive = col 0, black = col 120), eye read off the 10x head dumps */
+ EYE['anc|120|238']=[214.7,55.9,1.6];EYE['anc|0|238']=EYE['anc|120|238'];EYE['anc|120|438']=[211.4,71.6,1.5];EYE['anc|0|438']=[206.4,59.9,1.6];
+ let lv=null,tl=0;
+ const target=()=>{const f=ancDayNightFactorV17(),t=Math.min(1,Math.max(0,(f-.25)/.5));return t*t*(3-2*t);};   /* 0 = night, round; 1 = day, crescent */
+ function level(){
+  const now=performance.now();
+  if(lv===null){lv=target();tl=now;}
+  else if(now-tl>=8){const dt=Math.min(.5,(now-tl)/1000);tl=now;lv+=(target()-lv)*(1-Math.exp(-dt/(window.ANC109TAU||25)));}
+  return lv;
+ }
+ function look(r,e){
+  if(r.eye109)return r.eye109;
+  const s=r.W/260,x=e[0]*s,y=e[1]*s,R=e[2]*s,g=r.base.getContext('2d');
+  const av=ps=>{const t=[0,0,0];ps.forEach(p=>{const d=g.getImageData(Math.round(p[0]),Math.round(p[1]),1,1).data;t[0]+=d[0];t[1]+=d[1];t[2]+=d[2];});return t.map(v=>Math.round(v/ps.length)).join();};
+  return r.eye109={ir:av([[x-R-2*s,y],[x+R+2*s,y],[x,y+R+2*s]]),lb:av([[x-1,y-R-1],[x,y-R-1],[x+1,y-R-1]])};
+ }
+ window.ancEyeV17109=function(g,r,c,dyF,belly,pad){
+  if(window.ANC109===false)return;
+  const e=EYE[c.dataset.wk];if(!e)return;
+  const s=r.W/260,ex=e[0]*s,ey0=e[1]*s,R=e[2]*s,lk=look(r,e),k=level(),cy=(r.y0+r.y1)/2,u=(r.x1-ex)/r.BL;
+  let ey=ey0+pad+dyF(ex);
+  const bb=belly&&u>.18&&u<.78?belly*Math.pow(Math.sin(Math.PI*(u-.18)/.6),1.2):0;   /* same belly stretch / thinning as the strip draw (lower half only) */
+  if(ey0>cy){if(bb>0)ey+=(ey0-cy)*bb;else if(bb<0){const kk=Math.min(r.H-cy-1,-bb*(r.y1-cy));if(ey0-cy<kk)return;ey-=kk;}}
+  const ring=R+2.2*s,Rp=R*(1.15-.15*k);
+  g.save();
+  const rg=g.createRadialGradient(ex,ey,R*1.1,ex,ey,ring);rg.addColorStop(0,'rgb('+lk.ir+')');rg.addColorStop(1,'rgba('+lk.ir+',0)');
+  g.fillStyle=rg;g.beginPath();g.arc(ex,ey,ring,0,7);g.fill();
+  g.fillStyle='#07070b';g.beginPath();g.arc(ex,ey,Rp,0,7);g.fill();
+  if(k>.02){
+   g.beginPath();g.arc(ex,ey,Rp+.4,0,7);g.clip();
+   const ly=ey-Rp*(2.15-1.2*k),Rl=Rp*1.05;
+   g.fillStyle='rgb('+lk.lb+')';g.beginPath();g.arc(ex,ly,Rl,0,7);g.fill();
+   g.strokeStyle='rgba(0,0,0,.28)';g.lineWidth=.5;g.beginPath();g.arc(ex,ly,Rl,0,7);g.stroke();
+  }
+  g.restore();
+ };
+ window.ancEyeDebugV17109=()=>({lv,target:target()});
+})();
+</script>
+<!-- V17.109 END -->
 </body></html>
