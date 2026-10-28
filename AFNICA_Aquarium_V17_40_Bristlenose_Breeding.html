@@ -8104,7 +8104,7 @@ function ancTrySecondClutch40(){
  const others=st.breederTank.filter(f=>f.species==='anc'&&f.sex==='F'&&f.id!==c.mom&&!f.dead&&!f.disease&&f.health>=80&&f.age>=S.anc.adult);
  if(!others.length||Math.random()>=0.05)return;
  const mom2=others[Math.floor(Math.random()*others.length)];
- const hatchIn=4+Math.floor(Math.random()*3),yolkIn=4+Math.floor(Math.random()*3);
+ const hatchIn=4+Math.floor(Math.random()*3),yolkIn=1+Math.floor(Math.random()*2);
  st.ancClutch2={id:'anc2-'+Date.now(),stage:'eggs',mom:mom2.id,dad:dad.id,parents:JSON.parse(JSON.stringify({mom:mom2,dad})),attempt:1,count:20+Math.floor(Math.random()*21),lossRoll:Math.random(),lastDay:st.day,laidDay:st.day,hatchDay:st.day+hatchIn,releaseDay:st.day+hatchIn+yolkIn};
  toast('Another female slipped into the cave and laid a second clutch while the male tends the first');
  save();
@@ -8190,7 +8190,7 @@ function ancBreedingMotion40(tank,el,s,fish,dt,w,base,scale){
   else if(isDad&&c.phase==='trapped'&&st.day>=c.trapDay+c.trapDays)phase('laying');
   else if(isDad&&c.phase==='laying'){c.seconds+=dt;if(c.seconds>=5)phase('female-exit');}
   else if(isMom&&arrived&&c.phase==='female-exit'){
-   const hatchIn=4+Math.floor(Math.random()*3),yolkIn=4+Math.floor(Math.random()*3);
+   const hatchIn=4+Math.floor(Math.random()*3),yolkIn=1+Math.floor(Math.random()*2);
    c.stage='eggs';c.laidDay=st.day;c.hatchDay=st.day+hatchIn;c.releaseDay=c.hatchDay+yolkIn;c.lastDay=st.day;save();
    toast('Female bristlenose laid '+c.count+' eggs and left the cave · male fanning them for about '+hatchIn+' days');
   }
@@ -8208,7 +8208,7 @@ renderV103Breeder=function(){
  setAfnicaScreenV104('breeder');ensureHealthState();if(!st.unlockedTanks.tank3)return oldRenderAnc40();
  const d=dailyFor('breeder'),c=st.ancClutch;
  const adults=st.breederTank.filter(f=>f.age>=S[f.species].adult),fry=st.breederTank.filter(f=>f.age<S[f.species].adult);
- document.getElementById('screen').innerHTML=v8Top()+`<div class="v8panel"><b>BRISTLENOSE BREEDING TANK</b><p>One healthy adult male + one female · male traps her in the cave for 1–2 days before she lays · 20–40 eggs per clutch · 4–6 days to hatch + 4–6 days absorbing the yolk sac</p><div>${ancClutchStatus40()}</div></div><div class="v8hero">${tank('BREEDER TANK',tankLitersV14('breeder'),st.breederTank,'breeder')}<div class="v8dock"><button onclick="care('feed','breeder')">FEED</button><button onclick="care('water','breeder')">WATER</button><button onclick="care('clean','breeder')">CLEAN</button><button onclick="startGeneralTreatment()">TREAT</button><button onclick="inspectAncCave40()">INSPECT CAVE</button></div></div><div class="v8panel"><button class="btn green" onclick="startAncBreeding40()">START COURTSHIP</button> <button class="btn" onclick="showAncModelsV1743()">ANCISTRUS MODELS</button><p>Healthy adults: 80%+ health. After spawning, the male rests until 15 game days have passed.</p>${adults.map(f=>`<p>${f.sex==='M'?'Male':'Female'} · ${f.health}% health · ${f.ancSpawnAttempts||0} attempts <button class="btn small" onclick="returnFromBreederV103('${f.id}')">RETURN TO MAIN</button></p>`).join('')}<p>${fry.length} free-swimming fry / juveniles</p>${fry.length?'<button class="btn" onclick="moveAncFry40()">MOVE FRY TO FRY TANK</button>':''}</div><div class="v8panel"><b>AVAILABLE ADULTS</b>${breederCandidatesV103().filter(f=>f.species==='anc').map(f=>`<p>${f.sex==='M'?'Male':'Female'} · ${f.health}% <button class="btn" onclick="moveToBreederV103('${f.id}')">MOVE TO BREEDER</button></p>`).join('')}</div><button class="btn" onclick="nextDay();renderV103Breeder()">NEXT DAY</button>`+v8Nav('room');
+ document.getElementById('screen').innerHTML=v8Top()+`<div class="v8panel"><b>BRISTLENOSE BREEDING TANK</b><p>One healthy adult male + one female · male traps her in the cave for 1–2 days before she lays · 20–40 eggs per clutch · 4–6 days to hatch + 1–2 days as wrigglers in the cave, then the fry carry the yolk sac for about 2 more days</p><div>${ancClutchStatus40()}</div></div><div class="v8hero">${tank('BREEDER TANK',tankLitersV14('breeder'),st.breederTank,'breeder')}<div class="v8dock"><button onclick="care('feed','breeder')">FEED</button><button onclick="care('water','breeder')">WATER</button><button onclick="care('clean','breeder')">CLEAN</button><button onclick="startGeneralTreatment()">TREAT</button><button onclick="inspectAncCave40()">INSPECT CAVE</button></div></div><div class="v8panel"><button class="btn green" onclick="startAncBreeding40()">START COURTSHIP</button> <button class="btn" onclick="showAncModelsV1743()">ANCISTRUS MODELS</button><p>Healthy adults: 80%+ health. After spawning, the male rests until 15 game days have passed.</p>${adults.map(f=>`<p>${f.sex==='M'?'Male':'Female'} · ${f.health}% health · ${f.ancSpawnAttempts||0} attempts <button class="btn small" onclick="returnFromBreederV103('${f.id}')">RETURN TO MAIN</button></p>`).join('')}<p>${fry.length} free-swimming fry / juveniles</p>${fry.length?'<button class="btn" onclick="moveAncFry40()">MOVE FRY TO FRY TANK</button>':''}</div><div class="v8panel"><b>AVAILABLE ADULTS</b>${breederCandidatesV103().filter(f=>f.species==='anc').map(f=>`<p>${f.sex==='M'?'Male':'Female'} · ${f.health}% <button class="btn" onclick="moveToBreederV103('${f.id}')">MOVE TO BREEDER</button></p>`).join('')}</div><button class="btn" onclick="nextDay();renderV103Breeder()">NEXT DAY</button>`+v8Nav('room');
 };
 function moveAncFry40(){const young=st.breederTank.filter(f=>f.species==='anc'&&f.age<S.anc.adult);st.fry.push(...young);st.breederTank=st.breederTank.filter(f=>!young.includes(f));save();renderV103Breeder();}
 </script><script>
@@ -8441,6 +8441,7 @@ let BEND=0,SIG=0,SFL=0,SWRG=null,DFOLD=0;   /* DFOLD (V17.91): bristlenose dorsa
    }
   }
   if(window.ancEyeV17109){try{ancEyeV17109(g,r,c,dyF,belly,pad);}catch(e){window.ancEyeV17109=null;console.error('AFNICA ancEye',e);}}   /* V17.109 bristlenose eye: pupil follows the light */
+  if(window.ancYolkV17110){try{ancYolkV17110(g,r,c,dyF,pad);}catch(e){window.ancYolkV17110=null;console.error('AFNICA ancYolk',e);}}   /* V17.110 bristlenose fry: yolk sac */
  }
  /* V17.55 PECTORAL FINS. Small fish scull with their pectorals all the time when they hover or swim slowly (balance,
      braking, fine turns) and fold them against the flank when they swim fast. The fin is lifted out of the sprite with a
@@ -14616,7 +14617,7 @@ window.addEventListener('load',function(){
     case 'turnout': a.dy+=(0-a.dy)*Math.min(1,dt*1.5);if(turnTo(-1))to(a,'away');break;
     case 'away':
      if(walk(away,SPD.away)&&c.phase==='female-exit'){   /* same as V17.40: the clutch is laid when she has left */
-      const hatchIn=4+Math.floor(Math.random()*3),yolkIn=4+Math.floor(Math.random()*3);
+      const hatchIn=4+Math.floor(Math.random()*3),yolkIn=1+Math.floor(Math.random()*2);
       c.stage='eggs';c.laidDay=st.day;c.hatchDay=st.day+hatchIn;c.releaseDay=c.hatchDay+yolkIn;c.lastDay=st.day;save();
       toast('Female bristlenose laid '+c.count+' eggs and left the cave · male fanning them for about '+hatchIn+' days');
       {let g=D.G.get(s);if(!g){g={};D.G.set(s,g);}g.y=a.y;g.lx=a.x;g.lface=a.face;}   /* V17.89 'leave' blend */
@@ -14713,4 +14714,60 @@ window.addEventListener('load',function(){
 })();
 </script>
 <!-- V17.109 END -->
+<!-- V17.110 BEGIN -->
+<script>
+/* ===== V17.110 BRISTLENOSE FRY: yolk sac + staying together =====
+   Owner: the fry should carry a yolk sac and stay grouped, then a second stage once the yolk is used up.
+   Stage 1, yolk-sac fry (age 1-2.99): an amber sac under the belly (painted over the fry photo, shrinks from full at
+   age 1 through half at age 2 to nothing at 3) and they lie in a tight heap on the sand at their tank's group spot,
+   still, with a short twitch now and then (real wrigglers hardly move). Stage 2, free fry (age 3-4.99): no sac, they
+   roam as a loose group: a fry that strays more than 110 px from the group spot walks back to it. The spot is per tank
+   and moves now and then. Fish only get nudged through the existing 'move'/'rest' modes (same fields as go96/stop96), so
+   the sand-walk code (V17.95/105) does the walking. The cave keeps the wrigglers 1-2 days now (was 4-6), the rest of the
+   yolk phase happens on the released fish. Switch: window.ANC110=false. Nothing new is saved. */
+(function(){
+ window.ANC110=true;
+ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),SP=new Map(),SAC=[172,93,32,20];
+ const hash=id=>{let h=0;id=String(id);for(let i=0;i<id.length;i++)h=(h*31+id.charCodeAt(i))|0;h^=h>>>16;h=Math.imul(h,0x45d9f3b);h^=h>>>16;return ((h>>>0)%1000)/1000;};
+ /* sac in the fry record's 260 px space; k = 1 full ... 0 gone. Drawn after the fish; the top of the ellipse fades out so it reads as a bulge of the belly. */
+ window.ancYolkV17110=function(g,r,c,dyF,pad){
+  if(window.ANC110===false)return;
+  const wk=c.dataset.wk;if(wk!=='anc|120|238'&&wk!=='anc|0|238')return;
+  const el=c.closest('[data-fish-id]'),k=el?parseFloat(el.dataset.yolk110):0;if(!(k>.02))return;
+  let t=r.yolk110;if(!t){t=r.yolk110=document.createElement('canvas');t.width=r.W;t.height=r.H+pad*2;}
+  const s=r.W/260,q=t.getContext('2d'),cx=SAC[0]*s,a=SAC[2]*s*(.55+.45*k),b=SAC[3]*s*(.5+.5*k),cy=SAC[1]*s+(1-k)*2*s+pad+dyF(cx);
+  q.globalCompositeOperation='source-over';q.clearRect(0,0,t.width,t.height);
+  const gr=q.createRadialGradient(cx-a*.25,cy-b*.3,1,cx,cy,a);gr.addColorStop(0,'#f6c46a');gr.addColorStop(.6,'#e19a2e');gr.addColorStop(1,'#a8681c');
+  q.fillStyle=gr;q.beginPath();q.ellipse(cx,cy,a,b,0,0,7);q.fill();
+  q.fillStyle='rgba(255,255,255,.4)';q.beginPath();q.ellipse(cx-a*.3,cy-b*.3,a*.28,b*.18,0,0,7);q.fill();
+  q.globalCompositeOperation='destination-in';const m=q.createLinearGradient(0,cy-b*.75,0,cy-b*.05);m.addColorStop(0,'rgba(0,0,0,0)');m.addColorStop(1,'rgba(0,0,0,1)');q.fillStyle=m;q.fillRect(0,0,t.width,t.height);
+  g.drawImage(t,0,0);
+ };
+ function go(s,tx,W){s.mode='move';s.tx=clamp(tx,70,W-70);s.ty=s.y;s.wait=0;s.dk95=s.tx;s.force95=null;s.fg=null;}
+ function fry(tank,el,s,fish,dt){
+  if(window.ANC110===false||!fish||fish.species!=='anc'||fish.dead||!(fish.age<5))return;
+  const y=clamp((3-fish.age)/2,0,1).toFixed(2);if(el.dataset.yolk110!==y)el.dataset.yolk110=y;
+  if(s.surface!=='substrate'||s.fight96||(s.ovl89||0)>.5||s.turn)return;
+  const key=tank.id||'t',W=tank.clientWidth||960,now=performance.now()/1000,yolk=fish.age<3;
+  let g=SP.get(key);if(!g){g={x:W*(.3+.4*Math.random()),at:now+240};SP.set(key,g);}
+  if(now>g.at){g.x=clamp(g.x+(Math.random()-.5)*240,110,W-110);g.at=now+(yolk?240:80)+Math.random()*60;}
+  const off=(hash(fish.id)-.5)*(yolk?44:150),tx=g.x+off;
+  if(yolk){
+   if(Math.abs(s.x-tx)>9&&s.mode!=='move')go(s,tx,W);
+   else if(Math.abs(s.x-tx)<=9&&s.mode!=='move'){
+    if(s.mode!=='rest'){s.mode='rest';s.tx=s.x;s.ty=s.y;s.fg=null;s.nudgeV=0;s.raspV=0;}
+    if(s.wait<100)s.wait=999;
+    if(now>(s.tw110||0)){s.tw110=now+4+Math.random()*8;if(s.tw110>now+.1&&s.mode==='rest')go(s,s.x+(Math.random()<.5?-1:1)*(3+Math.random()*4),W);}
+   }
+  }else if(Math.abs(s.x-g.x)>110&&s.mode!=='move')go(s,tx,W);
+ }
+ const prev=window.ancPostV1789;
+ window.ancPostV1789=function(tank,el,s,fish){
+  prev.apply(this,arguments);
+  try{fry(tank,el,s,fish,arguments[4]);}catch(e){window.ANC110=false;console.error('AFNICA V17.110 fry',e);}
+ };
+ window.ancFryDebugV17110=()=>({spots:[...SP.entries()]});
+})();
+</script>
+<!-- V17.110 END -->
 </body></html>

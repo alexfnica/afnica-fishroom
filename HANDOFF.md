@@ -1,4 +1,27 @@
-# Handoff — where work stopped (2026-10-24: V17.109 bristlenose EYE follows the light, NOT committed; owner to review)
+# Handoff — where work stopped (2026-10-29: V17.110 bristlenose FRY yolk sac + staying grouped, NOT committed; owner to review)
+
+## V17.110 bristlenose fry: yolk sac, heap, then a free-swimming group (2026-10-29, NOT committed)
+- Owner: fry should carry a yolk sac and stay grouped, then another stage once the yolk is used up. Static mock OK'd
+  (`docs/yolk110_mock.png`, `trailer/mock_yolk110.py`).
+- Before: the cave kept wrigglers (canvas, stage `yolk`) 4-6 days, then 20-40 fish of age 1 were released with the plain fry photo
+  (`data-stage91='fry'` = age < 5) and walked about alone. Now the cave keeps them 1-2 days (`yolkIn=1+rand(2)` in the 3 laying sites incl. V17.108)
+  and the yolk phase happens on the released fish. Cave text updated.
+- Block `<!-- V17.110 BEGIN/END -->` (end of file, after V17.109) + hook `ancYolkV17110` right after the eye hook in `draw()`.
+  Stage 1 yolk (age 1-2.99): amber sac (record space (172,93) 32x20, shrinks 1 -> .5 -> 0 by age 3, `el.dataset.yolk110`, top fades into the
+  belly), fry lie in a tight heap (+-22 px) at their tank's group spot, rest still, a 3-7 px twitch every 4-12 s. Stage 2 free fry (age 3-4.99):
+  no sac, a fry > 110 px from the spot walks back (spot +-75 px). One spot per tank id, hops +-120 px every ~240 s (yolk) / ~80 s (free).
+  Steering = the existing `move`/`rest` modes (same fields as go96/stop96), so V17.95/105 walks them; only on substrate, not in fights/cave ramp/turns.
+  Switch `window.ANC110=false`; debug `ancFryDebugV17110()`. No new `st` fields.
+- Measured (`trailer/measure_fry110.py`, headless, 3 yolk + 2 free fry + juvenile + adult, scattered start): yolk spread 160 -> 21 px after
+  150 s (they walk ~5 px/s so a scattered start needs ~60 s; released fry start together), free fry 25 -> 4..38 px, sac amber px ~1.2-2k, 0 errors.
+  Game-scale frame `docs/fry110_heap.jpg` (the sac is a small yellow bead at fry size).
+- Reviewer (no blockers): watch the sand code switching a resting fry to `graze` (it is put back to rest next frame), and a group spot that
+  can land on the V17.89 cave tube. Checked in the breeder tank (`trailer/measure_fry110b.py`, 7 fry, 100 s): all gather at x 442-476,
+  max step <= 2.1 px/frame, <= 8 direction reversals, 0 errors. Cave-overlap itself was not measured (no cave geometry export in that rig).
+- Not done: fry in the breeder cave area (they heap at a random sand spot, not at the cave), the wriggler canvas in the cave unchanged,
+  glass (belly) view has no sac, no feeding-driven grouping.
+
+# Earlier (2026-10-24: V17.109 bristlenose EYE follows the light, NOT committed; owner to review)
 
 ## V17.109 bristlenose eye: round at night, crescent by day (2026-10-24, NOT committed)
 - Research (no blink; dorsal iris operculum; slow light-driven pupil, Douglas/Collin/Corrigan 2002): the pupil is a
