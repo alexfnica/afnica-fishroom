@@ -332,9 +332,10 @@ function stepWalk(c,dt){
  let want=last?Math.min(c.maxSp,d*3+8):c.maxSp;
  c.hx+=(dx/d-c.hx)*Math.min(1,dt*6);c.hy+=(dy/d-c.hy)*Math.min(1,dt*6);
  const hl=Math.hypot(c.hx,c.hy)||1;const ux=c.hx/hl,uy=c.hy/hl;
+ const inDoor=q=>q.state==='exit'&&q.x<125;
  for(const o of ST.cust){
-  if(o===c)continue;const ox=o.x-c.x,oy=o.y-c.y,od=Math.hypot(ox,oy);
-  const R=Math.max(c.parts.rad||40,o.parts.rad||40);if(od<R){if(ox*ux+oy*uy>0&&od<R-4)want*=.5;c.x-=ox/(od||1)*(R-od)*dt*3.2;c.y-=oy/(od||1)*(R-od)*dt*3.2;}
+  if(o===c||inDoor(c)||inDoor(o))continue;const ox=o.x-c.x,oy=o.y-c.y,od=Math.hypot(ox,oy);
+  const R=Math.max(c.parts.rad||40,o.parts.rad||40);if(od<R){if(ox*ux+oy*uy>0&&od<R-4)want*=.5;const pu=Math.min((R-od)*3.2,40)*dt;c.x-=ox/(od||1)*pu;c.y-=oy/(od||1)*pu;}
  }
  c.speed+=(want-c.speed)*Math.min(1,dt*5);
  const step=Math.min(d,c.speed*dt);
@@ -397,7 +398,7 @@ function custTick(c,dt,t){
   case 'toQueue':if(arrived){c.state='wait';c.faceT=1;if(!ST.pay&&!ST.clerk.c&&ST.queue[0]===c){ST.queue.shift();ST.pay=c;c.state='toPay';route(c,[PAY]);reQueue();}}break;
   case 'wait':c.wait+=dt;if(c.wait>45){const f=c.want;if(f)delete f._res120;c.want=null;ST.queue.splice(ST.queue.indexOf(c),1);bubble(c,'😠',2.4);walkout(c,'queue');leave(c);reQueue();}break;
   case 'toPay':if(arrived){c.state='atpay';c.faceT=1;ST.clerk.c=c;ST.clerk.t=0;ST.clerk.ph='';}break;
-  case 'exit':if(arrived){c.alpha=Math.max(0,c.alpha-dt*3);if(c.alpha<=0)c.dead=true;}else if(c.x<120)c.alpha=Math.max(0,Math.min(c.alpha,(c.x-DOOR.x)/70+.3));break;
+  case 'exit':if(arrived||(c.leaving!==undefined&&c.x<70&&c.path.length<=1)){c.alpha=Math.max(0,c.alpha-dt*3);if(c.alpha<=0)c.dead=true;}else if(c.x<120)c.alpha=Math.max(0,Math.min(c.alpha,(c.x-DOOR.x)/70+.3));break;
  }
  c.face+=(c.faceT-c.face)*Math.min(1,dt*8);
  const P=c.parts;
@@ -443,8 +444,8 @@ function loop(now,gen){
   ST.next-=dt;
   if(ST.next<=0){
    const hf=hourF();
-   if(hf>0&&st.storeFish.length&&ST.cust.length<5)spawn();
-   ST.next=(18+Math.random()*20)/((1+.15*repLevel())*Math.max(.3,hf||.3));
+   if(hf>0&&st.storeFish.length&&ST.cust.length<5&&!ST.cust.some(o=>Math.hypot(o.x-DOOR.x,o.y-DOOR.y)<(o.parts.rad||40)+50)){spawn();ST.next=(18+Math.random()*20)/((1+.15*repLevel())*Math.max(.3,hf||.3));}
+   else ST.next=hf>0&&st.storeFish.length&&ST.cust.length<5?1.5:(18+Math.random()*20)/((1+.15*repLevel())*Math.max(.3,hf||.3));   /* doorway busy: try again shortly */
   }
   for(const c of ST.cust)custTick(c,dt,t);
   for(let i=ST.cust.length-1;i>=0;i--)if(ST.cust[i].dead){ST.cust[i].parts.el.remove();ST.cust.splice(i,1);}
