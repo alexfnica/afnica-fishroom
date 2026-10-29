@@ -93,6 +93,9 @@
   tank lamp / lights switch (0 = lights off); `window.ANC109TAU` is the easing time in s (25 default; the real fish needs 35-40 min); (c) the glass roll (`drawRoll`) draws the
   pupil on the flank slice, squashed by cos(th) and faded out as the belly view takes over (`ancEyeV17109(...,{hs,a})`; `docs/roll109.png`: eye present at gl .04-.42, gone at .53, 0 errors).
   Still baked (not touched): the 3D fight frames (atlas, ~2 px eye).
+- Early-eggs image (owner: plain bright orange clump, `anc_wriggler_scene_eggs_early.webp`, tunnel framing): `install111.py` embeds it as `poster_eggs_early`; `block111.js` `key()` shows it
+  for the first half of the egg stage (`q=(st.day-laidDay)/(hatchDay-laidDay) < .5`), the eyed-eggs image for the second half (headless: laid today -> eggs_early, 4-5 days in -> eggs, 0 errors).
+  The V17.43 stage line now says wrigglers "lie scattered along the wall near the empty shells" (was "in a heap"). Still the old vector drawing: the cave mouth seen in the TANK (V17.43 drawEggs / drawWigglers).
 - Not done / not checked: the wriggler canvas in the cave is unchanged (already a heap), no sac in the glass (belly) view, "under" the decoration is
   only z-order (the first decoration on the sand is the wide driftwood, centre x), nursery with no decoration = corner (not seen), the cave panel
   button layout (not seen in the pane), what the Fry Tank shows when the yolk fish are sold or die (nothing special).

@@ -14,7 +14,7 @@ def uri(name, mime):
 A = {'poster': uri('anc_wriggler_scene_full.webp', 'image/webp') or uri('anc_wriggler_heap.webp', 'image/webp')}   # newest stage image first
 for k in ('full', 'half', 'low'): A[k] = uri('anc_wriggler_heap_%s.mp4' % k, 'video/mp4')
 for k in ('full', 'half', 'low'): A['poster_' + k] = uri('anc_wriggler_scene_%s.webp' % k, 'image/webp')   # still of each yolk stage (poster while the video loads, or instead of it)
-A['poster_eggs'] = uri('anc_wriggler_scene_eggs.webp', 'image/webp')   # the eggs stage of the cave popup
+A['poster_eggs'] = uri('anc_wriggler_scene_eggs.webp', 'image/webp'); A['poster_eggs_early'] = uri('anc_wriggler_scene_eggs_early.webp', 'image/webp')   # the eggs stage of the cave popup
 A = {k: v for k, v in A.items() if v}
 IMG = {k: uri(n, 'image/png') for k, n in (('larva', 'anc_wriggler_side_cut.png'), ('free', 'anc_wriggler_free_cut.png'))}; IMG = {k: v for k, v in IMG.items() if v}   # V17.110: fry sprites (cut-outs of the Gemini larva / free-fry photos)
 assets = 'window.ANC110_IMG={' + ','.join('%s:"%s"' % (k, v) for k, v in IMG.items()) + '};' + chr(10) + 'window.ANC111_ASSETS={' + ','.join('%s:"%s"' % (k, v) for k, v in A.items()) + '};\n'

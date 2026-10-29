@@ -9,7 +9,8 @@
  window.ANC111=true;
  const A=window.ANC111_ASSETS||{};
  const clamp=(v,a,b)=>v<a?a:v>b?b:v;
- const key=c=>{if(c&&c.stage==='eggs')return A.poster_eggs?'eggs':null;if(!c||c.stage!=='yolk')return null;const p=clamp((st.day-c.hatchDay)/Math.max(1,c.releaseDay-c.hatchDay),0,1);return p<.34?'full':p<.67?'half':'low';};
+ const key=c=>{if(c&&c.stage==='eggs'){if(!A.poster_eggs)return null;const laid=Number.isFinite(c.laidDay)?c.laidDay:c.hatchDay-5,q=clamp((st.day-laid)/Math.max(1,c.hatchDay-laid),0,1);return q<.5&&A.poster_eggs_early?'eggs_early':'eggs';}   /* fresh bright orange eggs first, eyed eggs in the second half */
+  if(!c||c.stage!=='yolk')return null;const p=clamp((st.day-c.hatchDay)/Math.max(1,c.releaseDay-c.hatchDay),0,1);return p<.34?'full':p<.67?'half':'low';};
  if(!document.getElementById('anc111css')){const s=document.createElement('style');s.id='anc111css';
   s.textContent='@keyframes anc111dust{0%{transform:translate(0,0);opacity:0}15%{opacity:.8}85%{opacity:.7}100%{transform:translate(26px,38px);opacity:0}}'+
    '@keyframes anc111breath{0%,100%{transform:scale(1.02)}50%{transform:scale(1.045)}}'+
@@ -23,7 +24,7 @@
  const LARVAE={
   full:[[400,360,300,350],[400,398,300,405],[458,430,385,485],[445,292,400,272],[642,285,690,262],[668,320,765,305],[765,344,880,352],[675,383,765,430],[722,383,808,395],[843,415,945,447],[626,432,675,487],[283,445,305,497],[255,135,262,230],[308,142,318,235],[165,212,190,305],[222,207,230,298],[112,348,138,435]],
   half:[[405,360,300,350],[405,395,285,408],[462,428,385,487],[448,293,405,272],[640,285,690,262],[668,320,765,305],[758,343,880,350],[670,385,765,430],[712,380,808,395],[843,415,945,447],[622,430,680,490],[275,448,300,497],[255,125,260,235],[307,138,318,238],[163,205,190,305],[222,203,232,298],[110,345,135,438]],
-  eggs:[],   /* the eggs still has no twitching: dust and beam only */
+  eggs:[],eggs_early:[],   /* the eggs have no twitching: dust and beam only */
   low:[[378,377,235,395],[425,397,285,418],[595,402,755,428],[705,375,815,388],[775,398,900,438],[188,122,192,250],[138,205,150,320],[166,246,180,330],[868,388,885,300]]
  };
  const IW=1024,IH=559,SC=.75;
@@ -67,7 +68,7 @@
   const cv=document.getElementById('ancInspect43');if(!cv||st.ancClutch2&&['eggs','yolk'].includes(st.ancClutch2.stage))return;
   const k=key(st.ancClutch);if(!k)return;
   const src=A[k]||null,poster=A['poster_'+k]||A.poster||null;if(!src&&!poster)return;
-  const box=document.createElement('div');box.className='anc111box';
+  const box=document.createElement('div');box.className='anc111box';box.dataset.k=k;
   box.style.cssText='width:100%;max-width:420px;aspect-ratio:'+(cv.width&&cv.height?cv.width+'/'+cv.height:'4/3')+';border-radius:50% / 42%;box-shadow:0 0 0 6px #2b2116';
   if(src){const v=document.createElement('video');v.src=src;v.loop=true;v.muted=true;v.autoplay=true;v.playsInline=true;if(poster)v.poster=poster;box.appendChild(v);const p=v.play();if(p&&p.catch)p.catch(()=>{});}
   else{const cvs=document.createElement('canvas');cvs.width=Math.round(IW*SC);cvs.height=Math.round(IH*SC);cvs.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:cover';box.appendChild(cvs);living(cvs,poster,k);}
