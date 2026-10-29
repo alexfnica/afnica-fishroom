@@ -134,12 +134,14 @@ function pointRig(up,w,h,fh,H){
  return {S,arm:cv(A),base:cv(B),rot:hd.a-Math.PI*.56};
 }
 /* a clear fish bag hanging from a hand point (image px), knot in the fist */
-function drawBagV120(ctx,x,y,col,ang){
+function drawBagV120(ctx,x,y,col,ang,img){
  ctx.save();ctx.translate(x,y+2);if(ang)ctx.rotate(ang);
  const body=()=>{ctx.beginPath();ctx.moveTo(-3,2);ctx.quadraticCurveTo(-14,12,-12,27);ctx.quadraticCurveTo(0,33,12,27);ctx.quadraticCurveTo(14,12,3,2);ctx.closePath();};
  body();ctx.fillStyle='rgba(200,238,255,.5)';ctx.fill();
  ctx.save();body();ctx.clip();ctx.fillStyle='rgba(47,170,214,.55)';ctx.fillRect(-15,13,30,22);
- ctx.fillStyle=col||'#ff9a3c';ctx.beginPath();ctx.ellipse(-1,21,5,2.6,0,0,7);ctx.fill();ctx.beginPath();ctx.moveTo(4,21);ctx.lineTo(8,18);ctx.lineTo(8,24);ctx.closePath();ctx.fill();ctx.restore();
+ if(img&&img.complete&&img.naturalWidth){const fw=15,fh=fw*img.naturalHeight/img.naturalWidth;ctx.drawImage(img,-fw/2,21-fh/2,fw,fh);}   /* the fish that was bought */
+ else{ctx.fillStyle=col||'#ff9a3c';ctx.beginPath();ctx.ellipse(-1,21,5,2.6,0,0,7);ctx.fill();ctx.beginPath();ctx.moveTo(4,21);ctx.lineTo(8,18);ctx.lineTo(8,24);ctx.closePath();ctx.fill();}
+ ctx.restore();
  body();ctx.strokeStyle='rgba(235,250,255,.95)';ctx.lineWidth=1.2;ctx.stroke();
  ctx.beginPath();ctx.moveTo(-6,10);ctx.quadraticCurveTo(-9,17,-8,23);ctx.strokeStyle='rgba(255,255,255,.7)';ctx.lineWidth=1.5;ctx.stroke();
  ctx.fillStyle='rgba(225,245,255,.95)';ctx.beginPath();ctx.ellipse(0,1.5,3.5,2,0,0,7);ctx.fill();
@@ -154,7 +156,7 @@ function handAt(R,phase,m,which){
 /* leg state for phase q in [0,1): stance first half (foot slides back linearly), swing second half (eased forward) */
 function legS(R,q){q=((q%1)+1)%1;if(q<.5)return {s:R.C+R.A*(1-4*q),sw:0};const v=(q-.5)/.5;return {s:R.C-R.A*Math.cos(Math.PI*v),sw:Math.sin(Math.PI*v)};}
 /* draws the rig into ctx with its feet-centre at (0,0) scaled by k; phase = cycle position, m = 0 standing .. 1 walking */
-function drawWalkV120(ctx,R,phase,m,k,bag,pt){
+function drawWalkV120(ctx,R,phase,m,k,bag,pt,over){
  const f=legS(R,phase),b=legS(R,phase+.5);
  const st={s:R.C+R.A*.12,sw:0},sb={s:R.C-R.A*.12,sw:0};
  const mix=(a,s)=>({s:s.s+(a.s-s.s)*m,sw:a.sw*m});
@@ -173,13 +175,14 @@ if(pt>0&&R.pt){ctx.drawImage(R.pt.base,0,0);ctx.save();ctx.translate(R.pt.S.x,R.
   if(m>0){ctx.globalAlpha=m;ctx.drawImage(R.arms.walk[n],0,0);}
   ctx.globalAlpha=1;}
  else ctx.drawImage(R.L.upper,0,0);
- if(bag){const hp=handAt(R,phase,m,bag.hand);if(hp)drawBagV120(ctx,hp.x,hp.y,bag.col,bag.ang||0);}
+ if(bag){const hp=handAt(R,phase,m,bag.hand);if(hp)drawBagV120(ctx,hp.x,hp.y,bag.col,bag.ang||0,bag.img);}
+ if(over)over(ctx);   /* drawn in the picture's own pixels (e.g. the bought fish in a bag pose) */
  ctx.restore();
 }
 function drawPairV120(ctx,P,dist,m,k,bag,pt){
- P.parts.forEach((q,i)=>{const R=q.R,b=i===0&&bag?{col:bag.col,hand:'back',ang:bag.ang}:null;ctx.save();ctx.translate((q.ox+R.w/2-P.w/2)*k,0);
+ P.parts.forEach((q,i)=>{const R=q.R,b=i===0&&bag?{col:bag.col,hand:'back',ang:bag.ang,img:bag.img}:null;ctx.save();ctx.translate((q.ox+R.w/2-P.w/2)*k,0);
   if(R.still){const bob=-Math.abs(Math.sin(dist*.12))*1.6*m;ctx.scale(k,k);ctx.translate(-R.w/2,-R.ground+bob);ctx.drawImage(R.c,0,0);
-   if(b&&R.fh){const hd=R.fh.hands.slice().sort((a,c)=>a.x-c.x)[0];drawBagV120(ctx,hd.x,hd.y,b.col,bag.ang||0);}}
+   if(b&&R.fh){const hd=R.fh.hands.slice().sort((a,c)=>a.x-c.x)[0];drawBagV120(ctx,hd.x,hd.y,b.col,bag.ang||0,bag.img);}}
   else drawWalkV120(ctx,R,dist/(cycleLenV120(R)*k),m,k,b,i===1?pt:0);   /* the child points with its free hand */
   ctx.restore();});
 }

@@ -73,3 +73,6 @@
 .st120stage .board .sn{font-size:10px;text-transform:uppercase}
 .st120stage .board em{display:inline-block;margin-top:2px;font-style:normal;font-size:9.5px;color:#fff;background:#e23b2e;border-radius:8px;padding:1px 6px}
 .st120stage .tg .sl{color:#fff;background:#e23b2e;border-radius:6px;padding:0 4px;font-size:9px}
+
+.st120stage .own img.ofish{position:absolute;height:auto;pointer-events:none}
+.st120stage .bub img.bfi{height:15px;width:auto;vertical-align:middle;margin:0 2px;filter:drop-shadow(0 1px 1px #0004)}

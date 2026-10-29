@@ -28,7 +28,15 @@ function ensureStoreV120(){
  for(const k in d)if(s[k]===undefined)s[k]=d[k];
  if(!s.day||typeof s.day!=='object')s.day={customers:0,sales:0,revenue:0,upkeep:0,walkouts:0,best:0,rep0:s.rep};
  if(!Array.isArray(st.storeFish))st.storeFish=[];
+ placeFishV120();
 }
+/* each store fish has its own place (f.storeSlot); old saves and stocking get the first free one, so a sale never moves the others */
+function placeFishV120(){
+ const s=st.store,n=s.tanks*s.slotsPerTank,used=new Set();
+ st.storeFish.forEach(f=>{if(Number.isInteger(f.storeSlot)&&f.storeSlot>=0&&f.storeSlot<n&&!used.has(f.storeSlot))used.add(f.storeSlot);else f.storeSlot=null;});
+ st.storeFish.forEach(f=>{if(f.storeSlot==null){let k=0;while(used.has(k)&&k<n)k++;f.storeSlot=k<n?k:n-1;used.add(f.storeSlot);}});
+}
+const tankFishV120=ti=>st.storeFish.filter(f=>Math.floor(f.storeSlot/st.store.slotsPerTank)===ti);
 const oldEnsure=window.ensureHealthState;
 window.ensureHealthState=function(){const r=oldEnsure.apply(this,arguments);try{ensureStoreV120();}catch(e){console.error('AFNICA store defaults',e);}return r;};
 
@@ -84,7 +92,8 @@ function evaluate(p){
   const sc=(p.type==='collector'?g.rank*10+fair/price:fair/price+Math.random()*.3)+(onSaleV120(f)?.6:0);   /* the sale draws buyers */
   if(sc>bs){bs=sc;best=f;}
  }
- return {fish:best,reason:best?'':(saw?'expensive':'nomatch')};
+ let dear=null,dl=1e9;if(!best&&saw)for(const f of st.storeFish){if(f._res120)continue;const lim=Math.min(p.budget,fairV120(f)*p.sense*(1+.15*lvl)),o=priceV120(f)/lim;if(o<dl){dl=o;dear=f;}}
+ return {fish:best,dear,reason:best?'':(saw?'expensive':'nomatch')};
 }
 function sellV120(f,silent){
  const i=st.storeFish.indexOf(f);if(i<0)return 0;
@@ -158,7 +167,10 @@ function mkPerson(p,z){
  const q=c=>d.querySelector(c);
  return {el:d,svg:q('svg'),all:q('.all'),aL:q('.aL'),aR:q('.aR'),lL:q('.lL'),lR:q('.lR'),hd:q('.hd'),bag:q('.bag'),net:q('.net'),nf:q('.nf'),bf:q('.bf'),bub:q('.bub')};
 }
-function bubble(c,txt,sec){c.parts.bub.textContent=txt;c.parts.bub.classList.add('on');c.bubT=sec||2.2;}
+/* a speech bubble; '§' in the text is replaced by a small picture of fish f (the player sees which fish is meant) */
+function bubble(c,txt,sec,f){const b=c.parts.bub;b.textContent='';const im=f&&txt.indexOf('§')>=0?fishImgV120(f):null;
+ txt.split('§').forEach((s,i)=>{if(i&&im){const e=document.createElement('img');e.className='bfi';e.src=im.src;e.alt='';b.appendChild(e);}b.appendChild(document.createTextNode(s));});
+ b.classList.add('on');c.bubT=sec||2.2;}
 /* realistic customers: a rendered full-body cut-out (assets_blender/store/people, made with cut_people.py), walked with a bob / rock / squash instead of limbs */
 /* walk rigs (walk120.js), one per sprite image, built once the image has decoded; pairs / failures keep the bob */
 const RIG=new Map();
@@ -176,7 +188,7 @@ function mkSprite(src,asp,pose){
  d.innerHTML=`<div class="sprw"><img src="${src}" alt=""><canvas class="wk${wide?' wkw':''}" width="${wide?480:200}" height="320"></canvas><svg class="bagh" width="22" height="28" viewBox="0 0 22 28"><path d="M3 4 q-3 8 1 18 q7 5 14 0 q4 -10 1 -18z" fill="#9ee2f7" fill-opacity=".65" stroke="#e8fbff" stroke-width="1.2"/><path d="M4 4 q7 -8 13 0" stroke="#e8fbff" stroke-width="1.6" fill="none"/><path class="bf" d="M6 15 q5 -5 10 0 q-5 5 -10 0z" fill="#ff9a3c"/></svg></div><div class="bub"></div>`;
  const w=d.querySelector('.sprw'),bag=d.querySelector('.bagh');
  if(wide){bag.style.left='96px';bag.style.top='96px';}
- return {spr:true,wide,rad:wide?60:40,rig:rigFor(src,wide),bagRig:pose&&pose.bag?rigFor(pose.bag,false,true):null,ptP:pose&&pose.point?pointFor(pose.point):null,cv:d.querySelector('.wk'),el:d,svg:w,img:w.firstChild,bagEl:bag,bag:{setAttribute(a,v){bag.style.display=v==='visible'?'block':'none';}},bf:d.querySelector('.bf'),bub:d.querySelector('.bub')};
+ return {spr:true,wide,rad:wide?60:40,rig:rigFor(src,wide),bagRig:pose&&pose.bag?rigFor(pose.bag,false,true):null,bagFish:pose&&pose.fish||null,ptP:pose&&pose.point?pointFor(pose.point):null,cv:d.querySelector('.wk'),el:d,svg:w,img:w.firstChild,bagEl:bag,bag:{setAttribute(a,v){bag.style.display=v==='visible'?'block':'none';}},bf:d.querySelector('.bf'),bub:d.querySelector('.bub')};
 }
 function poseP(c,t){
  const P=c.parts,mv=Math.min(1,c.speed/30),sw=Math.sin(c.phase)*mv,sd=c.seed;
@@ -188,7 +200,7 @@ function poseP(c,t){
   if(R){
    /* real walk: legs swing from the hip, distance-driven so the planted foot does not slide */
    if(P.img.style.display!=='none'){P.img.style.display='none';P.cv.style.display='block';}
-   const g=P.cv.getContext('2d'),k=150/R.h,m=Math.min(1,c.speed/25),cw=P.wide?240:100,bag=c.bagged&&!RB?{col:c.bagCol}:null;
+   const g=P.cv.getContext('2d'),k=150/R.h,m=Math.min(1,c.speed/25),cw=P.wide?240:100,bag=c.bagged&&!RB?{col:c.bagCol,img:c.bagImg}:null;
    g.setTransform(2,0,0,2,0,0);g.clearRect(0,0,cw,160);g.translate(cw/2,156);
    const pdt=Math.min(.1,Math.max(0,t-(c.plt||t)));c.plt=t;
    /* pointing = the person's own 'point' picture (pose sheet), crossfaded in while they stand at a tank they like */
@@ -196,7 +208,8 @@ function poseP(c,t){
    if(bag){const cyc=(c.dist||0)/(window.cycleLenV120(R.pair?R.parts[0].R:R)*k),tgt=.16*m*Math.sin(2*Math.PI*cyc-1.3);
     c.bagV=(c.bagV||0)+((tgt-(c.bagA||0))*30-(c.bagV||0)*7)*pdt;c.bagA=(c.bagA||0)+c.bagV*pdt;bag.ang=c.bagA;}
    if(R.pair)window.drawPairV120(g,R,c.dist||0,m,k,bag,0);
-   else{if(c.pt<.99){g.globalAlpha=1-c.pt;window.drawWalkV120(g,R,(c.dist||0)/(window.cycleLenV120(R)*k),m,k,bag,0);}
+   else{const FB=RB&&P.bagFish,over=FB&&c.bagImg&&c.bagImg.complete&&c.bagImg.naturalWidth?(x=>{const im=c.bagImg,w=Math.max(FB[2],FB[3]*1.8)*1.35,h=w*im.naturalHeight/im.naturalWidth;x.drawImage(im,FB[0]+FB[2]/2-w/2,FB[1]+FB[3]/2-h/2,w,h);}):null;
+    if(c.pt<.99){g.globalAlpha=1-c.pt;window.drawWalkV120(g,R,(c.dist||0)/(window.cycleLenV120(R)*k),m,k,bag,0,over);}
     if(c.pt>.01){g.globalAlpha=c.pt;const kp=150/PT.im.naturalHeight;g.save();g.scale(kp,kp);g.translate(-PT.ax+((R.ax||R.w/2)-R.w/2)*k/kp,-PT.ground);g.drawImage(PT.im,0,0);g.restore();}
     g.globalAlpha=1;}
    const lean=c.state==='look'&&c.pt<.5?-2+Math.sin(t*3+sd)*(c.pointing?1.5:.5):0;
@@ -219,13 +232,21 @@ function poseP(c,t){
 /* the clerk is the owner's own character: a cut-out of his YouTube outro render (real shirt print), swayed / leaned per phase, net as an overlay */
 /* the owner at the counter: four Gemini poses of him (idle = hands on the counter, greet = open hand, bag = holding the bag up,
    give = holding it out to the viewer's right), cut with one crop box so they line up, crossfaded per serving phase */
+function fishImgV120(f){
+ try{let u=realAssetV154(f);if(!u){const set=REAL_FISH_ASSETS_V154[assetSpeciesKeyV154(f)]||{};u=set.adult_m||set.adult_f||set.juvenile||set.fry;}
+  if(!u)return null;const im=new Image();im.src=u;return im;}catch(e){return null;}
+}
 const OWN_K=.107,OWN_X=600,OWN_Y=188,GIVE_BAG={x:OWN_X+810*OWN_K,y:OWN_Y+450*OWN_K};   /* crop px -> stage units; the bag's middle in the 'give' pose */
 function mkOwner(){
  const PO=(window.ST120_LOGO||{}).poses||{};
  const d=document.createElement('div');d.className='own';
- d.innerHTML=['idle','greet','bag','give'].map(k=>`<img class="op" data-k="${k}" src="${PO[k]||''}" alt="" style="opacity:${k==='idle'?1:0}">`).join('')+'<div class="bub"></div>';
- const im={};d.querySelectorAll('img.op').forEach(e=>im[e.dataset.k]=e);
- return {el:d,im,op:{idle:1,greet:0,bag:0,give:0},lt:0,bub:d.querySelector('.bub')};
+ const BF=window.ST120_BAGFISH||{},S=95.2/356;
+ /* the painted fish was taken out of the bag pictures: the fish being sold is drawn there instead (box from fix_bag_fish.py) */
+ const fishEl=k=>{const b=BF['owner_'+k];if(!b)return '';const cx=(b[0]+b[2]/2)*S,cy=(b[1]+b[3]/2)*S,w=Math.max(b[2],b[3]*1.8)*S*1.25;
+  return `<img class="ofish" data-k="${k}" alt="" style="left:${(cx-w/2).toFixed(1)}px;top:${(cy-w*.3).toFixed(1)}px;width:${w.toFixed(1)}px;opacity:0">`;};
+ d.innerHTML=['idle','greet','bag','give'].map(k=>`<img class="op" data-k="${k}" src="${PO[k]||''}" alt="" style="opacity:${k==='idle'?1:0}">`).join('')+fishEl('bag')+fishEl('give')+'<div class="bub"></div>';
+ const im={},fi={};d.querySelectorAll('img.op').forEach(e=>im[e.dataset.k]=e);d.querySelectorAll('img.ofish').forEach(e=>fi[e.dataset.k]=e);
+ return {el:d,im,fi,fishFor:null,op:{idle:1,greet:0,bag:0,give:0},lt:0,bub:d.querySelector('.bub')};
 }
 function custHandV120(c){return {x:c.x+(c.faceT>0?11:-11),y:c.y-74};}
 function poseClerk(t){
@@ -233,7 +254,9 @@ function poseClerk(t){
  const pp=K.part||0;let want='idle',rate=7;
  if(K.c){if(K.ph==='greet'||K.ph==='pay')want='greet';else if(K.ph==='bag')want='bag';else if(K.ph==='hand'){want=pp<.55?'give':'idle';rate=14;}}
  const dt=Math.min(.1,Math.max(0,t-(P.lt||t)));P.lt=t;
- for(const k in P.op){P.op[k]+=((k===want?1:0)-P.op[k])*Math.min(1,dt*rate);P.im[k].style.opacity=P.op[k].toFixed(3);}
+ const f=K.c&&K.c.want;
+ if(f&&P.fishFor!==f){P.fishFor=f;const im=fishImgV120(f);for(const k in P.fi)if(im)P.fi[k].src=im.src;}
+ for(const k in P.op){P.op[k]+=((k===want?1:0)-P.op[k])*Math.min(1,dt*rate);P.im[k].style.opacity=P.op[k].toFixed(3);if(P.fi[k])P.fi[k].style.opacity=(f?P.op[k]:0).toFixed(3);}
  /* life: breathing and a very slow sway */
  P.el.style.transform=`translateY(${(Math.sin(t*1.7)*.35).toFixed(2)}px) scaleY(${(1+.006*Math.sin(t*1.7)).toFixed(4)}) rotate(${(Math.sin(t*.5)*.4).toFixed(2)}deg)`;
 }
@@ -277,8 +300,9 @@ const isBottom=f=>f.species==='cory'||f.species==='anc';
 function syncFish(){
  const s=st.store,list=st.storeFish,seen=new Set();
  list.forEach((f,idx)=>{
-  const ti=Math.floor(idx/s.slotsPerTank),si=idx%s.slotsPerTank,fb=$('st120fb'+ti);if(!fb)return;
-  const mates=list.slice(ti*s.slotsPerTank,idx),bot=isBottom(f),k=mates.filter(m=>isBottom(m)===bot).length;
+  if(!Number.isInteger(f.storeSlot))placeFishV120();
+  const ti=Math.floor(f.storeSlot/s.slotsPerTank),si=f.storeSlot%s.slotsPerTank,fb=$('st120fb'+ti);if(!fb)return;
+  const bot=isBottom(f),k=si;   /* its own place: bottom fish on the sand, the others in the water */
   let el=ST.els.get(f.id);
   if(!el){el=document.createElement('div');el.className='sf'+(isBottom(f)?' bt':'');el.innerHTML=`<div class="d" style="animation-duration:${(isBottom(f)?9:5)+Math.random()*4}s;animation-delay:-${(Math.random()*6).toFixed(1)}s">${dexAvatarHTML(f,32,19)}</div>`;ST.els.set(f.id,el);}
   if(el.parentNode!==fb)fb.appendChild(el);
@@ -288,7 +312,7 @@ function syncFish(){
  for(const [id,el] of ST.els)if(!seen.has(id)){el.remove();ST.els.delete(id);}
  for(let i=0;i<s.tanks;i++){
   const tg=$('st120tg'+i);if(!tg)continue;
-  const fs=list.slice(i*s.slotsPerTank,(i+1)*s.slotsPerTank).filter(f=>!f._net120);
+  const fs=tankFishV120(i).filter(f=>!f._net120);
   if(!fs.length)tg.innerHTML='<b>empty</b>';
   else{const pr=fs.map(priceV120),a=Math.min(...pr),b=Math.max(...pr);tg.innerHTML=`${fs.some(onSaleV120)?'<span class="sl">SALE</span> ':''}${fs.length} fish<br><b>🪙 ${a===b?a:a+'–'+b}</b>`;}
  }
@@ -338,8 +362,8 @@ window.stStock120=function(id){
   if(i>=0)src=st.fish;else{i=st.fry.findIndex(f=>f.id===id);if(i>=0){src=st.fry;key='fry';}}
   if(!src)return;
   const f=src[i];if(!eligibleV120(f))return toast('Only healthy adult fish can be sold in the store');
-  src.splice(i,1);f.storeFrom=key;f.storePct=st.store.markupPct;f.storeSince=st.day;delete f._res120;delete f._net120;delete f._from;
-  st.storeFish.push(f);save();syncFish();panel();
+  src.splice(i,1);f.storeSlot=null;f.storeFrom=key;f.storePct=st.store.markupPct;f.storeSince=st.day;delete f._res120;delete f._net120;delete f._from;
+  st.storeFish.push(f);placeFishV120();save();syncFish();panel();
  }catch(e){console.error('AFNICA store stock',e);}
 };
 window.stReturn120=function(id){
@@ -348,7 +372,7 @@ window.stReturn120=function(id){
   if(f._res120)return toast('That fish is being sold right now');
   const order=f.storeFrom==='fry'?[st.fry,st.fish]:[st.fish,st.fry];
   const dst=order.find(a=>a.length<7);if(!dst)return toast('Your tanks are full (7 fish each)');
-  st.storeFish.splice(i,1);delete f.storeFrom;delete f.storePct;delete f.storeSince;
+  st.storeFish.splice(i,1);delete f.storeFrom;delete f.storePct;delete f.storeSince;delete f.storeSlot;
   dst.push(f);save();syncFish();panel();
  }catch(e){console.error('AFNICA store return',e);}
 };
@@ -403,19 +427,54 @@ function spawn(){
  const p=newProfile(),pal=PALS[Math.floor(Math.random()*PALS.length)],PP=window.ST120_PEOPLE,pi=pickPersonV120(PP),parts=pi>=0?mkSprite(PP[pi],(window.ST120_PEOPLE_ASPECT||[])[pi],(window.ST120_POSES||[])[pi]):mkPerson(pal);
  const c=Object.assign(p,{pi,id:++ST.uid,sz:parts.spr?1:.8,parts,x:DOOR.x,y:DOOR.y,hx:1,hy:.3,speed:0,maxSp:52+Math.random()*16,phase:Math.random()*6,face:1,faceT:1,alpha:0,state:'enter',path:[],seed:Math.random()*6,visits:[],slot:null,want:null,t:0,wait:0,bagged:false,pointing:false,bubT:0,leaving:false});
  $('st120stage').appendChild(parts.el);ST.cust.push(c);st.store.day.customers++;
- const avail=[];for(let i=0;i<st.store.tanks;i++)if(st.storeFish.slice(i*st.store.slotsPerTank,(i+1)*st.store.slotsPerTank).some(f=>!f._res120))avail.push(i);
+ const avail=[];for(let i=0;i<st.store.tanks;i++)if(tankFishV120(i).some(f=>!f._res120))avail.push(i);
  avail.sort(()=>Math.random()-.5);c.visits=avail.slice(0,1+Math.floor(Math.random()*Math.min(3,avail.length)));
  const col=FCOL.guppy;parts.bf.setAttribute('fill',col);
  route(c,[{x:110,y:372}]);
 }
 /* what a customer thinks of the fish in one display tank: 'good' (something they like at a price they accept), 'pricey' (they like it, too dear), 'meh' */
+/* what a customer thinks of one display tank, and WHICH fish it is about (so the player knows which price to change):
+   'cheap' = a fish they like priced well under its value, 'good' = one they would buy, 'pricey' = one they like but find too dear */
 function tankOpinion(c,ti){
- const lvl=repLevel(),fs=st.storeFish.slice(ti*st.store.slotsPerTank,(ti+1)*st.store.slotsPerTank).filter(f=>!f._res120&&!f._net120);let liked=false;
+ const lvl=repLevel(),fs=tankFishV120(ti).filter(f=>!f._res120&&!f._net120);
+ let good=null,gs=-1,dear=null,ds=1e9;
  for(const f of fs){const g=gradeV10(f),rar=rarityV9(f.species);const match=c.type==='beginner'?true:c.type==='collector'?(rar!=='common'||g.rank>=3):false;
-  if(!match)continue;liked=true;const price=priceV120(f),fair=fairV120(f);if(price<=c.budget&&price<=fair*c.sense*(1+.15*lvl))return 'good';}
- return liked?'pricey':'meh';
+  if(!match)continue;const price=priceV120(f),fair=fairV120(f),lim=Math.min(c.budget,fair*c.sense*(1+.15*lvl));
+  if(price<=lim){const sc=fair/price;if(sc>gs){gs=sc;good=f;}}else{const over=price/lim;if(over<ds){ds=over;dear=f;}}}
+ if(good)return {op:gs>=1.35?'cheap':'good',f:good};
+ if(dear)return {op:'pricey',f:dear};
+ return {op:'meh',f:null};
 }
 const pickV120=a=>a[Math.floor(Math.random()*a.length)];
+/* customers talk to each other now and then (one short exchange every 5-9 s at most): two at the same tank, a happy customer on
+   the way out recommending the fish they bought to someone coming in, and people waiting in the queue. They turn to each other. */
+function sayLater(c,txt,at,sec,f){ST.says.push({c,txt,at,sec:sec||2.4,f});}
+function talkPair(a,b,t){a.talkTo=b;b.talkTo=a;a.talkUntil=b.talkUntil=t+3.4;a.chatT=b.chatT=t;}
+function socialTick(t){
+ for(let i=ST.says.length-1;i>=0;i--){const q=ST.says[i];if(t>=q.at){if(!q.c.dead&&q.c.alpha>.5)bubble(q.c,q.txt,q.sec,q.f);ST.says.splice(i,1);}}
+ if(t<(ST.chatNext||0))return;
+ const C=ST.cust.filter(c=>!c.dead&&c.alpha>.9&&c.bubT<=0&&t-(c.chatT||-99)>14);
+ const near=(a,b,d)=>Math.hypot(a.x-b.x,(a.y-b.y)*1.4)<d;
+ let done=false;
+ for(let i=0;i<C.length&&!done;i++)for(let j=0;j<C.length&&!done;j++){if(i===j)continue;const a=C[i],b=C[j];
+  /* at the same tank */
+  if(a.state==='look'&&b.state==='look'&&a.slot&&b.slot&&a.slot.tank===b.slot.tank&&!a.parts.wide&&tankOpinion(a,a.slot.tank).f){
+   const O=tankOpinion(a,a.slot.tank),nm=O.f?'§':'fish',F=O.f;
+   bubble(a,O.op==='pricey'?pickV120(['Pricey '+nm+' , right? 😬','Look at that '+nm+' … 💸']):pickV120(['Nice '+nm+' , huh? 😍','Have you seen this? '+nm,'I like this one '+nm+' 👍']),2.4,F);
+   sayLater(b,O.op==='pricey'?pickV120(['Yeah, a bit much 😅','Maybe on sale later 🤞']):pickV120(['Beautiful! 😍','I might get one too 🙂','Good choice! 👍']),t+1.3);
+   talkPair(a,b,t);done=true;}
+  /* leaving with a bag, passing someone who is coming in or walking to a tank */
+  else if(a.state==='exit'&&a.happy&&a.boughtFish&&(b.state==='enter'||b.state==='goto')&&near(a,b,95)){
+   bubble(a,pickV120(['Try one of these! §','Great § here! 😊','Get a § , they’re lovely 😍']),2.4,a.boughtFish);
+   sayLater(b,pickV120(['Thanks, I will! 😊','Ooh, nice! 👀','Good tip! 👍']),t+1.3);talkPair(a,b,t);done=true;}
+  /* in the queue */
+  else if(a.state==='wait'&&(b.state==='wait'||b.state==='atpay'||b.state==='toPay')&&near(a,b,90)&&!a.parts.wide){
+   bubble(a,pickV120(['Busy shop today! 😄','What did you pick? 🐟','Worth the wait 🙂']),2.4);
+   sayLater(b,b.want?pickV120(['This one! §','A § 😍']):pickV120(['It’s great here 🙂','Yes! 😄']),t+1.3,2.4,b.want);
+   talkPair(a,b,t);done=true;}
+ }
+ if(done)ST.chatNext=t+5+Math.random()*4;
+}
 function nextStep(c){
  if(c.visits.length){
   const ti=c.visits.shift(),sl=freeSlot(ti,c);if(!sl)return nextStep(c);
@@ -430,7 +489,7 @@ function decide(c){
   if(!ST.pay&&!ST.queue.length&&!ST.clerk.c){ST.pay=c;c.state='toPay';route(c,[{x:c.x,y:Math.max(c.y,388)},PAY]);}
   else{ST.queue.push(c);c.state='toQueue';route(c,[{x:c.x,y:Math.max(c.y,388)},QS[Math.min(ST.queue.length-1,3)]]);}
  }else{
-  if(c.type!=='shopper'){bubble(c,r.reason==='expensive'?'💸':'😕',2.4);walkout(c,r.reason);}
+  if(c.type!=='shopper'){bubble(c,r.reason==='expensive'?(r.dear?pickV120(['§ too expensive… 💸','§ ? Out of my budget 😬']):'Too expensive… 💸'):pickV120(['Nothing for me 😕','Not what I wanted 😕','Hmm, no 🤷']),2.6,r.dear);walkout(c,r.reason);}
   else bubble(c,'🙂',1.6);
   leave(c);
  }
@@ -448,22 +507,27 @@ function custTick(c,dt,t){
   case 'enter':if(arrived)nextStep(c);break;
   case 'goto':if(arrived){c.state='look';c.t=3+Math.random()*3;c.faceT=(TX[c.slot.tank]+TW/2-c.x)>=0?1:-1;
    /* react to the prices in this tank; point at it when interested (the child of a pair points when it sees something) */
-   const op=tankOpinion(c,c.slot.tank);c.pointing=op==='good'||(c.parts.wide&&op!=='meh')||(op==='pricey'&&Math.random()<.4);
-   if(c.parts.wide&&op!=='meh')bubble(c,pickV120(['That one! 🐟','Look! 😍','Can we? 🥺']),2.4);
-   else if(op==='good')bubble(c,pickV120(['Good price! 👍','Ooh! 😍','Nice! 🐟']),2.4);
-   else if(op==='pricey')bubble(c,pickV120(['Pricey… 💸','Hmm, too much 😬']),2.4);
+   const O=tankOpinion(c,c.slot.tank),op=O.op,nm='§',F=O.f;c.pointing=op==='good'||op==='cheap'||(c.parts.wide&&op!=='meh')||(op==='pricey'&&Math.random()<.4);
+   if(c.parts.wide&&op!=='meh')bubble(c,pickV120(['That '+nm+'! 😍','Look! '+nm,'Can we get one? '+nm+' 🥺']),2.8,F);
+   else if(op==='cheap')bubble(c,pickV120(['Wow, so cheap! '+nm+' 😮',nm+' is a steal! 🤑']),2.8,F);
+   else if(op==='good')bubble(c,pickV120(['Good price! '+nm+' 👍','Nice '+nm+' 😍','Fair price '+nm+' 🙂']),2.8,F);
+   else if(op==='pricey')bubble(c,pickV120([nm+' too pricey… 💸',nm+' ? Too much 😬']),2.8,F);
    else bubble(c,pickV120(['👀','🙂']),1.6);}break;
   case 'look':c.t-=dt;c.speed=0;if(c.t<=0){releaseSlot(c);c.pointing=false;c.state='gone1';nextStep(c);}break;
   case 'toQueue':if(arrived){c.state='wait';c.faceT=1;if(!ST.pay&&!ST.clerk.c&&ST.queue[0]===c){ST.queue.shift();ST.pay=c;c.state='toPay';route(c,[PAY]);reQueue();}}break;
-  case 'wait':c.wait+=dt;if(c.wait>45){const f=c.want;if(f)delete f._res120;c.want=null;ST.queue.splice(ST.queue.indexOf(c),1);bubble(c,'😠',2.4);walkout(c,'queue');leave(c);reQueue();}break;
+  case 'wait':c.wait+=dt;if(c.wait>45){const f=c.want;if(f)delete f._res120;c.want=null;ST.queue.splice(ST.queue.indexOf(c),1);bubble(c,pickV120(['Too slow! 😠','I can’t wait any longer 😤']),2.6);walkout(c,'queue');leave(c);reQueue();}break;
   case 'toPay':if(arrived){c.state='atpay';c.faceT=-1;   /* turned toward the owner, who stands to their left */ST.clerk.c=c;ST.clerk.t=0;ST.clerk.ph='';}break;
-  case 'exit':if(arrived||(c.leaving!==undefined&&c.x<70&&c.path.length<=1)){c.alpha=Math.max(0,c.alpha-dt*3);if(c.alpha<=0)c.dead=true;}else if(c.x<120)c.alpha=Math.max(0,Math.min(c.alpha,(c.x-DOOR.x)/70+.3));break;
+  case 'exit':if(c.happy&&!c.bye&&c.x<170&&c.bubT<=0){c.bye=true;bubble(c,pickV120(['Bye! 👋','See you! 👋']),1.4);}
+   if(arrived||(c.leaving!==undefined&&c.x<70&&c.path.length<=1)){c.alpha=Math.max(0,c.alpha-dt*3);if(c.alpha<=0)c.dead=true;}else if(c.x<120)c.alpha=Math.max(0,Math.min(c.alpha,(c.x-DOOR.x)/70+.3));break;
  }
+ if(c.talkTo&&t<c.talkUntil){if(c.state==='look'||c.state==='wait')c.faceT=c.talkTo.x>=c.x?1:-1;}else if(c.talkTo){c.talkTo=null;if(c.state==='look'&&c.slot)c.faceT=(TX[c.slot.tank]+TW/2-c.x)>=0?1:-1;else if(c.state==='wait')c.faceT=1;}
  c.face+=(c.faceT-c.face)*Math.min(1,dt*16);
  const P=c.parts;
  P.el.style.transform=`translate(${(c.x-40).toFixed(1)}px,${(c.y-130).toFixed(1)}px) scale(${c.sz})`;P.el.style.zIndex=Math.round(c.y);P.el.style.opacity=c.alpha;
  P.svg.style.transform=`scaleX(${c.face.toFixed(3)})`;poseP(c,t);
 }
+/* the owner's speech bubble above him at the counter */
+function ownerSay(txt,sec){const K=ST.clerk;if(!K.parts||!K.parts.bub)return;K.parts.bub.textContent=txt;K.parts.bub.classList.add('on');K.bubT=sec||1.6;}
 function clerkTick(dt,t){
  const K=ST.clerk,P=K.parts;
  if(!K.c){K.ph='idle';K.part=0;poseClerk(t);return;}
@@ -471,8 +535,9 @@ function clerkTick(dt,t){
  for(const [n,d] of PH){if(K.t<acc+d){cur=n;dur=d;ph0=K.t-acc;break;}acc+=d;}
  const c=K.c,f=c.want,cb=$('st120cbag'),reg=$('st120reg');
  if(!cur){
-  cb.classList.remove('on');cb.style.transform='';c.bagged=true;c.bagCol=f?FCOL[f.species]||'#ff9a3c':'#ff9a3c';if(f)P&&c.parts.bf.setAttribute('fill',FCOL[f.species]||'#ff9a3c');
-  K.c=null;K.ph='idle';ST.pay=null;c.state='exit';c.leaving=false;c.want=null;
+  cb.classList.remove('on');cb.style.transform='';if(!c.bagged){c.bagImg=f?fishImgV120(f):null;}c.bagged=true;c.bagCol=f?FCOL[f.species]||'#ff9a3c':'#ff9a3c';if(f)P&&c.parts.bf.setAttribute('fill',FCOL[f.species]||'#ff9a3c');
+  c.boughtFish=f||null;K.c=null;K.ph='idle';ST.pay=null;c.state='exit';c.leaving=false;c.want=null;c.happy=true;
+  bubble(c,c.parts.wide?pickV120(['Yay, our fish! 🎉','Thank you! 😊','Look, a fish! 🐟']):pickV120(['Thanks! 😊','Love it! 🐟','Perfect for my tank 😍','Great shop! ⭐']),2.4);
   route(c,[{x:c.x-8,y:Math.max(c.y+30,440)},{x:140,y:440},{x:70,y:372},{x:DOOR.x,y:DOOR.y}]);c.faceT=-1;
   const h=ST.queue[0];if(h&&(h.state==='wait'||h.state==='toQueue')){ST.queue.shift();ST.pay=h;h.state='toPay';route(h,[PAY]);reQueue();}
   poseClerk(t);return;
@@ -482,10 +547,14 @@ function clerkTick(dt,t){
   const u=K.part,sm=v=>{v=Math.max(0,Math.min(1,v));return v*v*(3-2*v);},p1=GIVE_BAG,p2=custHandV120(c);
   if(u>=.55&&!cb.classList.contains('on'))cb.classList.add('on');
   if(u>=.55){const e=sm((u-.55)/.33),q={x:p1.x+(p2.x-p1.x)*e,y:p1.y+(p2.y-p1.y)*e};cb.style.transform=`translate(${(q.x-25-648).toFixed(1)}px,${(q.y-8-222).toFixed(1)}px) scale(.32)`;}
-  if(u>=.9&&!c.bagged){cb.classList.remove('on');c.bagged=true;c.bagCol=f?FCOL[f.species]||'#ff9a3c':'#ff9a3c';}}
+  if(u>=.9&&!c.bagged){cb.classList.remove('on');c.bagImg=f?fishImgV120(f):null;c.bagged=true;c.bagCol=f?FCOL[f.species]||'#ff9a3c':'#ff9a3c';}}
  if(cur!==K.ph){
   K.ph=cur;
-  if(cur==='greet'){bubble(c,'😊',1.2);K.parts.bub.textContent='👋';K.parts.bub.classList.add('on');K.bubT=1.2;}
+  if(cur==='greet'){bubble(c,c.parts.wide?pickV120(['Hello! 👋','Hi! 😊']):pickV120(['This one, please 🐟','I’ll take it! 😊','Hi! 👋']),1.6);ownerSay(pickV120(['Welcome! 😊','Hi there! 👋','Great choice! 👍','Good eye! 🐟']),1.4);}
+  if(cur==='net')ownerSay(pickV120(['Let me catch it 🎣','Coming right up! 🐟','One moment… 🎣']),1.4);
+  if(cur==='bag')ownerSay(pickV120(['Bagging it 💧','Fresh water for you 💧','Nice and safe 💧']),1.4);
+  if(cur==='hand')ownerSay(pickV120(['Here you go! 🐟','All yours! 😊','Enjoy! 🐠']),1.8);
+  if(cur==='pay')ownerSay(pickV120(['Thank you! 🙏','Come back soon! 👋','Happy fishkeeping! 🐟']),1.6);
   if(cur==='net'&&f){f._net120=true;syncFish();}
   if(cur==='bag'&&f){cb.classList.remove('on');cb.innerHTML=`<div class="bw"></div><div class="bfish">${dexAvatarHTML(f,44,26)}</div>`;}   /* he holds it in the 'bag' picture */
   if(cur==='hand'){cb.style.transition='none';}
@@ -512,6 +581,7 @@ function loop(now,gen){
    else ST.next=hf>0&&st.storeFish.length&&ST.cust.length<5?1.5:(18+Math.random()*20)/((1+.15*repLevel())*Math.max(.3,hf||.3));   /* doorway busy: try again shortly */
   }
   for(const c of ST.cust)custTick(c,dt,t);
+  try{socialTick(t);}catch(e){console.error('AFNICA store social',e);}
   for(let i=ST.cust.length-1;i>=0;i--)if(ST.cust[i].dead){ST.lastPi=ST.cust[i].pi;ST.cust[i].parts.el.remove();ST.cust.splice(i,1);}
   /* clerk faces left, customers' bag fish colour */
   clerkTick(dt,t);
@@ -533,7 +603,7 @@ window.renderStoreV120=function(){
   st.storeFish.forEach(f=>{delete f._res120;delete f._net120;});st.fish.concat(st.fry).forEach(f=>{delete f._from;});
   const away=batchSim();
   e.innerHTML=v8Top()+sceneHTML()+'<div id="st120panel"></div>'+v8Nav('store');
-  ST.cust=[];ST.queue=[];ST.pay=null;ST.els=new Map();ST.door=false;ST.next=2.5;ST.sec=0;ST.saveT=0;ST.last=performance.now();
+  ST.cust=[];ST.queue=[];ST.pay=null;ST.says=[];ST.chatNext=0;ST.els=new Map();ST.door=false;ST.next=2.5;ST.sec=0;ST.saveT=0;ST.last=performance.now();
   ST.clerk={c:null,ph:'idle',t:0,part:0,parts:null,bubT:0};
   buildSlots();
   const cl=mkOwner();$('st120clerk').appendChild(cl.el);ST.clerk.parts=cl;
