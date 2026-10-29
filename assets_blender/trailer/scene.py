@@ -23,7 +23,7 @@ window.T = {
 
 def open_game(w=540, h=960, scale=2, port=9333):
     c = Chrome(w, h, scale, port)
-    c.cmd('Page.addScriptToEvaluateOnNewDocument', source=CLOCK_JS)
+    c.cmd('Page.addScriptToEvaluateOnNewDocument', source='window.UI121=false;' + CLOCK_JS)   # V17.121: filming rigs keep the old single-page layout
     c.cmd('Page.navigate', url=GAME); c.wait_event('Page.loadEventFired', 90)
     c.js(HELPERS); c.js('save=()=>{}; window.save=save; 1')   # nothing is ever written (and it is a throw-away profile anyway)
     c.js('__afStep(500, 10)')
