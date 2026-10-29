@@ -40,7 +40,7 @@
 .st120stage .own .bub{position:absolute;left:32px;top:-2px;transform:translate(-50%,-100%) scale(.6);opacity:0;transition:opacity .25s,transform .25s;background:#fff;color:#222;border:2px solid #18516a;border-radius:14px;padding:3px 9px;font:700 17px/1.1 Inter,Arial;white-space:nowrap}
 .st120stage .own .bub.on{opacity:1;transform:translate(-50%,-100%) scale(1)}
 .st120stage .cnt{left:572px;top:262px;z-index:350}
-.st120stage .reg{left:574px;top:240px;width:50px;z-index:352;height:26px;border-radius:5px;background:#2b3a44;border:2px solid #0c1e28;color:#62e0a0;font:900 13px/22px Inter,Arial;text-align:center}
+.st120stage .reg{left:628px;top:334px;width:80px;z-index:352;height:18px;border-radius:4px;background:#2b3a44;border:2px solid #0c1e28;color:#62e0a0;font:900 11px/14px Inter,Arial;text-align:center}
 .st120stage .cbag{left:648px;top:222px;width:50px;height:60px;z-index:353;opacity:0;transition:transform .8s ease,opacity .3s}
 .st120stage .cbag.on{opacity:1}
 .st120stage .cbag .bw{position:absolute;inset:8px 2px 0;background:linear-gradient(135deg,#bfefffcc,#6cc7e68c);border:2px solid #e8fbff;border-radius:6px 6px 18px 18px}
@@ -55,7 +55,7 @@
 .st120p .ps{display:block;transform-origin:50% 100%;overflow:visible}
 .st120p .bub{position:absolute;left:40px;top:6px;transform:translate(-50%,-100%) scale(.6);opacity:0;transition:opacity .25s,transform .25s;background:#fff;color:#222;border:2px solid #18516a;border-radius:14px;padding:3px 9px;font:700 17px/1.1 Inter,Arial;white-space:nowrap}
 .st120p .bub.on{opacity:1;transform:translate(-50%,-100%) scale(1)}
-.st120stage .coin{left:578px;top:215px;z-index:400;font:900 18px Inter,Arial;color:#ffd24b;text-shadow:0 2px 3px #000;animation:st120coin 1.2s ease-out forwards}
+.st120stage .coin{left:650px;top:316px;z-index:400;font:900 18px Inter,Arial;color:#ffd24b;text-shadow:0 2px 3px #000;animation:st120coin 1.2s ease-out forwards}
 @keyframes st120coin{0%{opacity:0;transform:translateY(8px)}15%{opacity:1}100%{opacity:0;transform:translateY(-40px)}}
 .st120row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #174457}
 .st120row:last-child{border-bottom:0}

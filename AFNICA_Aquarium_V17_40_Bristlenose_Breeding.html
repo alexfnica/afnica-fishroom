@@ -10619,7 +10619,7 @@ REAL_FISH_ASSETS_V154.xipho.adult_m_p_10='data:image/png;base64,iVBORw0KGgoAAAAN
   if(!nextDrip||nextDrip<now)nextDrip=now+4+Math.random()*8;
   while(nextDrip<ahead){drip(nextDrip);nextDrip+=9+Math.random()*14;}
  }
- const wanted=()=>!!(st&&st.soundOn&&st.musicOn&&!document.hidden);
+ const wanted=()=>!!(st&&st.soundOn&&st.musicOn&&!document.hidden&&!document.getElementById('st120stage'));   /* V17.120: the fish store plays its own tune */
  function start(){
   if(on||!wanted()||!build())return;
   on=true;const t=ctx.currentTime;nextChord=t+.1;nextNote=t+2;nextBub=t+4;
@@ -10634,6 +10634,7 @@ REAL_FISH_ASSETS_V154.xipho.adult_m_p_10='data:image/png;base64,iVBORw0KGgoAAAAN
   setTimeout(()=>{if(!on&&bus){try{bus.disconnect();}catch(e){}bus=null;}},1500);
  }
  function sync(){wanted()?start():stop();}
+ window.musicSyncV1749=sync;
  window.musicStateV1749=()=>({on,musicOn:st.musicOn,soundOn:st.soundOn,ctx:ctx&&ctx.state});
  window.toggleMusicV1749=function(){st.musicOn=!st.musicOn;try{save();}catch(e){}sync();
   document.querySelectorAll('.musicToggle49').forEach(b=>{b.classList.toggle('off',!st.musicOn);b.textContent=st.musicOn?'🎵':'🎵̸';});};
@@ -15024,7 +15025,7 @@ window.ANC111_ASSETS={poster:"data:image/webp;base64,UklGRlJJAQBXRUJQVlA4WAoAAAA
 .st120stage .own .bub{position:absolute;left:32px;top:-2px;transform:translate(-50%,-100%) scale(.6);opacity:0;transition:opacity .25s,transform .25s;background:#fff;color:#222;border:2px solid #18516a;border-radius:14px;padding:3px 9px;font:700 17px/1.1 Inter,Arial;white-space:nowrap}
 .st120stage .own .bub.on{opacity:1;transform:translate(-50%,-100%) scale(1)}
 .st120stage .cnt{left:572px;top:262px;z-index:350}
-.st120stage .reg{left:574px;top:240px;width:50px;z-index:352;height:26px;border-radius:5px;background:#2b3a44;border:2px solid #0c1e28;color:#62e0a0;font:900 13px/22px Inter,Arial;text-align:center}
+.st120stage .reg{left:628px;top:334px;width:80px;z-index:352;height:18px;border-radius:4px;background:#2b3a44;border:2px solid #0c1e28;color:#62e0a0;font:900 11px/14px Inter,Arial;text-align:center}
 .st120stage .cbag{left:648px;top:222px;width:50px;height:60px;z-index:353;opacity:0;transition:transform .8s ease,opacity .3s}
 .st120stage .cbag.on{opacity:1}
 .st120stage .cbag .bw{position:absolute;inset:8px 2px 0;background:linear-gradient(135deg,#bfefffcc,#6cc7e68c);border:2px solid #e8fbff;border-radius:6px 6px 18px 18px}
@@ -15039,7 +15040,7 @@ window.ANC111_ASSETS={poster:"data:image/webp;base64,UklGRlJJAQBXRUJQVlA4WAoAAAA
 .st120p .ps{display:block;transform-origin:50% 100%;overflow:visible}
 .st120p .bub{position:absolute;left:40px;top:6px;transform:translate(-50%,-100%) scale(.6);opacity:0;transition:opacity .25s,transform .25s;background:#fff;color:#222;border:2px solid #18516a;border-radius:14px;padding:3px 9px;font:700 17px/1.1 Inter,Arial;white-space:nowrap}
 .st120p .bub.on{opacity:1;transform:translate(-50%,-100%) scale(1)}
-.st120stage .coin{left:578px;top:215px;z-index:400;font:900 18px Inter,Arial;color:#ffd24b;text-shadow:0 2px 3px #000;animation:st120coin 1.2s ease-out forwards}
+.st120stage .coin{left:650px;top:316px;z-index:400;font:900 18px Inter,Arial;color:#ffd24b;text-shadow:0 2px 3px #000;animation:st120coin 1.2s ease-out forwards}
 @keyframes st120coin{0%{opacity:0;transform:translateY(8px)}15%{opacity:1}100%{opacity:0;transform:translateY(-40px)}}
 .st120row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #174457}
 .st120row:last-child{border-bottom:0}
@@ -15521,8 +15522,8 @@ function sceneHTML(){
  <div class="board" id="st120board"></div>
  ${tanks}
  <div class="clk" id="st120clerk"></div>
- <div class="cnt"><svg viewBox="0 0 192 100" width="192" height="100"><rect x="0" y="0" width="192" height="14" rx="5" fill="#e8bd7c"/><rect x="4" y="14" width="184" height="86" fill="#9a6538"/><rect x="14" y="26" width="164" height="64" rx="4" fill="#6b4526" opacity=".6"/><text x="96" y="66" text-anchor="middle" font-size="16" font-weight="900" fill="#ffd9a0" opacity=".85" font-family="Inter,system-ui,Arial,sans-serif">PAY HERE</text></svg></div>
- <div class="reg" id="st120reg">🪙 0</div>
+ <div class="cnt"><svg viewBox="0 0 192 100" width="192" height="100"><rect x="0" y="0" width="192" height="14" rx="5" fill="#e8bd7c"/><rect x="4" y="14" width="184" height="86" fill="#9a6538"/><rect x="14" y="26" width="164" height="64" rx="4" fill="#6b4526" opacity=".6"/><text x="96" y="56" text-anchor="middle" font-size="16" font-weight="900" fill="#ffd9a0" opacity=".85" font-family="Inter,system-ui,Arial,sans-serif">PAY HERE</text></svg></div>
+ <div class="reg" id="st120reg">🪙 ${st.store.day.revenue||0}</div>
  <div class="cbag" id="st120cbag"></div>
  <div class="qm" style="left:${PAY.x-30}px;top:${PAY.y-6}px"></div>
  </div></div>`;
@@ -15646,9 +15647,17 @@ function freeSlot(ti,c){const L=ST.slots[ti];if(!L)return null;if(c&&c.parts.wid
 function releaseSlot(c){if(c.slot){c.slot.by=null;if(c.slot.both)c.slot.both.forEach(s=>s.by=null);c.slot=null;}}
 
 /* ---------- customer flow ---------- */
+/* a person who is not in the shop right now (each picture is one real person); the one who left last is avoided too */
+function pickPersonV120(PP){
+ if(!PP||!PP.length)return -1;
+ const busy=new Set(ST.cust.map(c=>c.pi));if(ST.lastPi!=null&&PP.length>ST.cust.length+1)busy.add(ST.lastPi);
+ const free=[];for(let i=0;i<PP.length;i++)if(!busy.has(i))free.push(i);
+ return free.length?free[Math.floor(Math.random()*free.length)]:-1;
+}
 function spawn(){
- const p=newProfile(),pal=PALS[Math.floor(Math.random()*PALS.length)],PP=window.ST120_PEOPLE,pi=(PP&&PP.length)?Math.floor(Math.random()*PP.length):-1,parts=pi>=0?mkSprite(PP[pi],(window.ST120_PEOPLE_ASPECT||[])[pi],(window.ST120_POSES||[])[pi]):mkPerson(pal);
- const c=Object.assign(p,{id:++ST.uid,sz:parts.spr?1:.8,parts,x:DOOR.x,y:DOOR.y,hx:1,hy:.3,speed:0,maxSp:52+Math.random()*16,phase:Math.random()*6,face:1,faceT:1,alpha:0,state:'enter',path:[],seed:Math.random()*6,visits:[],slot:null,want:null,t:0,wait:0,bagged:false,pointing:false,bubT:0,leaving:false});
+ if(window.ST120_PEOPLE&&window.ST120_PEOPLE.length&&pickPersonV120(window.ST120_PEOPLE)<0)return;   /* everyone is already inside */
+ const p=newProfile(),pal=PALS[Math.floor(Math.random()*PALS.length)],PP=window.ST120_PEOPLE,pi=pickPersonV120(PP),parts=pi>=0?mkSprite(PP[pi],(window.ST120_PEOPLE_ASPECT||[])[pi],(window.ST120_POSES||[])[pi]):mkPerson(pal);
+ const c=Object.assign(p,{pi,id:++ST.uid,sz:parts.spr?1:.8,parts,x:DOOR.x,y:DOOR.y,hx:1,hy:.3,speed:0,maxSp:52+Math.random()*16,phase:Math.random()*6,face:1,faceT:1,alpha:0,state:'enter',path:[],seed:Math.random()*6,visits:[],slot:null,want:null,t:0,wait:0,bagged:false,pointing:false,bubT:0,leaving:false});
  $('st120stage').appendChild(parts.el);ST.cust.push(c);st.store.day.customers++;
  const avail=[];for(let i=0;i<st.store.tanks;i++)if(st.storeFish.slice(i*st.store.slotsPerTank,(i+1)*st.store.slotsPerTank).some(f=>!f._res120))avail.push(i);
  avail.sort(()=>Math.random()-.5);c.visits=avail.slice(0,1+Math.floor(Math.random()*Math.min(3,avail.length)));
@@ -15737,7 +15746,7 @@ function clerkTick(dt,t){
   if(cur==='bag'&&f){cb.classList.remove('on');cb.innerHTML=`<div class="bw"></div><div class="bfish">${dexAvatarHTML(f,44,26)}</div>`;}   /* he holds it in the 'bag' picture */
   if(cur==='hand'){cb.style.transition='none';}
   if(cur==='pay'&&f){
-   const pr=sellV120(f,false);reg.textContent='🪙 '+pr;coinsUI();
+   const pr=sellV120(f,false);reg.textContent='🪙 '+(st.store.day.revenue||0);coinsUI();   /* the till shows today's total */
    const cn=document.createElement('div');cn.className='coin';cn.textContent='+'+pr;$('st120stage').appendChild(cn);setTimeout(()=>cn.remove(),1300);
    syncFish();panel();save();
   }
@@ -15759,7 +15768,7 @@ function loop(now,gen){
    else ST.next=hf>0&&st.storeFish.length&&ST.cust.length<5?1.5:(18+Math.random()*20)/((1+.15*repLevel())*Math.max(.3,hf||.3));   /* doorway busy: try again shortly */
   }
   for(const c of ST.cust)custTick(c,dt,t);
-  for(let i=ST.cust.length-1;i>=0;i--)if(ST.cust[i].dead){ST.cust[i].parts.el.remove();ST.cust.splice(i,1);}
+  for(let i=ST.cust.length-1;i>=0;i--)if(ST.cust[i].dead){ST.lastPi=ST.cust[i].pi;ST.cust[i].parts.el.remove();ST.cust.splice(i,1);}
   /* clerk faces left, customers' bag fish colour */
   clerkTick(dt,t);
   /* door */
@@ -15794,6 +15803,71 @@ window.renderStoreV120=function(){
  }catch(err){console.error('AFNICA store render',err);}
 };
 window.storeDebugV120=function(){return {S:ST,st:st.store,fish:st.storeFish,spawn,evaluate,fairV120,priceV120,sellV120,dayCheck,batchSim,newProfile};};
+})();
+
+/* ===== V17.120 store music: a light bossa loop (F major, 100 bpm) only while MY FISH STORE is open; the aquarium music
+   (V17.49) steps aside (its wanted() checks for the store stage) and is re-synced on every switch. Same 🎵 / 🔊 switches. */
+(function(){
+'use strict';
+const hz=m=>440*Math.pow(2,(m-69)/12),B=60/100;
+const PROG=[[53,57,60,64],[50,53,57,60],[55,58,62,65],[48,52,55,58],[53,57,60,64],[50,53,57,60],[46,50,53,57],[48,52,55,58]];   /* Fmaj7 Dm7 Gm7 C7 Fmaj7 Dm7 Bbmaj7 C7 */
+const ROOT=[41,38,43,36,41,38,34,36];
+const MEL=[65,67,69,72,74,77,79,81,84];   /* F major pentatonic */
+let ctx=null,bus=null,on=false,timer=null,nextBar=0,bar=0,mi=3,noise=null;
+function build(){
+ ctx=typeof audioReadyV141==='function'?audioReadyV141():null;if(!ctx)return false;if(bus)return true;
+ bus=ctx.createGain();bus.gain.value=0;
+ const len=Math.floor(ctx.sampleRate*1.8),ir=ctx.createBuffer(2,len,ctx.sampleRate);
+ for(let ch=0;ch<2;ch++){const d=ir.getChannelData(ch);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3);}
+ const rv=ctx.createConvolver();rv.buffer=ir;const dry=ctx.createGain(),wet=ctx.createGain();dry.gain.value=.8;wet.gain.value=.28;
+ bus.connect(dry);dry.connect(ctx.destination);bus.connect(rv);rv.connect(wet);wet.connect(ctx.destination);
+ noise=ctx.createBuffer(1,Math.floor(ctx.sampleRate*.08),ctx.sampleRate);const nd=noise.getChannelData(0);for(let i=0;i<nd.length;i++)nd[i]=(Math.random()*2-1)*(1-i/nd.length);
+ return true;
+}
+function env(g,t,v,a,d){g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(v,t+a);g.gain.exponentialRampToValueAtTime(.0001,t+a+d);}
+function ep(t,m,v,d){   /* electric-piano-ish chord voice */
+ const o=ctx.createOscillator(),o2=ctx.createOscillator(),g=ctx.createGain(),g2=ctx.createGain(),lp=ctx.createBiquadFilter();
+ o.type='sine';o2.type='sine';o.frequency.value=hz(m);o2.frequency.value=hz(m)*2.003;g2.gain.value=.18;lp.type='lowpass';lp.frequency.value=2400;
+ o2.connect(g2);g2.connect(g);o.connect(g);env(g,t,v,.008,d);g.connect(lp);lp.connect(bus);o.start(t);o2.start(t);o.stop(t+d+.05);o2.stop(t+d+.05);
+}
+function bass(t,m,d){
+ const o=ctx.createOscillator(),g=ctx.createGain(),lp=ctx.createBiquadFilter();o.type='triangle';o.frequency.value=hz(m);lp.type='lowpass';lp.frequency.value=420;
+ env(g,t,.11,.015,d);o.connect(lp);lp.connect(g);g.connect(bus);o.start(t);o.stop(t+d+.05);
+}
+function shaker(t,v){
+ const s=ctx.createBufferSource(),hp=ctx.createBiquadFilter(),g=ctx.createGain();s.buffer=noise;hp.type='highpass';hp.frequency.value=6500;g.gain.value=v;
+ s.connect(hp);hp.connect(g);g.connect(bus);s.start(t);
+}
+function marimba(t,m,v){
+ const o=ctx.createOscillator(),o2=ctx.createOscillator(),g=ctx.createGain(),g2=ctx.createGain();o.type='sine';o2.type='sine';o.frequency.value=hz(m);o2.frequency.value=hz(m)*3.98;g2.gain.value=.08;
+ o2.connect(g2);g2.connect(g);o.connect(g);env(g,t,v,.005,.55);g.connect(bus);o.start(t);o2.start(t);o.stop(t+.65);o2.stop(t+.65);
+}
+function scheduleBar(t,i){
+ const k=i%PROG.length,ch=PROG[k],r=ROOT[k];
+ bass(t,r,.85*B);bass(t+1.5*B,r+7,.4*B);bass(t+2*B,r,.85*B);bass(t+3.5*B,r+7,.4*B);   /* bossa bass: root and fifth */
+ [[0,.8],[1.5,.45],[2.5,.4],[3.5,.6]].forEach(([o,d])=>ch.forEach(m=>ep(t+o*B,m+12,.012,d*B*1.8)));
+ for(let s=0;s<8;s++)shaker(t+s*B/2,s%2?.018:.03);
+ if(i%2===1||Math.random()<.35){   /* a short, happy melody phrase */
+  const slots=[0,.5,1,1.5,2,2.5,3,3.5].filter(()=>Math.random()<.45).slice(0,5);
+  slots.forEach(o=>{mi=Math.max(0,Math.min(MEL.length-1,mi+[-2,-1,-1,1,1,2][Math.floor(Math.random()*6)]));marimba(t+o*B,MEL[mi],.05);});
+ }
+}
+function schedule(){if(!on||!ctx)return;const ahead=ctx.currentTime+1.5;while(nextBar<ahead){scheduleBar(nextBar,bar);bar++;nextBar+=4*B;}}
+const wanted=()=>{try{return !!(st&&st.soundOn&&st.musicOn&&!document.hidden&&window.STORE120!==false&&document.getElementById('st120stage'));}catch(e){return false;}};
+function start(){
+ if(on||!build())return;on=true;const t=ctx.currentTime;nextBar=t+.15;bar=0;
+ bus.gain.cancelScheduledValues(t);bus.gain.setValueAtTime(bus.gain.value,t);bus.gain.linearRampToValueAtTime(.9,t+1.5);
+ schedule();timer=setInterval(schedule,300);
+}
+function stop(){
+ if(!on)return;on=false;clearInterval(timer);
+ if(ctx&&bus){const t=ctx.currentTime;bus.gain.cancelScheduledValues(t);bus.gain.setValueAtTime(bus.gain.value,t);bus.gain.linearRampToValueAtTime(0,t+1);}
+ const b=bus;setTimeout(()=>{if(!on&&bus===b){try{b.disconnect();}catch(e){}bus=null;}},1300);
+}
+let last=null;
+setInterval(()=>{try{const w=wanted();if(w!==last){last=w;w?start():stop();if(typeof window.musicSyncV1749==='function')window.musicSyncV1749();}}catch(e){console.error('AFNICA store music',e);}},400);
+document.addEventListener('pointerdown',()=>setTimeout(()=>{if(wanted()&&!on){start();}},60));   /* the first tap unlocks audio */
+window.storeMusicStateV120=()=>({on,ctx:ctx&&ctx.state,bar});
 })();
 
 </script>
