@@ -9,7 +9,7 @@
  window.ANC111=true;
  const A=window.ANC111_ASSETS||{};
  const clamp=(v,a,b)=>v<a?a:v>b?b:v;
- const key=c=>{if(!c||c.stage!=='yolk')return null;const p=clamp((st.day-c.hatchDay)/Math.max(1,c.releaseDay-c.hatchDay),0,1);return p<.34?'full':p<.67?'half':'low';};
+ const key=c=>{if(c&&c.stage==='eggs')return A.poster_eggs?'eggs':null;if(!c||c.stage!=='yolk')return null;const p=clamp((st.day-c.hatchDay)/Math.max(1,c.releaseDay-c.hatchDay),0,1);return p<.34?'full':p<.67?'half':'low';};
  if(!document.getElementById('anc111css')){const s=document.createElement('style');s.id='anc111css';
   s.textContent='@keyframes anc111dust{0%{transform:translate(0,0);opacity:0}15%{opacity:.8}85%{opacity:.7}100%{transform:translate(26px,38px);opacity:0}}'+
    '@keyframes anc111breath{0%,100%{transform:scale(1.02)}50%{transform:scale(1.045)}}'+
@@ -23,7 +23,8 @@
  const LARVAE={
   full:[[400,360,300,350],[400,398,300,405],[458,430,385,485],[445,292,400,272],[642,285,690,262],[668,320,765,305],[765,344,880,352],[675,383,765,430],[722,383,808,395],[843,415,945,447],[626,432,675,487],[283,445,305,497],[255,135,262,230],[308,142,318,235],[165,212,190,305],[222,207,230,298],[112,348,138,435]],
   half:[[405,360,300,350],[405,395,285,408],[462,428,385,487],[448,293,405,272],[640,285,690,262],[668,320,765,305],[758,343,880,350],[670,385,765,430],[712,380,808,395],[843,415,945,447],[622,430,680,490],[275,448,300,497],[255,125,260,235],[307,138,318,238],[163,205,190,305],[222,203,232,298],[110,345,135,438]],
-  low:[[357,373,262,368],[143,400,215,390],[236,402,330,410],[400,415,300,440],[515,425,630,405],[662,362,745,350],[722,388,810,380],[805,422,690,415],[705,462,615,455],[845,130,870,185],[870,342,885,395]]
+  eggs:[],   /* the eggs still has no twitching: dust and beam only */
+  low:[[378,377,235,395],[425,397,285,418],[595,402,755,428],[705,375,815,388],[775,398,900,438],[188,122,192,250],[138,205,150,320],[166,246,180,330],[868,388,885,300]]
  };
  const IW=1024,IH=559,SC=.75;
  /* one twitching larva: an upright patch of its rear body + tail (axis along x), waved in strips, drawn back rotated with a soft mask */

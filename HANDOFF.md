@@ -1,3 +1,12 @@
+# Handoff - 2026-10-29: FISH STORE Phase 2 (art) mockup shown, awaiting owner OK (docs/store_mockup.svg; design approved in docs/STORE_DESIGN.md). Proposed: layered vector 2D (SVG) people with CSS walk cycles, real in-game fish sprites in display tanks.
+
+# Handoff - where work stopped (2026-10-29: FISH STORE feature, Phase 1 design written, awaiting owner OK)
+
+## Fish store (new feature, no game code changed yet)
+- Phase 0 (code survey) and Phase 1 (docs/STORE_DESIGN.md) done. Next: owner OKs the design, then Phase 2 = art style + ONE mockup (store, 2 customers, receptionist), then Phase 3 build (block tag V17.120), Phase 4 test + aquarium-reviewer.
+- Key hooks: sellValueV9, gradeV10, fullGrownV1763, f.finTorn, v8Nav (6 tabs, add a 7th), renderV10Market as screen model, ensureHealthState for st.store / st.storeFish defaults, tankArrayV14 + moveToBreederV103 as the move pattern.
+- Open decision: display-tank fish rendering (recommended: lightweight sprites, not the V16/V17 motion engines).
+
 # Handoff — where work stopped (2026-10-29: V17.111 cave INSPECT with real footage, NOT committed; V17.110 rewrite also NOT committed)
 
 ## V17.111 cave inspect = Gemini footage instead of the vector canvas (2026-10-29, NOT committed)
@@ -75,6 +84,10 @@
   (x 81-147), the animated popup costs ~1.6 ms per frame (headless wall time). Frames `docs/sprites110.jpg`, `docs/box110.jpg`, `docs/box_cory110.jpg`.
   NOT done (needs the owner or is out of reach): regenerate image 3 in the same framing as images 1/2 (camera jump between half and low), eggs-stage images for the popup,
   better larva positions (eyeballed), eye on the 3D fight frames / glass roll (baked), a lights-off state (the game has none).
+- Eggs stage in the cave popup (owner sent `anc_wriggler_scene_eggs.webp`, tunnel framing like image 3): `install111.py` embeds it as `poster_eggs`; `block111.js` `key()` returns
+  'eggs' for the eggs stage, shown as a living still with no twitching larvae (dust + beam flicker only). Headless: eggs and yolk both give the animated canvas, 0 errors.
+  Image 3 resent by the owner was the same picture (1 % pixel difference): still the tunnel framing vs the angled images 1/2.
+- New image 3 (low yolk stage; owner: 'this is what it gave me'): `anc_wriggler_scene_low.webp` replaced (old = `_v1`), tunnel framing again (fewer, crisper fry with formed fins); `LARVAE.low` re-marked (9 larvae). Images 1/2 are still the angled view, eggs + low the tunnel view.
 - Not done / not checked: the wriggler canvas in the cave is unchanged (already a heap), no sac in the glass (belly) view, "under" the decoration is
   only z-order (the first decoration on the sand is the wide driftwood, centre x), nursery with no decoration = corner (not seen), the cave panel
   button layout (not seen in the pane), what the Fry Tank shows when the yolk fish are sold or die (nothing special).
