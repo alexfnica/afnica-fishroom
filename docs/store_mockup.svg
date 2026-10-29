@@ -1,0 +1,182 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 640" width="100%" height="100%" font-family="Inter,system-ui,Arial,sans-serif">
+<defs>
+ <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1c4a5e"/><stop offset="1" stop-color="#13394b"/></linearGradient>
+ <linearGradient id="wain" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a6a80"/><stop offset="1" stop-color="#1f5468"/></linearGradient>
+ <linearGradient id="floor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a5a35"/><stop offset="1" stop-color="#5d3a20"/></linearGradient>
+ <linearGradient id="water" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2fb5d6"/><stop offset=".65" stop-color="#0d7893"/><stop offset="1" stop-color="#075261"/></linearGradient>
+ <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".35"/><stop offset=".3" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".08"/></linearGradient>
+ <linearGradient id="counter" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9a766"/><stop offset=".12" stop-color="#b9824a"/><stop offset="1" stop-color="#7a4d28"/></linearGradient>
+ <linearGradient id="shelf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6b4526"/><stop offset="1" stop-color="#40280f"/></linearGradient>
+ <linearGradient id="bag" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#bfefff" stop-opacity=".75"/><stop offset="1" stop-color="#6cc7e6" stop-opacity=".55"/></linearGradient>
+ <radialGradient id="lamp" cx=".5" cy="0" r="1"><stop offset="0" stop-color="#fff2b0" stop-opacity=".55"/><stop offset="1" stop-color="#fff2b0" stop-opacity="0"/></radialGradient>
+ <filter id="sh" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000" flood-opacity=".45"/></filter>
+
+ <g id="fishA"><path d="M0 0 C10 -9 26 -9 36 0 C26 9 10 9 0 0Z" fill="currentColor"/><path d="M36 0 L50 -9 Q46 0 50 9Z" fill="currentColor" opacity=".85"/><path d="M12 -7 Q18 -15 26 -6Z" fill="currentColor" opacity=".8"/><circle cx="7" cy="-2" r="2.2" fill="#fff"/><circle cx="6.5" cy="-2" r="1.1" fill="#111"/><path d="M14 -4 Q20 0 14 5" stroke="#fff" stroke-opacity=".35" fill="none" stroke-width="2"/></g>
+ <g id="plant"><path d="M0 0 Q-6 -30 -2 -58 Q6 -28 0 0Z M4 0 Q12 -26 20 -48 Q16 -20 6 0Z M-4 0 Q-18 -20 -26 -40 Q-14 -14 -2 0Z" fill="#3f9f3a"/><path d="M0 0 Q-2 -30 -2 -58" stroke="#7ee05a" stroke-width="1.5" fill="none"/></g>
+
+ <g id="tank">
+  <rect x="0" y="0" width="240" height="150" rx="6" fill="#0a2a38" stroke="#0c1e28" stroke-width="5"/>
+  <rect x="6" y="6" width="228" height="138" fill="url(#water)"/>
+  <path d="M6 128 Q60 118 120 126 T234 124 L234 144 L6 144Z" fill="#d8c08a"/>
+  <path d="M6 134 Q70 128 130 134 T234 132 L234 144 L6 144Z" fill="#bfa670"/>
+  <rect x="6" y="6" width="228" height="14" fill="#9be8ff" opacity=".18"/>
+  <rect x="6" y="6" width="228" height="138" fill="url(#glass)"/>
+  <rect x="2" y="-9" width="236" height="10" rx="3" fill="#1b2c36"/><rect x="40" y="-6" width="90" height="4" rx="2" fill="#fff6c0" opacity=".9"/>
+ </g>
+</defs>
+
+<!-- room -->
+<rect width="1100" height="640" fill="#041019"/>
+<rect x="0" y="0" width="1100" height="440" fill="url(#wall)"/>
+<rect x="0" y="330" width="1100" height="110" fill="url(#wain)"/>
+<rect x="0" y="326" width="1100" height="8" fill="#0f3344"/>
+<!-- wall pattern: subtle ripples -->
+<g stroke="#3bc8f5" stroke-opacity=".07" fill="none" stroke-width="2"><path d="M0 70 Q60 55 120 70 T240 70 T360 70 T480 70 T600 70 T720 70 T840 70 T960 70 T1080 70"/><path d="M0 150 Q60 135 120 150 T240 150 T360 150 T480 150 T600 150 T720 150 T840 150 T960 150 T1080 150"/></g>
+<!-- floor -->
+<rect x="0" y="440" width="1100" height="200" fill="url(#floor)"/>
+<g stroke="#3d2411" stroke-opacity=".5" stroke-width="2"><path d="M0 500H1100M0 565H1100"/><path d="M140 440V500M420 440V500M700 440V500M980 440V500M280 500V565M560 500V565M840 500V565M70 565V640M350 565V640M630 565V640M910 565V640"/></g>
+<rect x="0" y="436" width="1100" height="8" fill="#2a1a0c"/>
+
+<!-- hanging sign -->
+<g filter="url(#sh)"><rect x="380" y="46" width="340" height="52" rx="12" fill="#092638" stroke="#3bc8f5" stroke-width="3"/>
+<text x="550" y="82" text-anchor="middle" font-size="28" font-weight="900" fill="#ffd24b" letter-spacing="3">AFNICA FISH STORE</text></g>
+<path d="M430 46V40M670 46V40" stroke="#0c1e28" stroke-width="3"/>
+<!-- lamps -->
+<g opacity=".5"><ellipse cx="560" cy="150" rx="260" ry="70" fill="url(#lamp)"/></g>
+
+<!-- DOOR (left) -->
+<g filter="url(#sh)">
+ <rect x="28" y="170" width="132" height="270" rx="6" fill="#5b3a1c" stroke="#2a1a0c" stroke-width="5"/>
+ <rect x="42" y="186" width="104" height="170" rx="4" fill="#bdeaff" opacity=".85"/>
+ <path d="M42 186L146 186L42 300Z" fill="#fff" opacity=".35"/>
+ <rect x="42" y="372" width="104" height="52" rx="4" fill="#6b4526"/>
+ <circle cx="136" cy="320" r="6" fill="#ffd24b"/>
+ <rect x="62" y="228" width="64" height="26" rx="6" fill="#d33" stroke="#fff" stroke-width="2"/>
+ <text x="94" y="247" text-anchor="middle" font-size="15" font-weight="900" fill="#fff">OPEN</text>
+</g>
+<rect x="22" y="440" width="144" height="10" rx="3" fill="#3a2a14"/>
+<text x="94" y="474" text-anchor="middle" font-size="12" fill="#ffd9a0" opacity=".8" font-weight="800">WELCOME</text>
+
+<!-- shelf with 3 display tanks -->
+<g transform="translate(180,125)">
+ <g filter="url(#sh)"><rect x="0" y="162" width="820" height="16" rx="3" fill="url(#shelf)"/></g>
+ <!-- tank 1: guppies -->
+ <g transform="translate(10,0)"><use href="#tank"/>
+  <use href="#plant" x="40" y="128"/><use href="#plant" x="196" y="128" transform="translate(0,0)"/>
+  <g color="#ff9a3c"><use href="#fishA" transform="translate(70,50) scale(.8)"/><use href="#fishA" transform="translate(140,80) scale(-.7,.7)"/></g>
+  <g color="#e84a8a"><use href="#fishA" transform="translate(110,36) scale(.65)"/></g>
+  <g color="#3bc8f5"><use href="#fishA" transform="translate(60,100) scale(-.7,.7)"/></g>
+  <rect x="2" y="-9" width="236" height="10" rx="3" fill="#1b2c36"/>
+ </g>
+ <!-- tank 2: neons (customer 1 looking here) -->
+ <g transform="translate(260,0)"><use href="#tank"/>
+  <use href="#plant" x="30" y="128"/><use href="#plant" x="210" y="128"/>
+  <g color="#4fb4ff"><use href="#fishA" transform="translate(60,40) scale(.45)"/><use href="#fishA" transform="translate(90,52) scale(.45)"/><use href="#fishA" transform="translate(120,44) scale(.45)"/><use href="#fishA" transform="translate(76,68) scale(.45)"/><use href="#fishA" transform="translate(110,72) scale(.45)"/><use href="#fishA" transform="translate(150,62) scale(.45)"/></g>
+  <g color="#ff4040" opacity=".9"><rect x="64" y="42" width="14" height="3" rx="1.5" transform="translate(0,0)"/></g>
+  <circle cx="212" cy="40" r="3" fill="#fff" opacity=".5"/><circle cx="218" cy="62" r="2" fill="#fff" opacity=".5"/><circle cx="208" cy="84" r="2.5" fill="#fff" opacity=".5"/>
+ </g>
+ <!-- tank 3: platy / molly -->
+ <g transform="translate(510,0)"><use href="#tank"/>
+  <use href="#plant" x="50" y="128"/><use href="#plant" x="150" y="128"/>
+  <g color="#ffb830"><use href="#fishA" transform="translate(90,56) scale(.9)"/></g>
+  <g color="#2b2b3a"><use href="#fishA" transform="translate(40,90) scale(.85)"/></g>
+  <g color="#ff6a3c"><use href="#fishA" transform="translate(150,100) scale(-.8,.8)"/></g>
+ </g>
+ <!-- price tags -->
+ <g font-weight="900" text-anchor="middle">
+  <g transform="translate(130,198)"><rect x="-52" y="-14" width="104" height="38" rx="8" fill="#092638" stroke="#18516a" stroke-width="2"/><text y="2" font-size="12" fill="#9bb6c4">GUPPY · B GRADE</text><text y="18" font-size="14" fill="#ffd24b">🪙 34 each</text></g>
+  <g transform="translate(380,198)"><rect x="-52" y="-14" width="104" height="38" rx="8" fill="#092638" stroke="#18516a" stroke-width="2"/><text y="2" font-size="12" fill="#9bb6c4">NEON · A GRADE</text><text y="18" font-size="14" fill="#ffd24b">🪙 58 each</text></g>
+  <g transform="translate(630,198)"><rect x="-52" y="-14" width="104" height="38" rx="8" fill="#092638" stroke="#18516a" stroke-width="2"/><text y="2" font-size="12" fill="#9bb6c4">PLATY · S GRADE</text><text y="18" font-size="14" fill="#ffd24b">🪙 112 each</text></g>
+ </g>
+</g>
+
+<!-- COUNTER (right) -->
+<g transform="translate(790,0)" filter="url(#sh)">
+ <rect x="0" y="372" width="300" height="140" rx="6" fill="url(#counter)"/>
+ <rect x="-6" y="362" width="312" height="16" rx="5" fill="#e8bd7c"/>
+ <rect x="14" y="392" width="272" height="100" rx="4" fill="#6b4526" opacity=".55"/>
+ <text x="150" y="450" text-anchor="middle" font-size="22" font-weight="900" fill="#ffd9a0" opacity=".8">PAY HERE</text>
+ <!-- register -->
+ <rect x="206" y="328" width="76" height="34" rx="5" fill="#2b3a44" stroke="#0c1e28" stroke-width="3"/>
+ <rect x="216" y="312" width="52" height="22" rx="3" fill="#62e0a0"/><text x="242" y="329" text-anchor="middle" font-size="14" font-weight="900" fill="#073">🪙 54</text>
+ <!-- net on counter -->
+ <path d="M30 362L50 330" stroke="#c9d3d8" stroke-width="4"/><ellipse cx="56" cy="322" rx="16" ry="12" fill="none" stroke="#c9d3d8" stroke-width="3"/><path d="M42 322H70M56 311V333" stroke="#c9d3d8" stroke-width="1.2"/>
+</g>
+
+<!-- RECEPTIONIST (behind counter) -->
+<g transform="translate(965,230)">
+ <ellipse cx="0" cy="146" rx="42" ry="8" fill="#000" opacity=".25"/>
+ <rect x="-30" y="48" width="60" height="96" rx="22" fill="#2f9be0" stroke="#10557f" stroke-width="3"/>
+ <rect x="-12" y="48" width="24" height="24" rx="5" fill="#fff"/>
+ <path d="M-30 72Q-52 94 -34 112" stroke="#f1c9a0" stroke-width="12" stroke-linecap="round" fill="none"/>
+ <path d="M30 72Q52 90 66 78" stroke="#f1c9a0" stroke-width="12" stroke-linecap="round" fill="none"/>
+ <circle cx="0" cy="18" r="30" fill="#f1c9a0" stroke="#b98a5e" stroke-width="2"/>
+ <path d="M-33 14Q-34 -20 0 -22Q34 -20 33 14Q26 -6 0 -6Q-22 -6 -33 14Z" fill="#4a2a1a"/>
+ <path d="M-33 14Q-40 40 -26 54" stroke="#4a2a1a" stroke-width="12" stroke-linecap="round" fill="none"/>
+ <circle cx="-10" cy="20" r="3" fill="#222"/><circle cx="10" cy="20" r="3" fill="#222"/>
+ <path d="M-8 32Q0 40 8 32" stroke="#a33" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+ <rect x="-18" y="86" width="36" height="14" rx="4" fill="#fff" stroke="#10557f" stroke-width="1.5"/><text x="0" y="97" text-anchor="middle" font-size="9" font-weight="900" fill="#10557f">STAFF</text>
+</g>
+<!-- bag on counter (being handed over) -->
+<g transform="translate(884,322)" filter="url(#sh)">
+ <path d="M-4 40 Q-12 6 4 -14 L36 -14 Q52 6 44 40 Q20 52 -4 40Z" fill="url(#bag)" stroke="#e8fbff" stroke-width="2"/>
+ <path d="M6 -14 Q20 -34 34 -14" stroke="#e8fbff" stroke-width="3" fill="none"/>
+ <path d="M0 8 Q20 2 42 8 L44 40 Q20 52 -4 40Z" fill="#2fb5d6" opacity=".55"/>
+ <g color="#4fb4ff"><use href="#fishA" transform="translate(8,26) scale(.55)"/></g>
+ <ellipse cx="12" cy="0" rx="4" ry="8" fill="#fff" opacity=".5"/>
+</g>
+
+<!-- CUSTOMER 1: browsing neon tank, pointing (adult woman) -->
+<g transform="translate(435,255)">
+ <ellipse cx="0" cy="190" rx="44" ry="9" fill="#000" opacity=".28"/>
+ <rect x="-20" y="150" width="14" height="38" rx="6" fill="#33405a"/><rect x="6" y="150" width="14" height="38" rx="6" fill="#33405a"/>
+ <rect x="-26" y="182" width="22" height="9" rx="4" fill="#222"/><rect x="4" y="182" width="22" height="9" rx="4" fill="#222"/>
+ <rect x="-28" y="64" width="56" height="94" rx="22" fill="#e8576a" stroke="#8d2a38" stroke-width="3"/>
+ <path d="M-28 82Q-44 112 -30 134" stroke="#e8b48a" stroke-width="12" stroke-linecap="round" fill="none"/>
+ <path d="M28 80Q60 66 78 40" stroke="#e8b48a" stroke-width="12" stroke-linecap="round" fill="none"/>
+ <circle cx="80" cy="37" r="7" fill="#e8b48a"/>
+ <circle cx="0" cy="34" r="29" fill="#e8b48a" stroke="#b27f58" stroke-width="2"/>
+ <path d="M-31 34Q-34 -4 0 -6Q34 -4 31 34Q24 8 0 8Q-22 8 -31 34Z" fill="#c76b2a"/>
+ <circle cx="8" cy="36" r="3" fill="#222"/><circle cx="20" cy="36" r="3" fill="#222"/>
+ <path d="M10 48Q17 52 22 46" stroke="#a33" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+ <!-- thought bubble -->
+ <g transform="translate(-6,-40)"><path d="M30 0a30 20 0 1 1 60 0a30 20 0 1 1 -60 0Z" fill="#fff" stroke="#18516a" stroke-width="2"/><text x="60" y="6" text-anchor="middle" font-size="18">💙🐟</text><circle cx="22" cy="22" r="4" fill="#fff" stroke="#18516a"/><circle cx="14" cy="32" r="2.5" fill="#fff" stroke="#18516a"/></g>
+</g>
+
+<!-- CUSTOMER 2: leaving with bag (man walking left toward door) -->
+<g transform="translate(212,285)">
+ <ellipse cx="0" cy="160" rx="40" ry="8" fill="#000" opacity=".28"/>
+ <rect x="-24" y="124" width="14" height="34" rx="6" fill="#2b2b3a" transform="rotate(10 -17 124)"/><rect x="8" y="124" width="14" height="34" rx="6" fill="#2b2b3a" transform="rotate(-12 15 124)"/>
+ <rect x="-32" y="150" width="22" height="9" rx="4" fill="#fff" transform="translate(-4,2)"/><rect x="10" y="150" width="22" height="9" rx="4" fill="#fff" transform="translate(6,0)"/>
+ <rect x="-26" y="44" width="52" height="86" rx="20" fill="#4aa860" stroke="#245a30" stroke-width="3"/>
+ <path d="M26 62Q40 92 34 112" stroke="#d9a07a" stroke-width="12" stroke-linecap="round" fill="none"/>
+ <path d="M-26 62Q-44 84 -52 104" stroke="#d9a07a" stroke-width="12" stroke-linecap="round" fill="none"/>
+ <!-- bag in left hand -->
+ <g transform="translate(-80,96)"><path d="M-2 28 Q-10 4 2 -10 L26 -10 Q38 4 32 28 Q15 36 -2 28Z" fill="url(#bag)" stroke="#e8fbff" stroke-width="2"/><path d="M6 -10Q14 -26 22 -10" stroke="#e8fbff" stroke-width="2.5" fill="none"/><path d="M-1 8Q14 3 31 8L32 28Q15 36 -2 28Z" fill="#2fb5d6" opacity=".55"/><g color="#ff9a3c"><use href="#fishA" transform="translate(4,18) scale(.4)"/></g></g>
+ <circle cx="-2" cy="14" r="27" fill="#d9a07a" stroke="#a5724e" stroke-width="2"/>
+ <path d="M-28 12Q-28 -14 -2 -14Q24 -14 24 12Q16 -2 -2 -2Q-18 -2 -28 12Z" fill="#2a2a2a"/>
+ <circle cx="-14" cy="16" r="3" fill="#222"/><circle cx="-4" cy="16" r="3" fill="#222"/>
+ <path d="M-16 28Q-9 34 -3 28" stroke="#a33" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+ <g transform="translate(-30,-34)"><path d="M0 0a34 18 0 1 1 68 0a34 18 0 1 1 -68 0Z" fill="#fff" stroke="#18516a" stroke-width="2"/><text x="34" y="5" text-anchor="middle" font-size="16">😊 🪙</text></g>
+</g>
+
+<!-- queue spot marker -->
+<ellipse cx="760" cy="505" rx="34" ry="8" fill="#ffd24b" opacity=".25"/>
+
+<!-- HUD overlay -->
+<rect width="1100" height="40" fill="#061826" opacity=".96"/>
+<text x="16" y="26" font-size="17" font-weight="900" fill="#f6fcff"><tspan fill="#3bc8f5">AFNICA</tspan> AQUARIUM</text>
+<g font-weight="900" font-size="14"><rect x="760" y="7" width="64" height="26" rx="13" fill="#092638" stroke="#18516a"/><text x="792" y="25" text-anchor="middle" fill="#ffd24b">⭐ L4</text>
+<rect x="832" y="7" width="100" height="26" rx="13" fill="#092638" stroke="#18516a"/><text x="882" y="25" text-anchor="middle" fill="#ffd24b">🪙 2,418</text>
+<rect x="940" y="7" width="144" height="26" rx="13" fill="#092638" stroke="#18516a"/><text x="1012" y="25" text-anchor="middle" fill="#9be8ff">STORE ★ 3 · Day 14</text></g>
+<!-- bottom nav -->
+<rect y="590" width="1100" height="50" fill="#061826"/>
+<g font-size="13" font-weight="900" fill="#9bb6c4" text-anchor="middle">
+ <text x="78" y="621">🏠 TANKS</text><text x="233" y="621">🐟 FISHDEX</text><text x="388" y="621">❤️ BREED</text><text x="543" y="621">📦 MARKET</text><text x="698" y="621">🧱 ROOM</text><text x="853" y="621">🛒 SHOP</text>
+ <rect x="930" y="596" width="150" height="38" rx="10" fill="#1378b7"/><text x="1005" y="621" fill="#fff">🏪 STORE</text>
+</g>
+<!-- sale toast -->
+<g transform="translate(760,52)" filter="url(#sh)"><rect width="260" height="34" rx="17" fill="#2f7b35"/><text x="130" y="23" text-anchor="middle" font-size="15" font-weight="900" fill="#e6ffe0">🪙 Sold A Neon for 54 · rep +2</text></g>
+<!-- caption tag -->
+<text x="16" y="582" font-size="12" fill="#ffffff" opacity=".55">MOCKUP — fish in the final game are the real in-game sprites</text>
+</svg>
