@@ -74,7 +74,7 @@ function findHands(up,w,h,yT,yB){
  const sh={x:(a0+a1)/2,y:sy},sk=[[0,0,0],[0,0,0]];
  for(let y=Math.round(yT+.42*H);y<yT+.62*H;y++)for(let x=0;x<w;x++){if(!op(x,y))continue;const k=(y*w+x)*4,R=S[k],G=S[k+1],B=S[k+2];
   if(!(R>95&&G>45&&B>25&&R>G+10&&R>B+25&&R-B<150))continue;const i=x<sh.x?0:1;sk[i][0]+=x;sk[i][1]+=y;sk[i][2]++;}
- const hands=sk.filter(v=>v[2]>12).map(v=>{const p={x:v[0]/v[2],y:v[1]/v[2]};const a=Math.atan2(p.x-sh.x,p.y-sh.y);return {...p,a,amp:Math.sign(a||1)*Math.min(Math.abs(a),.15)};});
+ const hands=sk.filter(v=>v[2]>12).map(v=>{const p={x:v[0]/v[2],y:v[1]/v[2]};const a=Math.atan2(p.x-sh.x,p.y-sh.y);return {...p,a,amp:Math.sign(a||1)*Math.min(Math.abs(a),window.ARMAMP120||.08)};});
  return hands.length?{sh,hands}:null;
 }
 function armRig(up,w,h,yT,yB){
@@ -101,7 +101,7 @@ function armRig(up,w,h,yT,yB){
    for(let ch=0;ch<4;ch++){const q=(yy,xx)=>S[(yy*w+xx)*4+ch];T[k+ch]=(q(y0,x0)*(1-fx)+q(y0,x0+1)*fx)*(1-fy)+(q(y0+1,x0)*(1-fx)+q(y0+1,x0+1)*fx)*fy;}}
   og.putImageData(O,0,0);return o;};
  /* rotation that takes each hand from its drawn angle a to a*cos(2*pi*phase) (mirrored at half a cycle); standing = arms hanging at 20% */
- const amp=hd=>Math.sign(hd.a||1)*Math.min(Math.abs(hd.a),.15);
+ const amp=hd=>Math.sign(hd.a||1)*Math.min(Math.abs(hd.a),window.ARMAMP120||.08);
  const walk=[];for(let n=0;n<16;n++){const cph=Math.cos(2*Math.PI*n/16);walk.push(warp(hands.map(hd=>amp(hd)*(cph-1))));}
  return {sh,hands,walk,stand:warp(hands.map(hd=>-amp(hd)*.8))};
 }
@@ -169,6 +169,8 @@ function drawWalkV120(ctx,R,phase,m,k,bag,pt,over){
  const drawLeg=(cv,base,t,sw)=>{ctx.save();ctx.translate(R.pv.x,R.pv.y);ctx.rotate(-(t-base));ctx.scale(1,1-.07*sw);ctx.translate(-R.pv.x,-R.pv.y);ctx.drawImage(cv,0,0);ctx.restore();};
  drawLeg(R.L.back,R.B.a,tB,B.sw);
  drawLeg(R.L.front,R.F.a,tF,F.sw);
+ /* upper body: a slight forward lean when walking and a small sway with each step (about the hip) */
+ {const a=m*(.035+.012*Math.sin(4*Math.PI*phase));ctx.translate(R.pv.x,R.pv.y);ctx.rotate(a);ctx.translate(-R.pv.x,-R.pv.y);}
 if(pt>0&&R.pt){ctx.drawImage(R.pt.base,0,0);ctx.save();ctx.translate(R.pt.S.x,R.pt.S.y);ctx.rotate(R.pt.rot*pt);ctx.translate(-R.pt.S.x,-R.pt.S.y);ctx.drawImage(R.pt.arm,0,0);ctx.restore();}
  else if(R.arms){const n=Math.round((((phase%1)+1)%1)*16)%16;
   if(m<1){ctx.globalAlpha=1-m;ctx.drawImage(R.arms.stand,0,0);}

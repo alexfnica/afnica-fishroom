@@ -1,0 +1,10 @@
+<!doctype html><meta charset="utf-8"><script>
+/* resize a cut-out PNG to a given height and encode it as WebP with alpha (used by prep_game.py) */
+window.shrink = async function(url, h, q){
+  const img = new Image(); img.crossOrigin = 'anonymous'; img.src = url; await img.decode();
+  const s = h / img.naturalHeight, w = Math.round(img.naturalWidth * s);
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(img, 0, 0, w, h);
+  return {w, h, webp: c.toDataURL('image/webp', q || .86)};
+};
+</script>

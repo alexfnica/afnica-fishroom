@@ -1,0 +1,65 @@
+<!doctype html><meta charset="utf-8"><body>
+<script>
+/* chroma cut-out by flood fill from the border: only green that is connected to the image edge and smooth is background */
+window.cutOne = async function(url, opts){
+  opts = opts || {};
+  const img = new Image(); img.crossOrigin='anonymous'; img.src = url; await img.decode();
+  const W = img.naturalWidth, H = img.naturalHeight;
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const cx = cv.getContext('2d', {willReadFrequently:true}); cx.drawImage(img,0,0);
+  const id = cx.getImageData(0,0,W,H), d = id.data;
+  const gd = i => d[i+1]-Math.max(d[i],d[i+2]);
+  const mask = new Uint8Array(W*H);            /* 1 = background */
+  const stack = [];
+  const push = (x,y)=>{ const p=y*W+x; if(!mask[p]){ const i=p*4; if(gd(i)>28){ mask[p]=1; stack.push(p);} } };
+  for(let x=0;x<W;x++){push(x,0);push(x,H-1);} for(let y=0;y<H;y++){push(0,y);push(W-1,y);}
+  const STEP = opts.step||16;
+  while(stack.length){
+    const p = stack.pop(), x = p%W, y = (p/W)|0, i=p*4;
+    for(let k=0;k<4;k++){
+      const nx = x+(k==0?1:k==1?-1:0), ny = y+(k==2?1:k==3?-1:0);
+      if(nx<0||ny<0||nx>=W||ny>=H) continue;
+      const q = ny*W+nx; if(mask[q]) continue;
+      const j=q*4;
+      if(gd(j)>28 && Math.abs(d[j]-d[i])+Math.abs(d[j+1]-d[i+1])+Math.abs(d[j+2]-d[i+2]) < STEP*3){ mask[q]=1; stack.push(q); }
+    }
+  }
+  /* second pass: enclosed background islands (between arm and body, under bags) have the background colour but are not connected to the edge */
+  let sr=0,sg=0,sb=0,sn=0; for(let p=0;p<W*H;p+=7){ if(mask[p]){ const i=p*4; sr+=d[i];sg+=d[i+1];sb+=d[i+2];sn++; } }
+  sr/=sn;sg/=sn;sb/=sn; const TOL=opts.tol||54;
+  for(let p=0;p<W*H;p++){ if(mask[p]) continue; const i=p*4;
+    if(gd(i)>38 && Math.abs(d[i]-sr)+Math.abs(d[i+1]-sg)+Math.abs(d[i+2]-sb) < TOL) mask[p]=1; }
+  /* soft alpha: average of the mask over a 3x3 window, then one more pass */
+  let a = new Float32Array(W*H);
+  for(let p=0;p<W*H;p++) a[p] = mask[p]?0:1;
+  for(let pass=0;pass<2;pass++){
+    const b = new Float32Array(W*H);
+    for(let y=1;y<H-1;y++) for(let x=1;x<W-1;x++){
+      let s=0; for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++) s+=a[(y+dy)*W+x+dx];
+      b[y*W+x]=s/9;
+    }
+    a=b;
+  }
+  /* keep alpha tight: pixels well inside stay opaque */
+  /* distance of each pixel to the background (up to 3 px) for despill */
+  const near = new Uint8Array(W*H);
+  for(let y=3;y<H-3;y++) for(let x=3;x<W-3;x++){
+    if(mask[y*W+x]) continue; let n=0;
+    for(let dy=-3;dy<=3&&!n;dy++) for(let dx=-3;dx<=3;dx++) if(mask[(y+dy)*W+x+dx]){n=1;break;}
+    near[y*W+x]=n;
+  }
+  let x0=W,y0=H,x1=0,y1=0;
+  for(let p=0;p<W*H;p++){
+    const i=p*4;
+    const al = Math.max(0, Math.min(1, (a[p]-0.35)/0.5));   /* tighten the soft edge */
+    if(near[p]||al<1){ const g=d[i+1], m=Math.max(d[i],d[i+2]); if(g>m) d[i+1]=m+(g-m)*0.15; }
+    d[i+3] = Math.round(al*255);
+    if(al>0.5){ const x=p%W, y=(p/W)|0; if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; }
+  }
+  cx.putImageData(id,0,0);
+  const pad=4; x0=Math.max(0,x0-pad); y0=Math.max(0,y0-pad); x1=Math.min(W-1,x1+pad); y1=Math.min(H-1,y1+pad);
+  const out = document.createElement('canvas'); out.width=x1-x0+1; out.height=y1-y0+1;
+  out.getContext('2d').drawImage(cv,x0,y0,out.width,out.height,0,0,out.width,out.height);
+  return {png: out.toDataURL('image/png'), w: out.width, h: out.height, bbox:[x0,y0,x1,y1], src:[W,H]};
+};
+</script>

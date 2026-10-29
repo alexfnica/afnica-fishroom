@@ -1,0 +1,97 @@
+{
+ "walk_01_girl_pink_hoodie_bob": {
+  "w": 223,
+  "h": 440,
+  "kb": 16
+ },
+ "walk_02_man_curly_beard": {
+  "w": 219,
+  "h": 440,
+  "kb": 16
+ },
+ "walk_03_woman_blonde_ponytail": {
+  "w": 206,
+  "h": 440,
+  "kb": 17
+ },
+ "walk_04_man_bald_beard_vest": {
+  "w": 208,
+  "h": 440,
+  "kb": 17
+ },
+ "walk_05_girl_braids_raincoat": {
+  "w": 202,
+  "h": 440,
+  "kb": 16
+ },
+ "walk_06_teen_mohawk_leather": {
+  "w": 193,
+  "h": 440,
+  "kb": 16
+ },
+ "walk_07_woman_afro_purple": {
+  "w": 192,
+  "h": 440,
+  "kb": 15
+ },
+ "walk_08_man_bun_glasses": {
+  "w": 200,
+  "h": 440,
+  "kb": 16
+ },
+ "walk_09_woman_hijab": {
+  "w": 198,
+  "h": 440,
+  "kb": 14
+ },
+ "walk_10_grandma_wateringcan": {
+  "w": 207,
+  "h": 440,
+  "kb": 16
+ },
+ "walk_11_boy_backpack_wateringcan": {
+  "w": 210,
+  "h": 440,
+  "kb": 20
+ },
+ "walk_12_woman_pink_pixie": {
+  "w": 195,
+  "h": 440,
+  "kb": 15
+ },
+ "walk_13_man_muscular_tank": {
+  "w": 199,
+  "h": 440,
+  "kb": 14
+ },
+ "walk_14_girl_headphones_kilt": {
+  "w": 188,
+  "h": 440,
+  "kb": 15
+ },
+ "walk_15_man_blazer_briefcase": {
+  "w": 206,
+  "h": 440,
+  "kb": 14
+ },
+ "walk_16_woman_labcoat": {
+  "w": 184,
+  "h": 440,
+  "kb": 12
+ },
+ "walk_17_man_chef": {
+  "w": 181,
+  "h": 440,
+  "kb": 17
+ },
+ "walk_19_teen_skater_dreads": {
+  "w": 209,
+  "h": 440,
+  "kb": 15
+ },
+ "walk_20_woman_gardener": {
+  "w": 186,
+  "h": 440,
+  "kb": 16
+ }
+}

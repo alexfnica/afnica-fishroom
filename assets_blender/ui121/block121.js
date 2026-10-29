@@ -4,7 +4,7 @@
 if(window.UI121===false)return;
 const $=id=>document.getElementById(id);
 const NAVMAP={home:'home',tank:'tank',breed:'breed',market:'market'};
-const TITLES={home:'FISHROOM',breed:'BREEDING',market:'ORDERS',dex:'FISHDEX',shop:'SUPPLIES',store:'MY FISH STORE',progress:'PROGRESS',settings:'SETTINGS'};
+const TITLES={home:'FISHROOM',breed:'BREEDING',market:'ORDERS',dex:'FISHDEX',shop:'SUPPLIES',store:'MY FISH STORE',progress:'PROGRESS',settings:'SETTINGS',avatar:'CHARACTER'};
 let cur='home',hist=[],breedTab='info',onBreeder=false,guard=0,unread=0,badgeAt=0,explicitTank=false,tapped=false,sheetOpen=false,sheetScroll=0;
 window.addEventListener('pointerdown',()=>{tapped=true},{once:true,capture:true});
 const events=[];
@@ -114,6 +114,7 @@ function go(name,opts){
   else if(name==='store')showStore();
   else if(name==='progress')showProgress();
   else if(name==='settings')showSettings();
+  else if(name==='avatar'&&typeof window.u122Picker==='function')window.u122Picker();
  },'go '+name);
 }
 window.u121go=go;
@@ -182,6 +183,8 @@ window.render=function(s){
 
 /* ---------- Home ---------- */
 function showHome(){
+ /* V17.122 draws the illustrated fishroom with the player's character; the card Home below is the fallback */
+ if(typeof window.u122Home==='function'){let ok=false;try{ok=window.u122Home()}catch(e){console.error('AFNICA ui121 home122',e)}if(ok)return;}
  setAfnicaScreenV104('home');ensureHealthState();
  const need=xpNeededV9(st.playerLevel),pct=Math.min(100,st.xp/need*100);
  const dm=dailyFor('main'),df=dailyFor('fry'),done=[dm.feed,dm.water,dm.clean].filter(Boolean).length;
@@ -346,6 +349,7 @@ function start(){
  },'start');
 }
 window.addEventListener('resize',()=>{const s=$('screen');if(s&&cur==='tank')s.scrollTop=0;});
+window.u121api={deco:(n)=>deco(n),notices:()=>notices(),noticeRow:(n)=>noticeRow(n),tankName:(k)=>tankName(k),cur:()=>cur,breederOpen:()=>breederOpen(),arrFor:(k)=>arrFor(k)};
 window.ui121Debug=()=>({cur,hist:hist.slice(),breedTab,guard,unread,events:events.slice(),notices:notices(),ach:achList()});
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();

@@ -76,3 +76,6 @@
 
 .st120stage .own img.ofish{position:absolute;height:auto;pointer-events:none}
 .st120stage .bub img.bfi{height:15px;width:auto;vertical-align:middle;margin:0 2px;filter:drop-shadow(0 1px 1px #0004)}
+
+.st120p .shd{position:absolute;left:18px;top:124px;width:44px;height:10px;border-radius:50%;background:radial-gradient(closest-side,rgba(0,0,0,.38),rgba(0,0,0,0));transform-origin:50% 50%;pointer-events:none}
+.st120p .shd.w{left:-10px;width:100px}

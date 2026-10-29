@@ -103,7 +103,7 @@ function sellV120(f,silent){
  s.totalSales++;s.totalRevenue+=price;s.day.sales++;s.day.revenue+=price;s.day.best=Math.max(s.day.best,price);
  s.rep=Math.min(100,s.rep+2);
  try{addXPV9(8+g.rank*3);}catch(e){}
- if(!silent){try{sfxV141('coin');}catch(e){}toast(`🪙 Sold ${g.name} ${nm} for ${price} · rep +2`);}
+ if(!silent){sndV120('till');toast(`🪙 Sold ${g.name} ${nm} for ${price} · rep +2`);}
  return price;
 }
 function walkout(p,reason){
@@ -169,11 +169,30 @@ function mkPerson(p,z){
 }
 /* a speech bubble; '§' in the text is replaced by a small picture of fish f (the player sees which fish is meant) */
 function bubble(c,txt,sec,f){const b=c.parts.bub;b.textContent='';const im=f&&txt.indexOf('§')>=0?fishImgV120(f):null;
- txt.split('§').forEach((s,i)=>{if(i&&im){const e=document.createElement('img');e.className='bfi';e.src=im.src;e.alt='';b.appendChild(e);}b.appendChild(document.createTextNode(s));});
+ txt.split('§').forEach((s,i)=>{if(i&&im){const e=document.createElement('img');e.className='bfi';e.alt='';if(im.src)e.src=im.src;else im.addEventListener('load',()=>{e.src=im.src;},{once:true});b.appendChild(e);}b.appendChild(document.createTextNode(s));});
  b.classList.add('on');c.bubT=sec||2.2;}
 /* realistic customers: a rendered full-body cut-out (assets_blender/store/people, made with cut_people.py), walked with a bob / rock / squash instead of limbs */
 /* walk rigs (walk120.js), one per sprite image, built once the image has decoded; pairs / failures keep the bob */
 const RIG=new Map();
+/* people further back (higher on the floor) are drawn a little smaller */
+const depthV120=y=>.9+.15*Math.max(0,Math.min(1,(y-340)/130));
+/* shop sounds (respect the sound switch): door bell, footsteps, bag rustle, till; crowd murmur in murmurV120 */
+let lastStepV120=0;
+function sndV120(kind){try{if(!st.soundOn)return;
+ if(kind==='bell'){toneV141(1318,.9,'sine',.022);toneV141(988,1.2,'sine',.018,.17);}
+ else if(kind==='step'){const now=performance.now();if(now-lastStepV120<110)return;lastStepV120=now;toneV141(80+Math.random()*30,.05,'sine',.01);noiseV141(.02,.0025);}
+ else if(kind==='rustle'){for(let i=0;i<7;i++)noiseV141(.025+Math.random()*.035,.006+Math.random()*.006,i*.08+Math.random()*.05);}
+ else if(kind==='till'){toneV141(150,.12,'triangle',.025);noiseV141(.05,.01,.02);toneV141(2093,.45,'triangle',.016,.13);toneV141(2637,.55,'triangle',.013,.21);}
+}catch(e){}}
+let MUR=null;
+function murmurV120(n){try{
+ const want=st.soundOn&&!document.hidden&&n>=3?Math.min(.03,.012+.004*(n-3)):0;
+ if(!MUR){if(!want)return;const ctx=typeof audioReadyV141==='function'?audioReadyV141():null;if(!ctx)return;
+  const len=ctx.sampleRate*3,b=ctx.createBuffer(1,len,ctx.sampleRate),d=b.getChannelData(0);let l=0;for(let i=0;i<len;i++){l=(l+.05*(Math.random()*2-1))/1.05;d[i]=l*4;}
+  const s=ctx.createBufferSource();s.buffer=b;s.loop=true;const bp=ctx.createBiquadFilter();bp.type='bandpass';bp.frequency.value=430;bp.Q.value=1.3;const g=ctx.createGain();g.gain.value=0;
+  const lfo=ctx.createOscillator(),lg=ctx.createGain();lfo.frequency.value=3.2;lg.gain.value=170;lfo.connect(lg);lg.connect(bp.frequency);   /* syllable-like wobble */
+  s.connect(bp);bp.connect(g);g.connect(ctx.destination);s.start();lfo.start();MUR={ctx,g};}
+ const t=MUR.ctx.currentTime;MUR.g.gain.cancelScheduledValues(t);MUR.g.gain.setTargetAtTime(want,t,.8);}catch(e){}}
 function rigFor(src,pair,noArms){let e=RIG.get(src);if(!e){e={R:null,pair:!!pair};RIG.set(src,e);const im=new Image();im.onload=()=>{try{e.R=e.pair?(window.rigPairV120?window.rigPairV120(im):null):(window.rigSpriteV120?window.rigSpriteV120(im,{noArms:!!noArms}):null);if(e.R&&!e.pair)e.R.ax=hipX(im);}catch(er){console.error('AFNICA store walk rig',er);}};im.src=src;}return e;}
 /* x of the body at hip height (48-58% of the height): lines up the walk picture and the pointing picture, whose arm sticks out */
 function hipX(im){const w=im.naturalWidth,h=im.naturalHeight,c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');g.drawImage(im,0,0);
@@ -185,10 +204,10 @@ function pointFor(src){let e=PTI.get(src);if(!e){e={im:null};PTI.set(src,e);cons
 function mkSprite(src,asp,pose){
  const wide=asp>.62;
  const d=document.createElement('div');d.className='st120p sp'+(wide?' wide':'');
- d.innerHTML=`<div class="sprw"><img src="${src}" alt=""><canvas class="wk${wide?' wkw':''}" width="${wide?480:200}" height="320"></canvas><svg class="bagh" width="22" height="28" viewBox="0 0 22 28"><path d="M3 4 q-3 8 1 18 q7 5 14 0 q4 -10 1 -18z" fill="#9ee2f7" fill-opacity=".65" stroke="#e8fbff" stroke-width="1.2"/><path d="M4 4 q7 -8 13 0" stroke="#e8fbff" stroke-width="1.6" fill="none"/><path class="bf" d="M6 15 q5 -5 10 0 q-5 5 -10 0z" fill="#ff9a3c"/></svg></div><div class="bub"></div>`;
+ d.innerHTML=`<div class="shd${wide?' w':''}"></div><div class="sprw"><img src="${src}" alt=""><canvas class="wk${wide?' wkw':''}" width="${wide?480:200}" height="320"></canvas><svg class="bagh" width="22" height="28" viewBox="0 0 22 28"><path d="M3 4 q-3 8 1 18 q7 5 14 0 q4 -10 1 -18z" fill="#9ee2f7" fill-opacity=".65" stroke="#e8fbff" stroke-width="1.2"/><path d="M4 4 q7 -8 13 0" stroke="#e8fbff" stroke-width="1.6" fill="none"/><path class="bf" d="M6 15 q5 -5 10 0 q-5 5 -10 0z" fill="#ff9a3c"/></svg></div><div class="bub"></div>`;
  const w=d.querySelector('.sprw'),bag=d.querySelector('.bagh');
  if(wide){bag.style.left='96px';bag.style.top='96px';}
- return {spr:true,wide,rad:wide?60:40,rig:rigFor(src,wide),bagRig:pose&&pose.bag?rigFor(pose.bag,false,true):null,bagFish:pose&&pose.fish||null,ptP:pose&&pose.point?pointFor(pose.point):null,cv:d.querySelector('.wk'),el:d,svg:w,img:w.firstChild,bagEl:bag,bag:{setAttribute(a,v){bag.style.display=v==='visible'?'block':'none';}},bf:d.querySelector('.bf'),bub:d.querySelector('.bub')};
+ return {spr:true,wide,rad:wide?60:40,rig:rigFor(src,wide),bagRig:pose&&pose.bag?rigFor(pose.bag,false,true):null,bagFish:pose&&pose.fish||null,ptP:pose&&pose.point?pointFor(pose.point):null,cv:d.querySelector('.wk'),shd:d.querySelector('.shd'),el:d,svg:w,img:w.firstChild,bagEl:bag,bag:{setAttribute(a,v){bag.style.display=v==='visible'?'block':'none';}},bf:d.querySelector('.bf'),bub:d.querySelector('.bub')};
 }
 function poseP(c,t){
  const P=c.parts,mv=Math.min(1,c.speed/30),sw=Math.sin(c.phase)*mv,sd=c.seed;
@@ -212,6 +231,9 @@ function poseP(c,t){
     if(c.pt<.99){g.globalAlpha=1-c.pt;window.drawWalkV120(g,R,(c.dist||0)/(window.cycleLenV120(R)*k),m,k,bag,0,over);}
     if(c.pt>.01){g.globalAlpha=c.pt;const kp=150/PT.im.naturalHeight;g.save();g.scale(kp,kp);g.translate(-PT.ax+((R.ax||R.w/2)-R.w/2)*k/kp,-PT.ground);g.drawImage(PT.im,0,0);g.restore();}
     g.globalAlpha=1;}
+   {const cyc=(c.dist||0)/(window.cycleLenV120(R.pair?R.parts[0].R:R)*k),st2=Math.floor(cyc*2);
+    if(P.shd)P.shd.style.transform=`scaleX(${(1+.14*m*Math.abs(Math.sin(cyc*2*Math.PI))).toFixed(3)})`;
+    if(c.stepIx!==undefined&&st2!==c.stepIx&&m>.6&&c.alpha>.8)sndV120('step');c.stepIx=st2;}
    const lean=c.state==='look'&&c.pt<.5?-2+Math.sin(t*3+sd)*(c.pointing?1.5:.5):0;
    P.cv.style.transform=`rotate(${lean.toFixed(2)}deg)`;
   }else P.img.style.transform=`translateX(-50%) translateY(${bob.toFixed(2)}px) rotate(${rock.toFixed(2)}deg) scaleY(${sq.toFixed(4)})`;
@@ -232,8 +254,20 @@ function poseP(c,t){
 /* the clerk is the owner's own character: a cut-out of his YouTube outro render (real shirt print), swayed / leaned per phase, net as an overlay */
 /* the owner at the counter: four Gemini poses of him (idle = hands on the counter, greet = open hand, bag = holding the bag up,
    give = holding it out to the viewer's right), cut with one crop box so they line up, crossfaded per serving phase */
+const ANCIMG=new Map();
+function ancImgV120(f){
+ const d=document.createElement('div');d.style.cssText='position:fixed;left:-9999px;top:0';d.innerHTML=ancGraphicV1719(f);document.body.appendChild(d);
+ try{const a=d.firstElementChild,e=d.querySelector('.ancSide');if(!e)return null;const cs=getComputedStyle(e),pf=getComputedStyle(a).filter,ef=cs.filter;
+  const key=a.className+'|'+cs.backgroundPosition+'|'+pf+'|'+ef;let res=ANCIMG.get(key);if(res)return res;
+  const m=/url\("?(.*?)"?\)/.exec(cs.backgroundImage);if(!m)return null;
+  const bs=cs.backgroundSize.split(' ').map(parseFloat),bp=cs.backgroundPosition.split(' ').map(parseFloat),w=parseFloat(cs.width),h=parseFloat(cs.height);
+  res=new Image();ANCIMG.set(key,res);const sh=new Image();
+  sh.onload=()=>{const k=sh.naturalWidth/bs[0],c=document.createElement('canvas');c.width=Math.round(w*k);c.height=Math.round(h*k);const g=c.getContext('2d');
+   const fl=[pf,ef].filter(x=>x&&x!=='none').join(' ');if(fl)g.filter=fl;g.drawImage(sh,-bp[0]*k,-bp[1]*k,w*k,h*k,0,0,c.width,c.height);res.src=c.toDataURL('image/png');};
+  sh.src=m[1];return res;}catch(er){return null;}finally{d.remove();}
+}
 function fishImgV120(f){
- try{let u=realAssetV154(f);if(!u){const set=REAL_FISH_ASSETS_V154[assetSpeciesKeyV154(f)]||{};u=set.adult_m||set.adult_f||set.juvenile||set.fry;}
+ try{if(f.species==='anc'&&typeof ancGraphicV1719==='function'){const a=ancImgV120(f);if(a)return a;}let u=realAssetV154(f);if(!u){const set=REAL_FISH_ASSETS_V154[assetSpeciesKeyV154(f)]||{};u=set.adult_m||set.adult_f||set.juvenile||set.fry;}
   if(!u)return null;const im=new Image();im.src=u;return im;}catch(e){return null;}
 }
 const OWN_K=.107,OWN_X=600,OWN_Y=188,GIVE_BAG={x:OWN_X+810*OWN_K,y:OWN_Y+450*OWN_K};   /* crop px -> stage units; the bag's middle in the 'give' pose */
@@ -255,7 +289,7 @@ function poseClerk(t){
  if(K.c){if(K.ph==='greet'||K.ph==='pay')want='greet';else if(K.ph==='bag')want='bag';else if(K.ph==='hand'){want=pp<.55?'give':'idle';rate=14;}}
  const dt=Math.min(.1,Math.max(0,t-(P.lt||t)));P.lt=t;
  const f=K.c&&K.c.want;
- if(f&&P.fishFor!==f){P.fishFor=f;const im=fishImgV120(f);for(const k in P.fi)if(im)P.fi[k].src=im.src;}
+ if(f&&P.fishFor!==f){P.fishFor=f;const im=fishImgV120(f);for(const k in P.fi)if(im){if(im.src)P.fi[k].src=im.src;else{const el=P.fi[k];im.addEventListener('load',()=>{el.src=im.src;},{once:true});}}}
  for(const k in P.op){P.op[k]+=((k===want?1:0)-P.op[k])*Math.min(1,dt*rate);P.im[k].style.opacity=P.op[k].toFixed(3);if(P.fi[k])P.fi[k].style.opacity=(f?P.op[k]:0).toFixed(3);}
  /* life: breathing and a very slow sway */
  P.el.style.transform=`translateY(${(Math.sin(t*1.7)*.35).toFixed(2)}px) scaleY(${(1+.006*Math.sin(t*1.7)).toFixed(4)}) rotate(${(Math.sin(t*.5)*.4).toFixed(2)}deg)`;
@@ -426,7 +460,7 @@ function spawn(){
  if(window.ST120_PEOPLE&&window.ST120_PEOPLE.length&&pickPersonV120(window.ST120_PEOPLE)<0)return;   /* everyone is already inside */
  const p=newProfile(),pal=PALS[Math.floor(Math.random()*PALS.length)],PP=window.ST120_PEOPLE,pi=pickPersonV120(PP),parts=pi>=0?mkSprite(PP[pi],(window.ST120_PEOPLE_ASPECT||[])[pi],(window.ST120_POSES||[])[pi]):mkPerson(pal);
  const c=Object.assign(p,{pi,id:++ST.uid,sz:parts.spr?1:.8,parts,x:DOOR.x,y:DOOR.y,hx:1,hy:.3,speed:0,maxSp:52+Math.random()*16,phase:Math.random()*6,face:1,faceT:1,alpha:0,state:'enter',path:[],seed:Math.random()*6,visits:[],slot:null,want:null,t:0,wait:0,bagged:false,pointing:false,bubT:0,leaving:false});
- $('st120stage').appendChild(parts.el);ST.cust.push(c);st.store.day.customers++;
+ $('st120stage').appendChild(parts.el);ST.cust.push(c);sndV120('bell');st.store.day.customers++;
  const avail=[];for(let i=0;i<st.store.tanks;i++)if(tankFishV120(i).some(f=>!f._res120))avail.push(i);
  avail.sort(()=>Math.random()-.5);c.visits=avail.slice(0,1+Math.floor(Math.random()*Math.min(3,avail.length)));
  const col=FCOL.guppy;parts.bf.setAttribute('fill',col);
@@ -523,7 +557,7 @@ function custTick(c,dt,t){
  if(c.talkTo&&t<c.talkUntil){if(c.state==='look'||c.state==='wait')c.faceT=c.talkTo.x>=c.x?1:-1;}else if(c.talkTo){c.talkTo=null;if(c.state==='look'&&c.slot)c.faceT=(TX[c.slot.tank]+TW/2-c.x)>=0?1:-1;else if(c.state==='wait')c.faceT=1;}
  c.face+=(c.faceT-c.face)*Math.min(1,dt*16);
  const P=c.parts;
- P.el.style.transform=`translate(${(c.x-40).toFixed(1)}px,${(c.y-130).toFixed(1)}px) scale(${c.sz})`;P.el.style.zIndex=Math.round(c.y);P.el.style.opacity=c.alpha;
+ P.el.style.transform=`translate(${(c.x-40).toFixed(1)}px,${(c.y-130).toFixed(1)}px) scale(${(c.sz*depthV120(c.y)).toFixed(3)})`;P.el.style.zIndex=Math.round(c.y);P.el.style.opacity=c.alpha;
  P.svg.style.transform=`scaleX(${c.face.toFixed(3)})`;poseP(c,t);
 }
 /* the owner's speech bubble above him at the counter */
@@ -556,6 +590,7 @@ function clerkTick(dt,t){
   if(cur==='hand')ownerSay(pickV120(['Here you go! 🐟','All yours! 😊','Enjoy! 🐠']),1.8);
   if(cur==='pay')ownerSay(pickV120(['Thank you! 🙏','Come back soon! 👋','Happy fishkeeping! 🐟']),1.6);
   if(cur==='net'&&f){f._net120=true;syncFish();}
+  if(cur==='bag')sndV120('rustle');
   if(cur==='bag'&&f){cb.classList.remove('on');cb.innerHTML=`<div class="bw"></div><div class="bfish">${dexAvatarHTML(f,44,26)}</div>`;}   /* he holds it in the 'bag' picture */
   if(cur==='hand'){cb.style.transition='none';}
   if(cur==='pay'&&f){
@@ -568,7 +603,7 @@ function clerkTick(dt,t){
  poseClerk(t);
 }
 function loop(now,gen){
- if(gen!==ST.gen||!$("st120stage")){return;}
+ if(gen!==ST.gen||!$("st120stage")){if(!$("st120stage"))murmurV120(0);return;}
  requestAnimationFrame(n=>loop(n,gen));
  try{
   const dt=Math.min(.1,(now-ST.last)/1000||0);ST.last=now;const t=now/1000;
@@ -589,7 +624,7 @@ function loop(now,gen){
   const open=ST.cust.some(c=>c.x<120&&c.y<400);
   if(open!==ST.door){ST.door=open;$('st120door').classList.toggle('open',open);}
   /* bookkeeping */
-  ST.sec+=dt;if(ST.sec>=1){ST.sec=0;st.store.lastSimAt=Date.now();dayCheck();boardUI();}
+  ST.sec+=dt;if(ST.sec>=1){ST.sec=0;murmurV120(ST.cust.length);st.store.lastSimAt=Date.now();dayCheck();boardUI();}
   ST.saveT+=dt;if(ST.saveT>15){ST.saveT=0;save();}
  }catch(e){console.error('AFNICA store loop',e);}
 }
@@ -597,6 +632,7 @@ function loop(now,gen){
 /* ---------- screen ---------- */
 window.renderStoreV120=function(){
  try{
+  if($('st120stage')&&ST.gen&&typeof afnicaActiveScreen!=='undefined'&&afnicaActiveScreen==='store'){syncFish();panel();return;}   /* already open: keep the shop as it is */
   ensureHealthState();ensureStoreV120();setAfnicaScreenV104('store');
   const e=$('screen');if(!e)return;
   dayCheck();
@@ -616,7 +652,7 @@ window.renderStoreV120=function(){
   requestAnimationFrame(n=>loop(n,gen));
  }catch(err){console.error('AFNICA store render',err);}
 };
-window.storeDebugV120=function(){return {S:ST,st:st.store,fish:st.storeFish,spawn,evaluate,fairV120,priceV120,sellV120,dayCheck,batchSim,newProfile};};
+window.storeDebugV120=function(){return {fishImg:fishImgV120,S:ST,st:st.store,fish:st.storeFish,spawn,evaluate,fairV120,priceV120,sellV120,dayCheck,batchSim,newProfile};};
 })();
 
 /* ===== V17.120 store music: a light bossa loop (F major, 100 bpm) only while MY FISH STORE is open; the aquarium music
