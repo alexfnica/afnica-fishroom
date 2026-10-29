@@ -1,25 +1,83 @@
+# Handoff — where work stopped (2026-10-29: V17.111 cave INSPECT with real footage, NOT committed; V17.110 rewrite also NOT committed)
+
+## V17.111 cave inspect = Gemini footage instead of the vector canvas (2026-10-29, NOT committed)
+- Owner wants a realistic wriggler animation (Gemini + photo, Blender only if needed). Assets so far in `assets_blender/incoming`:
+  `anc_wriggler_side.webp` (yolk-sac larva side view, + `_cut`/`_cut_dark` PNG via `anc3d/cut_wriggler.py`), `anc_wriggler_free.webp`
+  (free fry after the yolk, new photo; v1 kept), `anc_wriggler_heap.webp` (Gemini heap in the cave, tight heap of long larvae).
+  Top view (B) never arrived as a file. Real clip: `D:\ClaudeWork\wriggler_clip\clip.mp4` (memory note anc-wriggler-clip): hatched larvae are
+  orange beads with a faint tail, scattered along the wall near glassy empty shells - NOT a tight heap; so the heap photo is an interim only.
+- A composite still (my larva cut-outs on a patched cave floor, `docs/wriggler_heap_still.jpg`) looked bad -> rejected; route chosen: Gemini
+  image-to-video from corrected heap images (full / half / low yolk).
+- Code: `anc3d/block111.js` + `anc3d/install111.py` (embeds footage as data URIs between `<!-- V17.111 BEGIN/END -->`, re-runnable). It wraps
+  `window.inspectAncCave40` and, while the single clutch is in the yolk stage, replaces the V17.43 canvas `#ancInspect43` with a looping video
+  by yolk left (`full` < 1/3 of the stage gone, `half` < 2/3, `low` after) or, with no video, the interim poster (the heap photo, slow breathing +
+  drifting dust). Eggs / two broods / no assets keep the V17.43 canvas. Switch `window.ANC111=false`. Tested headless (`trailer/measure_inspect111.py`):
+  eggs -> canvas, yolk (3 stages) -> `.anc111box` with the poster, 0 errors, syntax 0 errors. The popup itself was NOT seen on screen (the rig's
+  screenshot only captures the tank). Reviewer not run on this small block.
+- UPDATE (owner: Gemini video needs a paid subscription): no video needed any more. The popup now runs a 'living still' on the stage stills
+  `anc_wriggler_scene_full/half/low.webp` (Gemini images 1-3; image 3 has a different framing = the tunnel view, 1+2 the angled view):
+  per larva (`LARVAE` table, head/tail-tip positions read off a 50 px grid, `anc3d/grid_stills111.py`) an upright patch of the rear body is
+  wave-warped in strips for a 0.5-1.2 s tail twitch every 2.5-10 s, dust drifts through the beam, the beam flickers. Canvas 768x419 inside the
+  popup box. Measured (`trailer/measure_living111.py`, headless): canvas live, 0 errors, tail positions differ frame to frame without artifacts.
+  Videos (`anc_wriggler_heap_*.mp4`) still take precedence if ever added. Larva positions are eyeballed (+-10 px), so a twitch may sit a little
+  off a tail; stage stills: only `full`/`half`/`low` keys, popup keeps the V17.43 canvas for eggs. Not seen on screen (rig cannot capture the popup).
+- NEXT: owner generates 3 corrected heap images + 6 s loop videos (`anc_wriggler_heap_full/half/low.mp4`, prompts given in chat), then
+  `python anc3d/install111.py` (shrink to ~480p / 1-2 MB each first; install warns above 3 MB). Also still open from V17.110: nursery with no
+  decoration (corner case) and the cave panel button layout were not seen.
+
 # Handoff — where work stopped (2026-10-29: V17.110 bristlenose FRY yolk sac + staying grouped, NOT committed; owner to review)
 
-## V17.110 bristlenose fry: yolk sac, heap, then a free-swimming group (2026-10-29, NOT committed)
-- Owner: fry should carry a yolk sac and stay grouped, then another stage once the yolk is used up. Static mock OK'd
-  (`docs/yolk110_mock.png`, `trailer/mock_yolk110.py`).
-- Before: the cave kept wrigglers (canvas, stage `yolk`) 4-6 days, then 20-40 fish of age 1 were released with the plain fry photo
-  (`data-stage91='fry'` = age < 5) and walked about alone. Now the cave keeps them 1-2 days (`yolkIn=1+rand(2)` in the 3 laying sites incl. V17.108)
-  and the yolk phase happens on the released fish. Cave text updated.
-- Block `<!-- V17.110 BEGIN/END -->` (end of file, after V17.109) + hook `ancYolkV17110` right after the eye hook in `draw()`.
-  Stage 1 yolk (age 1-2.99): amber sac (record space (172,93) 32x20, shrinks 1 -> .5 -> 0 by age 3, `el.dataset.yolk110`, top fades into the
-  belly), fry lie in a tight heap (+-22 px) at their tank's group spot, rest still, a 3-7 px twitch every 4-12 s. Stage 2 free fry (age 3-4.99):
-  no sac, a fry > 110 px from the spot walks back (spot +-75 px). One spot per tank id, hops +-120 px every ~240 s (yolk) / ~80 s (free).
-  Steering = the existing `move`/`rest` modes (same fields as go96/stop96), so V17.95/105 walks them; only on substrate, not in fights/cave ramp/turns.
-  Switch `window.ANC110=false`; debug `ancFryDebugV17110()`. No new `st` fields.
-- Measured (`trailer/measure_fry110.py`, headless, 3 yolk + 2 free fry + juvenile + adult, scattered start): yolk spread 160 -> 21 px after
-  150 s (they walk ~5 px/s so a scattered start needs ~60 s; released fry start together), free fry 25 -> 4..38 px, sac amber px ~1.2-2k, 0 errors.
-  Game-scale frame `docs/fry110_heap.jpg` (the sac is a small yellow bead at fry size).
-- Reviewer (no blockers): watch the sand code switching a resting fry to `graze` (it is put back to rest next frame), and a group spot that
-  can land on the V17.89 cave tube. Checked in the breeder tank (`trailer/measure_fry110b.py`, 7 fry, 100 s): all gather at x 442-476,
-  max step <= 2.1 px/frame, <= 8 direction reversals, 0 errors. Cave-overlap itself was not measured (no cave geometry export in that rig).
-- Not done: fry in the breeder cave area (they heap at a random sand spot, not at the cave), the wriggler canvas in the cave unchanged,
-  glass (belly) view has no sac, no feeding-driven grouping.
+## V17.110 bristlenose fry: yolk sac, stay together (2026-10-29; rewritten after the owner's correction, NOT committed since the rewrite)
+- Owner: "yolk-sac fry do not roam the tank: they stay next to each other in the cave until the yolk is used up; if the user takes
+  them out to the nursery they stay grouped in a corner or under a decoration"; the cave can be inspected (existing viewer).
+  First version (commit db66bf1, pushed) wrongly let yolk fry heap on open sand and shortened the cave yolk period - superseded.
+- Now: cave yolk stage back to 4-6 days (`yolkIn=4+rand3` in the 3 laying sites, text restored + "you can move the wrigglers to the nursery").
+  Fry released from the cave have no yolk (free fry, age 1+). New button "MOVE WRIGGLERS TO NURSERY" next to the cave status (both
+  yolk branches of `ancClutchStatus40`) -> `moveAncWrigglers110(slot)` (block V17.110): the brood becomes fish in `st.fry` with optional
+  fields `yolkStart110` / `yolkEnd110` (game days; absent = no yolk), clutch stage 'released' + `movedNursery110`.
+- Yolk fish (k=(end-st.day)/(end-start) > 0): sac drawn on the fry photo (`ancYolkV17110`, record (172,93) 32x20, size by k, top fades into
+  the belly), huddle +-14 px under the first decoration standing on the sand of their tank (`[data-v177-editable]`, the fish z-index = decor z-1)
+  or in a corner, rest still, a 3-7 px twitch every 4-12 s, never roam. After the yolk (and for cave-released fry): free fry, age < 5, loose
+  group (> 110 px from the group spot walks back). Steering = existing 'move'/'rest' modes. Switch `window.ANC110=false`,
+  debug `ancFryDebugV17110()`.
+- Measured (`trailer/measure_fry110c.py`, Fry Tank, 5 yolk + 1 free fry + adult, scattered start): yolk fish gather at x 327-354 around the
+  decoration spot 346 (3 of 5 move only 16-21 px over the last 2/3 of 100 s; the others were still walking in, ~5 px/s), sac k .75, after
+  `st.day+=5` k 0 and 0 amber px, `moveAncWrigglers110` adds 4 fish with yolk fields, 0 errors. Syntax 0 errors.
+- Reviewer fixes: the moved clutch gets `emerged43=true` (else the breeder tank played the "fry leave the cave" animation), the z-index tweak is
+  cleared when the yolk is gone (`data-z110`). Left: `yolkSpot` ignores a CSS scale on the tank and caches the spot 15 s, `st.fry` takes all
+  fry at once (7 shown, like released fry), other blocks also write z-index on the fish.
+- Visibility fix (owner: "i don't see it"): fry were drawn at scale .11 = 13 px, an invisible speck. `sizeFor` is wrapped: bristlenose age < 5 get x2.4
+  (yolk fry scale .26 = 32 px, free fry .46). Huddle spread +-45 px (was +-14, they overlapped into one fish). A moved brood starts AT the huddle
+  spot (`s.init110`), it does not walk across the tank. Where things are in the game: breeding box = BREED (heart) nav -> Bristlenose Breeding Tank
+  screen; nursery = Fry Tank (MAIN TANK | FRY TANK switch at the top of the Tanks screen). Frame: `docs/huddle110.jpg` (7 fry, yellow sacs).
+- USE THE EXISTING BREEDING BOX (owner: "we already have a breeding box"; my own `.mat110` NURSERY box was removed): the V17.86/V17.88 photo box
+  (bought in the Shop, hangs on the front glass of the Fry Tank, `st.breedingBox86 {owned, fish:[ids]}`, geometry `breedBoxV1786(tank,id)`) now also takes
+  bristlenose fry: its `young()` includes `anc` age < 5 (texts say "young fry"), the existing 📦 button moves/lets out all young fry, and
+  `moveAncWrigglers110` adds the moved brood's ids to the box when owned (else they huddle in the Fry Tank's left corner, toast hints to buy the box),
+  then closes the popup and switches to the Fry Tank. The cave button label says BREEDING BOX or FRY TANK accordingly. In `fry()` (V17.110): a fish in
+  the box glides onto its floor (own `s.bx110/by110`, because the motion code resets s.x/s.y every frame, and the element's left/top/transform are rewritten
+  in the post hook), lies still (twitch every 4-12 s while it has yolk), z-index 41 (between the box's back 40 and front 42), drawn x.75 of the open-tank size (max scale .24 = 29 px; owner: "too huge in the box", it was 1.6x) with a
+  dark outline filter (the fry photo is pale on the white grate); let out = z-index/filter removed, it walks home. Frame `docs/box110.jpg`.
+  Measured (`/d/ClaudeWork/eye109/box110.py`, movebox.py): 7 fry on the floor inside the box (x 625-778 of box 565-853), move test: 5 added, 5 in box after
+  2 s (not purged), button "LET OUT x5", 0 errors. Not seen in the real pane; the box fry are small and pale against the grate.
+- Box floor + sides (owner: "the fry look like they sit between the grate bars", "the floor must look like the sides", "make the sides realistic, the laterals are
+  displayed wrong"): the V17.88 box photo has a slotted floor grate, black streaks beside the glass edges and flat side walls. `plasticFloor` (V17.110 block, runs once
+  when the box exists) redoes both layers at runtime and sets them as `!important` background overrides (the embedded photo is untouched): dark pixels in the outer
+  11 % columns of BACK and FRONT are faded (streaks gone), the floor band is cleared and a clear plastic FLOOR trapezoid is drawn narrowing from the front edge to the back
+  corners, plus clear glass SIDE PANELS (lighter at the front, bright edge lines) from the front edges to the back corners (x .016 -> .094, y .16 / .835 / .945).
+  Also applies to the young corydoras in the box. Round 2 (owner's crop: a 'reflection' beside the sides and grate still at the bottom): the glass panels/floor now stay INSIDE the front glass (xf .05, floor front y .925), the BACK layer's own outer edge columns (x < 4.7 % / > 95.3 %) are erased (they doubled the front edges), and the old floor band is cleared from y .79 with a soft fade-out from .66 (a hard cut left a visible darker band). The owner's crop showed the old grate because the page was not reloaded - reload after updating. A first attempt (a solid blue strip) was rejected. Fish in the box carry `data-inbox110`; the CSS z-index:41 rule loses
+  to the motion code's inline important z-index (computed 46), so they draw above the front glass, fine visually. Frame `docs/box110.jpg`; tweak the numbers in `plasticFloor`.
+- "Do all" round (2026-10-29): (a) FRY SPRITES from the owner's Gemini photos: `anc3d/install111.py` also embeds `window.ANC110_IMG` (cut-outs
+  `anc_wriggler_side_cut.png` = yolk-sac larva, `anc_wriggler_free_cut.png` = free fry); `altRec()` clones the fry record `anc|120|238` into `anc|120|239` (larva,
+  while > half of the yolk is left) and `anc|120|240` (free fry, with the painted sac while some yolk is left), `pickSprite()` points the fry canvas `data-wk` at them
+  (`data-wk0` = original, restored at age >= 5); the motion code reads the record by data-wk every frame. (b) badge `×N fry` on the breeding box (only 7 are drawn), slow drift
+  + small twitches for all fry in the box. (c) Checks: young corydoras on the new clear floor look fine, a tank without a box gathers the yolk fry in the left corner
+  (x 81-147), the animated popup costs ~1.6 ms per frame (headless wall time). Frames `docs/sprites110.jpg`, `docs/box110.jpg`, `docs/box_cory110.jpg`.
+  NOT done (needs the owner or is out of reach): regenerate image 3 in the same framing as images 1/2 (camera jump between half and low), eggs-stage images for the popup,
+  better larva positions (eyeballed), eye on the 3D fight frames / glass roll (baked), a lights-off state (the game has none).
+- Not done / not checked: the wriggler canvas in the cave is unchanged (already a heap), no sac in the glass (belly) view, "under" the decoration is
+  only z-order (the first decoration on the sand is the wide driftwood, centre x), nursery with no decoration = corner (not seen), the cave panel
+  button layout (not seen in the pane), what the Fry Tank shows when the yolk fish are sold or die (nothing special).
 
 # Earlier (2026-10-24: V17.109 bristlenose EYE follows the light, NOT committed; owner to review)
 
