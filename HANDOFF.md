@@ -88,6 +88,11 @@
   'eggs' for the eggs stage, shown as a living still with no twitching larvae (dust + beam flicker only). Headless: eggs and yolk both give the animated canvas, 0 errors.
   Image 3 resent by the owner was the same picture (1 % pixel difference): still the tunnel framing vs the angled images 1/2.
 - New image 3 (low yolk stage; owner: 'this is what it gave me'): `anc_wriggler_scene_low.webp` replaced (old = `_v1`), tunnel framing again (fewer, crisper fry with formed fins); `LARVAE.low` re-marked (9 larvae). Images 1/2 are still the angled view, eggs + low the tunnel view.
+- Eye follow-ups ("OK on all", 2026-10-29): (a) the Gemini larva / free-fry sprites (`anc|120|239` / `|240`) get the same light-driven pupil (EYE entries (221.5,53,R3.0) and
+  (213.5,66,R3.7); `docs/fryeye111.png` night/dusk/day, left larva, right free fry, aligned); (b) `window.ANC109_FORCE` (number 0..1) overrides the clock-driven target for a future
+  tank lamp / lights switch (0 = lights off); `window.ANC109TAU` is the easing time in s (25 default; the real fish needs 35-40 min); (c) the glass roll (`drawRoll`) draws the
+  pupil on the flank slice, squashed by cos(th) and faded out as the belly view takes over (`ancEyeV17109(...,{hs,a})`; `docs/roll109.png`: eye present at gl .04-.42, gone at .53, 0 errors).
+  Still baked (not touched): the 3D fight frames (atlas, ~2 px eye).
 - Not done / not checked: the wriggler canvas in the cave is unchanged (already a heap), no sac in the glass (belly) view, "under" the decoration is
   only z-order (the first decoration on the sand is the wide driftwood, centre x), nursery with no decoration = corner (not seen), the cave panel
   button layout (not seen in the pane), what the Fry Tank shows when the yolk fish are sold or die (nothing special).
