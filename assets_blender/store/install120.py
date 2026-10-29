@@ -7,9 +7,17 @@ rd = lambda n: open(os.path.join(HERE, n), encoding='utf-8').read()
 import base64
 def uri(n): return 'data:image/png;base64,' + base64.b64encode(open(os.path.join(HERE, n), 'rb').read()).decode()
 # the AFNICA FISHROOM logo (black on transparent, made from assets_blender/logo/afnica_fishroom_src.webp): shirt print + sign
-logo = 'window.ST120_LOGO={' + ','.join('%s:"%s"' % (k, uri('logo_%s.png' % k)) for k in ('icon', 'word')) + ',' + ','.join('%s:"%s"' % (k, uri(f)) for k, f in (('owner', 'owner_cut.png'), ('ownerBody', 'owner_body.png'), ('ownerArm', 'owner_arm.png'), ('ownerUpper', 'owner_arm_upper.png'), ('ownerFore', 'owner_arm_fore.png'))) + '};' + chr(10)
+logo = 'window.ST120_LOGO={' + ','.join('%s:"%s"' % (k, uri('logo_%s.png' % k)) for k in ('icon', 'word')) + ',owner:"%s",poses:{' % uri('owner_cut.png') + ','.join('%s:"%s"' % (k, uri(os.path.join('poses', 'owner_%s.png' % k))) for k in ('idle', 'greet', 'bag', 'give')) + '}};' + chr(10)   # the owner's counter poses (Gemini, cut by cut_owner_poses.py)
 import glob
 pp = sorted(glob.glob(os.path.join(HERE, 'people', '*.png')))
+# a pose sheet (poses/personNN_walk/bag/point.png, cut by cut_sheet.py) replaces person NN's old picture, so all its poses match
+PZ = os.path.join(HERE, 'poses')
+pp = [os.path.join(PZ, 'person%02d_walk.png' % (i + 1)) if os.path.exists(os.path.join(PZ, 'person%02d_walk.png' % (i + 1))) else f for i, f in enumerate(pp)]
+def puri(f): return '"data:image/png;base64,%s"' % base64.b64encode(open(f, 'rb').read()).decode()
+def poses(i):
+    b, q = (os.path.join(PZ, 'person%02d_%s.png' % (i + 1, k)) for k in ('bag', 'point'))
+    return '{bag:%s,point:%s}' % (puri(b) if os.path.exists(b) else 'null', puri(q) if os.path.exists(q) else 'null')
+if pp: logo += 'window.ST120_POSES=[' + ','.join(poses(i) for i in range(len(pp))) + '];' + chr(10)
 if pp: logo += 'window.ST120_PEOPLE=[' + ','.join('"data:image/png;base64,%s"' % base64.b64encode(open(f, 'rb').read()).decode() for f in pp) + '];' + chr(10)
 import struct
 def asp(f):

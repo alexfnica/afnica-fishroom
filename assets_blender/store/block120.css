@@ -22,8 +22,9 @@
 .st120p .sprw canvas.wk.wkw{left:-80px;width:240px}
 .st120stage .sf.gone{opacity:0;transform:scale(.3)}
 @keyframes st120drift{0%{transform:translate(0,0)}50%{transform:translate(9px,-4px)}100%{transform:translate(-3px,3px)}}
-.st120stage .clk{left:620px;top:152px;width:84px;height:110px;z-index:300}
-.st120stage .own{position:relative;width:84px;height:110px;transform:scale(.56);transform-origin:50% 100%}
+.st120stage .clk{left:600px;top:188px;width:95.2px;height:74px;z-index:300}
+.st120stage .own{position:relative;width:95.2px;height:74px;transform-origin:50% 100%}
+.st120stage .own img.op{position:absolute;left:0;top:0;width:95.2px;height:74px;display:block}
 .st120stage .own .ob,.st120stage .own .oh{position:absolute;left:0;top:0;width:84px;height:110px;will-change:transform}
 .st120stage .own .ob{clip-path:inset(46% 0 0 0);transform-origin:42px 110px}
 .st120stage .own .oh{clip-path:inset(0 0 48% 0);transform-origin:42px 56px}
@@ -36,10 +37,10 @@
 .st120stage .cbag{transform-origin:25px 8px}
 .st120stage .own .lid{position:absolute;width:8.4px;height:6.6px;border-radius:50%;background:#e2a384;opacity:0;filter:blur(.4px)}
 .st120stage .own .onet{position:absolute;left:-44px;top:36px;opacity:0;transition:opacity .2s}
-.st120stage .own .bub{position:absolute;left:42px;top:0;transform:translate(-50%,-100%) scale(.6);opacity:0;transition:opacity .25s,transform .25s;background:#fff;color:#222;border:2px solid #18516a;border-radius:14px;padding:3px 9px;font:700 17px/1.1 Inter,Arial;white-space:nowrap}
+.st120stage .own .bub{position:absolute;left:32px;top:-2px;transform:translate(-50%,-100%) scale(.6);opacity:0;transition:opacity .25s,transform .25s;background:#fff;color:#222;border:2px solid #18516a;border-radius:14px;padding:3px 9px;font:700 17px/1.1 Inter,Arial;white-space:nowrap}
 .st120stage .own .bub.on{opacity:1;transform:translate(-50%,-100%) scale(1)}
-.st120stage .cnt{left:600px;top:262px;z-index:350}
-.st120stage .reg{left:700px;top:240px;z-index:352;width:62px;height:26px;border-radius:5px;background:#2b3a44;border:2px solid #0c1e28;color:#62e0a0;font:900 13px/22px Inter,Arial;text-align:center}
+.st120stage .cnt{left:572px;top:262px;z-index:350}
+.st120stage .reg{left:574px;top:240px;width:50px;z-index:352;height:26px;border-radius:5px;background:#2b3a44;border:2px solid #0c1e28;color:#62e0a0;font:900 13px/22px Inter,Arial;text-align:center}
 .st120stage .cbag{left:648px;top:222px;width:50px;height:60px;z-index:353;opacity:0;transition:transform .8s ease,opacity .3s}
 .st120stage .cbag.on{opacity:1}
 .st120stage .cbag .bw{position:absolute;inset:8px 2px 0;background:linear-gradient(135deg,#bfefffcc,#6cc7e68c);border:2px solid #e8fbff;border-radius:6px 6px 18px 18px}
@@ -54,7 +55,7 @@
 .st120p .ps{display:block;transform-origin:50% 100%;overflow:visible}
 .st120p .bub{position:absolute;left:40px;top:6px;transform:translate(-50%,-100%) scale(.6);opacity:0;transition:opacity .25s,transform .25s;background:#fff;color:#222;border:2px solid #18516a;border-radius:14px;padding:3px 9px;font:700 17px/1.1 Inter,Arial;white-space:nowrap}
 .st120p .bub.on{opacity:1;transform:translate(-50%,-100%) scale(1)}
-.st120stage .coin{left:690px;top:215px;z-index:400;font:900 18px Inter,Arial;color:#ffd24b;text-shadow:0 2px 3px #000;animation:st120coin 1.2s ease-out forwards}
+.st120stage .coin{left:578px;top:215px;z-index:400;font:900 18px Inter,Arial;color:#ffd24b;text-shadow:0 2px 3px #000;animation:st120coin 1.2s ease-out forwards}
 @keyframes st120coin{0%{opacity:0;transform:translateY(8px)}15%{opacity:1}100%{opacity:0;transform:translateY(-40px)}}
 .st120row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #174457}
 .st120row:last-child{border-bottom:0}

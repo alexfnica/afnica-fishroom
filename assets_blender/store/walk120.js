@@ -58,7 +58,8 @@ function rigSpriteV120(img,opt){
  const leg=(c)=>{const fx=footX(c),fy=c.maxY,dx=fx-pv.x,dy=fy-pv.y;return {L:Math.hypot(dx,dy),a:Math.atan2(dx,dy),fy};};
  const B=leg(back),F=leg(front);
  const sF=Math.sin(F.a),sB=Math.sin(B.a);
- const arms=opt.noArms?null:armRig(L.upper,w,h,yT,yB),fh=findHands(L.upper,w,h,yT,yB);
+ const arms=(opt.noArms||!window.ARMS120)?null:armRig(L.upper,w,h,yT,yB),   /* arm swing off by default: warping one flat picture tore hands, hems and bags (owner); window.ARMS120=true brings it back */
+ fh=findHands(L.upper,w,h,yT,yB);
  const pt=fh?pointRig(L.upper,w,h,fh,yB-yT):null;
  return {w,h,pv,yc,hem,L,B,F,arms,fh,pt,A:(sF-sB)/2,C:(sF+sB)/2,Lm:(B.L+F.L)/2,ground:Math.max(B.fy,F.fy)};
 }

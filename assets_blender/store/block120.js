@@ -6,8 +6,8 @@
 'use strict';
 if(window.STORE120===undefined)window.STORE120=true;
 const W=760,H=480,TX=[110,280,450,620],TW=156,TY=62,TH=104,SPT=4;
-const DOOR={x:48,y:352},PAY={x:596,y:384};
-const QS=[{x:544,y:406},{x:488,y:418},{x:432,y:430},{x:376,y:442}];
+const DOOR={x:48,y:352},PAY={x:722,y:392};
+const QS=[{x:654,y:406},{x:598,y:416},{x:542,y:426},{x:486,y:436}];
 const FCOL={guppy:'#ff9a3c',molly:'#2b2b3a',platy:'#ffb830',xipho:'#ff6a3c',neon:'#4fb4ff',cory:'#c9a46a',anc:'#6b5a3a'};
 const PALS=[
  {shirt:'#e8576a',pants:'#33405a',shoe:'#222',skin:'#e8b48a',hair:'#c76b2a',style:'long'},
@@ -17,7 +17,7 @@ const PALS=[
  {shirt:'#d96ad0',pants:'#2f3f5f',shoe:'#fff',skin:'#8d5a3a',hair:'#111',style:'long'},
  {shirt:'#52b8c9',pants:'#3a3a3a',shoe:'#222',skin:'#f1c9a0',hair:'#d8c06a',style:'short'}];
 
-const PH=[['greet',.9],['net',1.5],['bag',1.5],['hand',1.6],['pay',1.0]];
+const PH=[['greet',1.0],['net',1.4],['bag',1.4],['hand',1.8],['pay',1.1]];
 const ST={cust:[],queue:[],pay:null,clerk:{c:null,ph:'idle',t:0,part:null},next:0,last:0,uid:0,sec:0,saveT:0,gen:0,slots:[],els:new Map(),door:false};
 const $=id=>document.getElementById(id);
 
@@ -162,14 +162,21 @@ function bubble(c,txt,sec){c.parts.bub.textContent=txt;c.parts.bub.classList.add
 /* realistic customers: a rendered full-body cut-out (assets_blender/store/people, made with cut_people.py), walked with a bob / rock / squash instead of limbs */
 /* walk rigs (walk120.js), one per sprite image, built once the image has decoded; pairs / failures keep the bob */
 const RIG=new Map();
-function rigFor(src,pair){let e=RIG.get(src);if(!e){e={R:null,pair:!!pair};RIG.set(src,e);const im=new Image();im.onload=()=>{try{e.R=e.pair?(window.rigPairV120?window.rigPairV120(im):null):(window.rigSpriteV120?window.rigSpriteV120(im):null);}catch(er){console.error('AFNICA store walk rig',er);}};im.src=src;}return e;}
-function mkSprite(src,asp){
+function rigFor(src,pair,noArms){let e=RIG.get(src);if(!e){e={R:null,pair:!!pair};RIG.set(src,e);const im=new Image();im.onload=()=>{try{e.R=e.pair?(window.rigPairV120?window.rigPairV120(im):null):(window.rigSpriteV120?window.rigSpriteV120(im,{noArms:!!noArms}):null);if(e.R&&!e.pair)e.R.ax=hipX(im);}catch(er){console.error('AFNICA store walk rig',er);}};im.src=src;}return e;}
+/* x of the body at hip height (48-58% of the height): lines up the walk picture and the pointing picture, whose arm sticks out */
+function hipX(im){const w=im.naturalWidth,h=im.naturalHeight,c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');g.drawImage(im,0,0);
+ const D=g.getImageData(0,Math.round(h*.48),w,Math.round(h*.1)).data;let sx=0,n=0;for(let i=0;i<D.length;i+=4)if(D[i+3]>110){sx+=(i/4)%w;n++;}return n?sx/n:w/2;}
+const PTI=new Map();
+function pointFor(src){let e=PTI.get(src);if(!e){e={im:null};PTI.set(src,e);const im=new Image();im.onload=()=>{try{
+ const w=im.naturalWidth,h=im.naturalHeight,c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');g.drawImage(im,0,0);const D=g.getImageData(0,0,w,h).data;
+ let gr=h-1;for(;gr>0;gr--){let f=false;for(let x=0;x<w;x++)if(D[(gr*w+x)*4+3]>110){f=true;break;}if(f)break;}e.ground=gr;e.ax=hipX(im);e.im=im;}catch(er){console.error('AFNICA store point pose',er);}};im.src=src;}return e;}
+function mkSprite(src,asp,pose){
  const wide=asp>.62;
  const d=document.createElement('div');d.className='st120p sp'+(wide?' wide':'');
  d.innerHTML=`<div class="sprw"><img src="${src}" alt=""><canvas class="wk${wide?' wkw':''}" width="${wide?480:200}" height="320"></canvas><svg class="bagh" width="22" height="28" viewBox="0 0 22 28"><path d="M3 4 q-3 8 1 18 q7 5 14 0 q4 -10 1 -18z" fill="#9ee2f7" fill-opacity=".65" stroke="#e8fbff" stroke-width="1.2"/><path d="M4 4 q7 -8 13 0" stroke="#e8fbff" stroke-width="1.6" fill="none"/><path class="bf" d="M6 15 q5 -5 10 0 q-5 5 -10 0z" fill="#ff9a3c"/></svg></div><div class="bub"></div>`;
  const w=d.querySelector('.sprw'),bag=d.querySelector('.bagh');
  if(wide){bag.style.left='96px';bag.style.top='96px';}
- return {spr:true,wide,rad:wide?60:40,rig:rigFor(src,wide),cv:d.querySelector('.wk'),el:d,svg:w,img:w.firstChild,bagEl:bag,bag:{setAttribute(a,v){bag.style.display=v==='visible'?'block':'none';}},bf:d.querySelector('.bf'),bub:d.querySelector('.bub')};
+ return {spr:true,wide,rad:wide?60:40,rig:rigFor(src,wide),bagRig:pose&&pose.bag?rigFor(pose.bag,false,true):null,ptP:pose&&pose.point?pointFor(pose.point):null,cv:d.querySelector('.wk'),el:d,svg:w,img:w.firstChild,bagEl:bag,bag:{setAttribute(a,v){bag.style.display=v==='visible'?'block':'none';}},bf:d.querySelector('.bf'),bub:d.querySelector('.bub')};
 }
 function poseP(c,t){
  const P=c.parts,mv=Math.min(1,c.speed/30),sw=Math.sin(c.phase)*mv,sd=c.seed;
@@ -177,17 +184,22 @@ function poseP(c,t){
   const bob=-Math.abs(Math.sin(c.phase))*2.6*mv+Math.sin(t*2+sd)*.5*(1-mv);
   let rock=Math.sin(c.phase)*2.4*mv,sq=1+Math.abs(Math.sin(c.phase))*.012*mv+Math.sin(t*1.6+sd)*.004*(1-mv);
   if(c.state==='look'){rock=-3+Math.sin(t*3+sd)*(c.pointing?3:1);}
-  const R=P.rig&&P.rig.R;
+  const RB=c.bagged&&P.bagRig&&P.bagRig.R,R=RB||(P.rig&&P.rig.R);   /* with a bag pose the bag is really in the hand */
   if(R){
    /* real walk: legs swing from the hip, distance-driven so the planted foot does not slide */
    if(P.img.style.display!=='none'){P.img.style.display='none';P.cv.style.display='block';}
-   const g=P.cv.getContext('2d'),k=150/R.h,m=Math.min(1,c.speed/25),cw=P.wide?240:100,bag=c.bagged?{col:c.bagCol}:null;
+   const g=P.cv.getContext('2d'),k=150/R.h,m=Math.min(1,c.speed/25),cw=P.wide?240:100,bag=c.bagged&&!RB?{col:c.bagCol}:null;
    g.setTransform(2,0,0,2,0,0);g.clearRect(0,0,cw,160);g.translate(cw/2,156);
-   const pdt=Math.min(.1,Math.max(0,t-(c.plt||t)));c.plt=t;c.pt=0;   /* pointing off: the cut-out arm looked wrong (owner); comes back with real pose images */
+   const pdt=Math.min(.1,Math.max(0,t-(c.plt||t)));c.plt=t;
+   /* pointing = the person's own 'point' picture (pose sheet), crossfaded in while they stand at a tank they like */
+   const PT=P.ptP&&P.ptP.im?P.ptP:null,ptT=PT&&!R.pair&&c.state==='look'&&c.pointing&&m<.2?1:0;c.pt=(c.pt||0)+(ptT-(c.pt||0))*Math.min(1,pdt*5);
    if(bag){const cyc=(c.dist||0)/(window.cycleLenV120(R.pair?R.parts[0].R:R)*k),tgt=.16*m*Math.sin(2*Math.PI*cyc-1.3);
     c.bagV=(c.bagV||0)+((tgt-(c.bagA||0))*30-(c.bagV||0)*7)*pdt;c.bagA=(c.bagA||0)+c.bagV*pdt;bag.ang=c.bagA;}
-   if(R.pair)window.drawPairV120(g,R,c.dist||0,m,k,bag,c.pt);else window.drawWalkV120(g,R,(c.dist||0)/(window.cycleLenV120(R)*k),m,k,bag,c.pt);
-   const lean=c.state==='look'?-2+Math.sin(t*3+sd)*(c.pointing?1.5:.5):0;
+   if(R.pair)window.drawPairV120(g,R,c.dist||0,m,k,bag,0);
+   else{if(c.pt<.99){g.globalAlpha=1-c.pt;window.drawWalkV120(g,R,(c.dist||0)/(window.cycleLenV120(R)*k),m,k,bag,0);}
+    if(c.pt>.01){g.globalAlpha=c.pt;const kp=150/PT.im.naturalHeight;g.save();g.scale(kp,kp);g.translate(-PT.ax+((R.ax||R.w/2)-R.w/2)*k/kp,-PT.ground);g.drawImage(PT.im,0,0);g.restore();}
+    g.globalAlpha=1;}
+   const lean=c.state==='look'&&c.pt<.5?-2+Math.sin(t*3+sd)*(c.pointing?1.5:.5):0;
    P.cv.style.transform=`rotate(${lean.toFixed(2)}deg)`;
   }else P.img.style.transform=`translateX(-50%) translateY(${bob.toFixed(2)}px) rotate(${rock.toFixed(2)}deg) scaleY(${sq.toFixed(4)})`;
   P.bag.setAttribute('visibility',c.bagged&&!R?'visible':'hidden');if(c.bagged&&!R)P.bagEl.style.transform=`translateY(${bob.toFixed(2)}px)`;
@@ -205,44 +217,25 @@ function poseP(c,t){
  P.hd.setAttribute('transform',`rotate(${hd} 0 -82)`);P.all.setAttribute('transform',`translate(0 ${bob})`);
 }
 /* the clerk is the owner's own character: a cut-out of his YouTube outro render (real shirt print), swayed / leaned per phase, net as an overlay */
+/* the owner at the counter: four Gemini poses of him (idle = hands on the counter, greet = open hand, bag = holding the bag up,
+   give = holding it out to the viewer's right), cut with one crop box so they line up, crossfaded per serving phase */
+const OWN_K=.107,OWN_X=600,OWN_Y=188,GIVE_BAG={x:OWN_X+810*OWN_K,y:OWN_Y+450*OWN_K};   /* crop px -> stage units; the bag's middle in the 'give' pose */
 function mkOwner(){
- const LG=window.ST120_LOGO||{},src=LG.owner||'',body=LG.ownerBody||src;
+ const PO=(window.ST120_LOGO||{}).poses||{};
  const d=document.createElement('div');d.className='own';
- d.innerHTML=`<div class="ob"><img src="${body}" alt=""></div>${LG.ownerUpper?`<div class="oa"><img src="${LG.ownerUpper}" alt=""><div class="of"><img src="${LG.ownerFore}" alt=""></div></div>`:''}<div class="oh"><img src="${src}" alt=""><i class="lid" style="left:31px;top:25.4px"></i><i class="lid" style="left:46px;top:25.4px"></i></div><svg class="onet" viewBox="0 0 60 80" width="60" height="80"><g class="ng"><line x1="30" y1="76" x2="30" y2="26" stroke="#c9d3d8" stroke-width="3"/><ellipse cx="30" cy="16" rx="13" ry="11" fill="#9ee2f7" fill-opacity=".3" stroke="#c9d3d8" stroke-width="2.5"/><path class="nf" visibility="hidden" d="M23 16 q7 -7 14 0 q-7 7 -14 0z M37 16 l6 -4 v8z" fill="#ff9a3c"/></g></svg><div class="bub"></div>`;
- return {el:d,oa:d.querySelector('.oa'),of:d.querySelector('.of'),aa:0,ea:0,lt:0,ob:d.querySelector('.ob'),oh:d.querySelector('.oh'),lids:d.querySelectorAll('.lid'),net:d.querySelector('.onet'),ng:d.querySelector('.ng'),nf:d.querySelector('.nf'),bub:d.querySelector('.bub'),nextBlink:2,blinkT:-9};
+ d.innerHTML=['idle','greet','bag','give'].map(k=>`<img class="op" data-k="${k}" src="${PO[k]||''}" alt="" style="opacity:${k==='idle'?1:0}">`).join('')+'<div class="bub"></div>';
+ const im={};d.querySelectorAll('img.op').forEach(e=>im[e.dataset.k]=e);
+ return {el:d,im,op:{idle:1,greet:0,bag:0,give:0},lt:0,bub:d.querySelector('.bub')};
 }
-/* the owner's hand in stage units for arm angle aa (deg): pivot / hand in .own px (84x110 box), the box is drawn at 56% from its bottom centre at (662,262) */
-function ownerHandV120(aa,ea){const rot=(vx,vy,d)=>{const a=d*Math.PI/180;return [vx*Math.cos(a)-vy*Math.sin(a),vx*Math.sin(a)+vy*Math.cos(a)];};
- const S=[14.97,71.3],E=[9.69,100.4],H=[8.3,128],u=rot(E[0]-S[0],E[1]-S[1],aa),f=rot(H[0]-E[0],H[1]-E[1],aa+ea),x=S[0]+u[0]+f[0],y=S[1]+u[1]+f[1];
- return {x:620+42+(x-42)*.56,y:152+110+(y-110)*.56};}
 function custHandV120(c){return {x:c.x+(c.faceT>0?11:-11),y:c.y-74};}
 function poseClerk(t){
  const K=ST.clerk,P=K.parts;if(!P)return;
- /* idle: breathing, a slow sway, now and then a glance at the shop floor; serving: a nod, a look towards the tanks while the fish
-    is caught, a look down while bagging, then the bag is held out over the counter (elbow bent, forearm level) */
- if(!P.glT||t>P.glT+1.8){if(!P.glN||t>P.glN){P.glT=t;P.glN=t+5+Math.random()*4;}}
- const gu=(t-(P.glT||-9))/1.8,gl=gu>=0&&gu<1?Math.sin(gu*Math.PI):0;
- let bx=0,by=0,br=Math.sin(t*.45)*.6,bs=1+.01*Math.sin(t*1.6);
- let hr=Math.sin(t*.7)*1.6+Math.sin(t*1.9)*.5-4*gl,hy=Math.sin(t*1.6)*.5,hx=-1.5*gl,net=false,nf=false,nr=0;
- const pp=K.part||0;
- if(K.c){
-  if(K.ph==='greet'){by=-1.5*Math.abs(Math.sin(t*5));hr=4*Math.sin(t*6);hx=0;}
-  else if(K.ph==='net'){hr=-5;hx=-2;by=2;br=-2;}
-  else if(K.ph==='bag'){hr=6;hy=2;by=1.5;hx=0;}
-  else if(K.ph==='hand'){br=-2;hr=-4;hx=-1;}
-  else if(K.ph==='pay'){hr=3*Math.sin(t*8);hx=0;}
- }
- /* his right arm (screen left): reach down while bagging, lift the bag towards the customer, lower it after */
- let aT=0,eT=0;if(K.c){if(K.ph==='net'){aT=6;eT=10;}else if(K.ph==='bag'){aT=4;eT=25;}else if(K.ph==='hand'){if(pp<.85){aT=32;eT=60;}else{aT=10;eT=20;}}}
- const adt=Math.min(.1,Math.max(0,t-(P.lt||t)));P.lt=t;P.aa+=(aT-P.aa)*Math.min(1,adt*4);P.ea+=(eT-P.ea)*Math.min(1,adt*4);
- if(P.oa)P.oa.style.transform=`translate(${bx.toFixed(2)}px,${by.toFixed(2)}px) rotate(${P.aa.toFixed(2)}deg)`;
- if(P.of)P.of.style.transform=`rotate(${P.ea.toFixed(2)}deg)`;
- if(t>=P.nextBlink){P.blinkT=t;P.nextBlink=t+2.5+Math.random()*3.5;}
- const u=(t-P.blinkT)/.16,cl=u>=0&&u<1?Math.sin(u*Math.PI):0;
- P.lids.forEach(l=>{l.style.opacity=cl>0?1:0;l.style.transform=`scaleY(${cl.toFixed(2)})`;});
- P.ob.style.transform=`translate(${bx.toFixed(2)}px,${by.toFixed(2)}px) rotate(${br}deg) scaleY(${bs.toFixed(4)})`;
- P.oh.style.transform=`translate(${(bx+hx).toFixed(2)}px,${(by+hy).toFixed(2)}px) rotate(${hr.toFixed(2)}deg)`;
- P.net.style.opacity=net?1:0;P.ng.setAttribute('transform',`rotate(${nr} 30 76)`);P.nf.setAttribute('visibility',nf?'visible':'hidden');
+ const pp=K.part||0;let want='idle',rate=7;
+ if(K.c){if(K.ph==='greet'||K.ph==='pay')want='greet';else if(K.ph==='bag')want='bag';else if(K.ph==='hand'){want=pp<.55?'give':'idle';rate=14;}}
+ const dt=Math.min(.1,Math.max(0,t-(P.lt||t)));P.lt=t;
+ for(const k in P.op){P.op[k]+=((k===want?1:0)-P.op[k])*Math.min(1,dt*rate);P.im[k].style.opacity=P.op[k].toFixed(3);}
+ /* life: breathing and a very slow sway */
+ P.el.style.transform=`translateY(${(Math.sin(t*1.7)*.35).toFixed(2)}px) scaleY(${(1+.006*Math.sin(t*1.7)).toFixed(4)}) rotate(${(Math.sin(t*.5)*.4).toFixed(2)}deg)`;
 }
 
 /* ---------- scene ---------- */
@@ -273,7 +266,7 @@ function sceneHTML(){
  <div class="board" id="st120board"></div>
  ${tanks}
  <div class="clk" id="st120clerk"></div>
- <div class="cnt"><svg viewBox="0 0 164 100" width="164" height="100"><rect x="0" y="0" width="164" height="14" rx="5" fill="#e8bd7c"/><rect x="4" y="14" width="156" height="86" fill="#9a6538"/><rect x="14" y="26" width="136" height="64" rx="4" fill="#6b4526" opacity=".6"/><text x="82" y="66" text-anchor="middle" font-size="16" font-weight="900" fill="#ffd9a0" opacity=".85" font-family="Inter,system-ui,Arial,sans-serif">PAY HERE</text></svg></div>
+ <div class="cnt"><svg viewBox="0 0 192 100" width="192" height="100"><rect x="0" y="0" width="192" height="14" rx="5" fill="#e8bd7c"/><rect x="4" y="14" width="184" height="86" fill="#9a6538"/><rect x="14" y="26" width="164" height="64" rx="4" fill="#6b4526" opacity=".6"/><text x="96" y="66" text-anchor="middle" font-size="16" font-weight="900" fill="#ffd9a0" opacity=".85" font-family="Inter,system-ui,Arial,sans-serif">PAY HERE</text></svg></div>
  <div class="reg" id="st120reg">🪙 0</div>
  <div class="cbag" id="st120cbag"></div>
  <div class="qm" style="left:${PAY.x-30}px;top:${PAY.y-6}px"></div>
@@ -399,7 +392,7 @@ function releaseSlot(c){if(c.slot){c.slot.by=null;if(c.slot.both)c.slot.both.for
 
 /* ---------- customer flow ---------- */
 function spawn(){
- const p=newProfile(),pal=PALS[Math.floor(Math.random()*PALS.length)],PP=window.ST120_PEOPLE,pi=(PP&&PP.length)?Math.floor(Math.random()*PP.length):-1,parts=pi>=0?mkSprite(PP[pi],(window.ST120_PEOPLE_ASPECT||[])[pi]):mkPerson(pal);
+ const p=newProfile(),pal=PALS[Math.floor(Math.random()*PALS.length)],PP=window.ST120_PEOPLE,pi=(PP&&PP.length)?Math.floor(Math.random()*PP.length):-1,parts=pi>=0?mkSprite(PP[pi],(window.ST120_PEOPLE_ASPECT||[])[pi],(window.ST120_POSES||[])[pi]):mkPerson(pal);
  const c=Object.assign(p,{id:++ST.uid,sz:parts.spr?1:.8,parts,x:DOOR.x,y:DOOR.y,hx:1,hy:.3,speed:0,maxSp:52+Math.random()*16,phase:Math.random()*6,face:1,faceT:1,alpha:0,state:'enter',path:[],seed:Math.random()*6,visits:[],slot:null,want:null,t:0,wait:0,bagged:false,pointing:false,bubT:0,leaving:false});
  $('st120stage').appendChild(parts.el);ST.cust.push(c);st.store.day.customers++;
  const avail=[];for(let i=0;i<st.store.tanks;i++)if(st.storeFish.slice(i*st.store.slotsPerTank,(i+1)*st.store.slotsPerTank).some(f=>!f._res120))avail.push(i);
@@ -455,7 +448,7 @@ function custTick(c,dt,t){
   case 'look':c.t-=dt;c.speed=0;if(c.t<=0){releaseSlot(c);c.pointing=false;c.state='gone1';nextStep(c);}break;
   case 'toQueue':if(arrived){c.state='wait';c.faceT=1;if(!ST.pay&&!ST.clerk.c&&ST.queue[0]===c){ST.queue.shift();ST.pay=c;c.state='toPay';route(c,[PAY]);reQueue();}}break;
   case 'wait':c.wait+=dt;if(c.wait>45){const f=c.want;if(f)delete f._res120;c.want=null;ST.queue.splice(ST.queue.indexOf(c),1);bubble(c,'😠',2.4);walkout(c,'queue');leave(c);reQueue();}break;
-  case 'toPay':if(arrived){c.state='atpay';c.faceT=1;ST.clerk.c=c;ST.clerk.t=0;ST.clerk.ph='';}break;
+  case 'toPay':if(arrived){c.state='atpay';c.faceT=-1;   /* turned toward the owner, who stands to their left */ST.clerk.c=c;ST.clerk.t=0;ST.clerk.ph='';}break;
   case 'exit':if(arrived||(c.leaving!==undefined&&c.x<70&&c.path.length<=1)){c.alpha=Math.max(0,c.alpha-dt*3);if(c.alpha<=0)c.dead=true;}else if(c.x<120)c.alpha=Math.max(0,Math.min(c.alpha,(c.x-DOOR.x)/70+.3));break;
  }
  c.face+=(c.faceT-c.face)*Math.min(1,dt*16);
@@ -478,15 +471,15 @@ function clerkTick(dt,t){
  }
  K.part=ph0/dur;
  if(K.ph==='hand'&&cur==='hand'){
-  /* picked up from the counter into his raised hand (0-35%), held out (35-50%), then into the customer's hand (50-95%) */
-  const u=K.part,sm=v=>{v=Math.max(0,Math.min(1,v));return v*v*(3-2*v);},p0={x:618,y:240},p1=(h=>({x:h.x+3,y:h.y+1}))(ownerHandV120(K.parts.aa,K.parts.ea)),p2=custHandV120(c);
-  let q,sc;if(u<.35){const e=sm(u/.35);q={x:p0.x+(p1.x-p0.x)*e,y:p0.y+(p1.y-p0.y)*e};sc=.45;}else if(u<.5){q=p1;sc=.45;}else{const e=sm((u-.5)/.45);q={x:p1.x+(p2.x-p1.x)*e,y:p1.y+(p2.y-p1.y)*e};sc=.45-.03*e;}
-  cb.style.transform=`translate(${(q.x-25-648).toFixed(1)}px,${(q.y-8-222).toFixed(1)}px) scale(${sc.toFixed(3)})`;}
+  const u=K.part,sm=v=>{v=Math.max(0,Math.min(1,v));return v*v*(3-2*v);},p1=GIVE_BAG,p2=custHandV120(c);
+  if(u>=.55&&!cb.classList.contains('on'))cb.classList.add('on');
+  if(u>=.55){const e=sm((u-.55)/.33),q={x:p1.x+(p2.x-p1.x)*e,y:p1.y+(p2.y-p1.y)*e};cb.style.transform=`translate(${(q.x-25-648).toFixed(1)}px,${(q.y-8-222).toFixed(1)}px) scale(.32)`;}
+  if(u>=.9&&!c.bagged){cb.classList.remove('on');c.bagged=true;c.bagCol=f?FCOL[f.species]||'#ff9a3c':'#ff9a3c';}}
  if(cur!==K.ph){
   K.ph=cur;
   if(cur==='greet'){bubble(c,'😊',1.2);K.parts.bub.textContent='👋';K.parts.bub.classList.add('on');K.bubT=1.2;}
   if(cur==='net'&&f){f._net120=true;syncFish();}
-  if(cur==='bag'&&f){cb.style.transition='none';cb.style.transform='translate(-55px,38px) scale(.45)';void cb.offsetWidth;cb.style.transition='';requestAnimationFrame(()=>{cb.style.transform='translate(-55px,10px) scale(.45)';});cb.innerHTML=`<div class="bw"></div><div class="bfish">${dexAvatarHTML(f,44,26)}</div>`;cb.classList.add('on');cb.style.transform='';}
+  if(cur==='bag'&&f){cb.classList.remove('on');cb.innerHTML=`<div class="bw"></div><div class="bfish">${dexAvatarHTML(f,44,26)}</div>`;}   /* he holds it in the 'bag' picture */
   if(cur==='hand'){cb.style.transition='none';}
   if(cur==='pay'&&f){
    const pr=sellV120(f,false);reg.textContent='🪙 '+pr;coinsUI();
