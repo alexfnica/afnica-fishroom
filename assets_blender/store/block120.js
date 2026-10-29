@@ -17,14 +17,14 @@ const PALS=[
  {shirt:'#d96ad0',pants:'#2f3f5f',shoe:'#fff',skin:'#8d5a3a',hair:'#111',style:'long'},
  {shirt:'#52b8c9',pants:'#3a3a3a',shoe:'#222',skin:'#f1c9a0',hair:'#d8c06a',style:'short'}];
 
-const PH=[['greet',.9],['net',1.5],['bag',1.5],['hand',.8],['pay',1.0]];
+const PH=[['greet',.9],['net',1.5],['bag',1.5],['hand',1.6],['pay',1.0]];
 const ST={cust:[],queue:[],pay:null,clerk:{c:null,ph:'idle',t:0,part:null},next:0,last:0,uid:0,sec:0,saveT:0,gen:0,slots:[],els:new Map(),door:false};
 const $=id=>document.getElementById(id);
 
 /* ---------- save defaults ---------- */
 function ensureStoreV120(){
  if(!st.store||typeof st.store!=='object')st.store={};
- const s=st.store,d={unlocked:true,tanks:3,slotsPerTank:SPT,rep:0,markupPct:115,decor:[],clerks:1,lastSimAt:0,dayNo:0,totalSales:0,totalRevenue:0};
+ const s=st.store,d={unlocked:true,tanks:3,slotsPerTank:SPT,rep:0,markupPct:115,decor:[],clerks:1,lastSimAt:0,dayNo:0,totalSales:0,totalRevenue:0,sale:null};
  for(const k in d)if(s[k]===undefined)s[k]=d[k];
  if(!s.day||typeof s.day!=='object')s.day={customers:0,sales:0,revenue:0,upkeep:0,walkouts:0,best:0,rep0:s.rep};
  if(!Array.isArray(st.storeFish))st.storeFish=[];
@@ -48,7 +48,17 @@ function fairV120(f){
  const gm=(window.fullGrownV1763&&fullGrownV1763(f))?1.2:1,fm=Math.max(.7,1-.06*(f.finTorn||0));
  return Math.max(1,Math.round(v*gm*fm));
 }
-function priceV120(f){return Math.max(1,Math.round(fairV120(f)*(f.storePct||115)/100));}
+/* species on sale today (-20%): picked each game day from what is on display (the most stocked species), the player can change it */
+function saleV120(){
+ const s=st.store;
+ if(!s.sale||typeof s.sale!=='object'||s.sale.day!==st.day){
+  const n={};st.storeFish.forEach(f=>{n[f.species]=(n[f.species]||0)+1;});
+  const sp=Object.keys(n).sort((a,b)=>n[b]-n[a])[0]||null;s.sale={day:st.day,species:sp,pct:20};
+ }
+ return s.sale;
+}
+const onSaleV120=f=>{const sa=saleV120();return !!sa.species&&sa.species===f.species;};
+function priceV120(f){return Math.max(1,Math.round(fairV120(f)*(f.storePct||115)/100*(onSaleV120(f)?1-saleV120().pct/100:1)));}
 function eligibleV120(f){return !f.dead&&!f.disease&&S[f.species]&&f.age>=S[f.species].adult&&(f.health==null||f.health>=50)&&!Number.isFinite(f.gestStart)&&!(f.spermBroods>0);}
 const repLevel=()=>Math.floor((st.store.rep||0)/20);
 function hourF(){const h=window.__afHourOverride!=null?+window.__afHourOverride:new Date().getHours();return h<8||h>=22?0:(h>=10&&h<19?1.3:.7);}
@@ -71,7 +81,7 @@ function evaluate(p){
   if(!match)continue;saw=true;
   const price=priceV120(f),fair=fairV120(f);
   if(price>p.budget||price>fair*p.sense*(1+.15*lvl))continue;
-  const sc=p.type==='collector'?g.rank*10+fair/price:fair/price+Math.random()*.3;
+  const sc=(p.type==='collector'?g.rank*10+fair/price:fair/price+Math.random()*.3)+(onSaleV120(f)?.6:0);   /* the sale draws buyers */
   if(sc>bs){bs=sc;best=f;}
  }
  return {fish:best,reason:best?'':(saw?'expensive':'nomatch')};
@@ -152,14 +162,14 @@ function bubble(c,txt,sec){c.parts.bub.textContent=txt;c.parts.bub.classList.add
 /* realistic customers: a rendered full-body cut-out (assets_blender/store/people, made with cut_people.py), walked with a bob / rock / squash instead of limbs */
 /* walk rigs (walk120.js), one per sprite image, built once the image has decoded; pairs / failures keep the bob */
 const RIG=new Map();
-function rigFor(src){let e=RIG.get(src);if(!e){e={R:null};RIG.set(src,e);const im=new Image();im.onload=()=>{try{e.R=window.rigSpriteV120?window.rigSpriteV120(im):null;}catch(er){console.error('AFNICA store walk rig',er);}};im.src=src;}return e;}
+function rigFor(src,pair){let e=RIG.get(src);if(!e){e={R:null,pair:!!pair};RIG.set(src,e);const im=new Image();im.onload=()=>{try{e.R=e.pair?(window.rigPairV120?window.rigPairV120(im):null):(window.rigSpriteV120?window.rigSpriteV120(im):null);}catch(er){console.error('AFNICA store walk rig',er);}};im.src=src;}return e;}
 function mkSprite(src,asp){
  const wide=asp>.62;
  const d=document.createElement('div');d.className='st120p sp'+(wide?' wide':'');
- d.innerHTML=`<div class="sprw"><img src="${src}" alt=""><canvas class="wk" width="200" height="320"></canvas><svg class="bagh" width="22" height="28" viewBox="0 0 22 28"><path d="M3 4 q-3 8 1 18 q7 5 14 0 q4 -10 1 -18z" fill="#9ee2f7" fill-opacity=".65" stroke="#e8fbff" stroke-width="1.2"/><path d="M4 4 q7 -8 13 0" stroke="#e8fbff" stroke-width="1.6" fill="none"/><path class="bf" d="M6 15 q5 -5 10 0 q-5 5 -10 0z" fill="#ff9a3c"/></svg></div><div class="bub"></div>`;
+ d.innerHTML=`<div class="sprw"><img src="${src}" alt=""><canvas class="wk${wide?' wkw':''}" width="${wide?480:200}" height="320"></canvas><svg class="bagh" width="22" height="28" viewBox="0 0 22 28"><path d="M3 4 q-3 8 1 18 q7 5 14 0 q4 -10 1 -18z" fill="#9ee2f7" fill-opacity=".65" stroke="#e8fbff" stroke-width="1.2"/><path d="M4 4 q7 -8 13 0" stroke="#e8fbff" stroke-width="1.6" fill="none"/><path class="bf" d="M6 15 q5 -5 10 0 q-5 5 -10 0z" fill="#ff9a3c"/></svg></div><div class="bub"></div>`;
  const w=d.querySelector('.sprw'),bag=d.querySelector('.bagh');
  if(wide){bag.style.left='96px';bag.style.top='96px';}
- return {spr:true,wide,rad:wide?95:40,rig:wide?null:rigFor(src),cv:d.querySelector('.wk'),el:d,svg:w,img:w.firstChild,bagEl:bag,bag:{setAttribute(a,v){bag.style.display=v==='visible'?'block':'none';}},bf:d.querySelector('.bf'),bub:d.querySelector('.bub')};
+ return {spr:true,wide,rad:wide?60:40,rig:rigFor(src,wide),cv:d.querySelector('.wk'),el:d,svg:w,img:w.firstChild,bagEl:bag,bag:{setAttribute(a,v){bag.style.display=v==='visible'?'block':'none';}},bf:d.querySelector('.bf'),bub:d.querySelector('.bub')};
 }
 function poseP(c,t){
  const P=c.parts,mv=Math.min(1,c.speed/30),sw=Math.sin(c.phase)*mv,sd=c.seed;
@@ -171,13 +181,14 @@ function poseP(c,t){
   if(R){
    /* real walk: legs swing from the hip, distance-driven so the planted foot does not slide */
    if(P.img.style.display!=='none'){P.img.style.display='none';P.cv.style.display='block';}
-   const g=P.cv.getContext('2d'),k=150/R.h,m=Math.min(1,c.speed/25);
-   g.setTransform(2,0,0,2,0,0);g.clearRect(0,0,100,160);g.translate(50,156);
-   window.drawWalkV120(g,R,(c.dist||0)/(window.cycleLenV120(R)*k),m,k);
+   const g=P.cv.getContext('2d'),k=150/R.h,m=Math.min(1,c.speed/25),cw=P.wide?240:100,bag=c.bagged?{col:c.bagCol}:null;
+   g.setTransform(2,0,0,2,0,0);g.clearRect(0,0,cw,160);g.translate(cw/2,156);
+   const ptT=c.state==='look'&&c.pointing?1:0,pdt=Math.min(.1,Math.max(0,t-(c.plt||t)));c.plt=t;c.pt=(c.pt||0)+(ptT-(c.pt||0))*Math.min(1,pdt*4);
+   if(R.pair)window.drawPairV120(g,R,c.dist||0,m,k,bag,c.pt);else window.drawWalkV120(g,R,(c.dist||0)/(window.cycleLenV120(R)*k),m,k,bag,c.pt);
    const lean=c.state==='look'?-2+Math.sin(t*3+sd)*(c.pointing?1.5:.5):0;
    P.cv.style.transform=`rotate(${lean.toFixed(2)}deg)`;
   }else P.img.style.transform=`translateX(-50%) translateY(${bob.toFixed(2)}px) rotate(${rock.toFixed(2)}deg) scaleY(${sq.toFixed(4)})`;
-  P.bag.setAttribute('visibility',c.bagged?'visible':'hidden');if(c.bagged)P.bagEl.style.transform=`translateY(${bob.toFixed(2)}px)`;
+  P.bag.setAttribute('visibility',c.bagged&&!R?'visible':'hidden');if(c.bagged&&!R)P.bagEl.style.transform=`translateY(${bob.toFixed(2)}px)`;
   return;
  }
  let lL=sw*26,lR=-sw*26,aL=-sw*20,aR=sw*20,hd=0;
@@ -193,24 +204,37 @@ function poseP(c,t){
 }
 /* the clerk is the owner's own character: a cut-out of his YouTube outro render (real shirt print), swayed / leaned per phase, net as an overlay */
 function mkOwner(){
- const src=(window.ST120_LOGO||{}).owner||'';
+ const LG=window.ST120_LOGO||{},src=LG.owner||'',body=LG.ownerBody||src;
  const d=document.createElement('div');d.className='own';
- d.innerHTML=`<div class="ob"><img src="${src}" alt=""></div><div class="oh"><img src="${src}" alt=""><i class="lid" style="left:31px;top:25.4px"></i><i class="lid" style="left:46px;top:25.4px"></i></div><svg class="onet" viewBox="0 0 60 80" width="60" height="80"><g class="ng"><line x1="30" y1="76" x2="30" y2="26" stroke="#c9d3d8" stroke-width="3"/><ellipse cx="30" cy="16" rx="13" ry="11" fill="#9ee2f7" fill-opacity=".3" stroke="#c9d3d8" stroke-width="2.5"/><path class="nf" visibility="hidden" d="M23 16 q7 -7 14 0 q-7 7 -14 0z M37 16 l6 -4 v8z" fill="#ff9a3c"/></g></svg><div class="bub"></div>`;
- return {el:d,ob:d.querySelector('.ob'),oh:d.querySelector('.oh'),lids:d.querySelectorAll('.lid'),net:d.querySelector('.onet'),ng:d.querySelector('.ng'),nf:d.querySelector('.nf'),bub:d.querySelector('.bub'),nextBlink:2,blinkT:-9};
+ d.innerHTML=`<div class="ob"><img src="${body}" alt=""></div>${LG.ownerUpper?`<div class="oa"><img src="${LG.ownerUpper}" alt=""><div class="of"><img src="${LG.ownerFore}" alt=""></div></div>`:''}<div class="oh"><img src="${src}" alt=""><i class="lid" style="left:31px;top:25.4px"></i><i class="lid" style="left:46px;top:25.4px"></i></div><svg class="onet" viewBox="0 0 60 80" width="60" height="80"><g class="ng"><line x1="30" y1="76" x2="30" y2="26" stroke="#c9d3d8" stroke-width="3"/><ellipse cx="30" cy="16" rx="13" ry="11" fill="#9ee2f7" fill-opacity=".3" stroke="#c9d3d8" stroke-width="2.5"/><path class="nf" visibility="hidden" d="M23 16 q7 -7 14 0 q-7 7 -14 0z M37 16 l6 -4 v8z" fill="#ff9a3c"/></g></svg><div class="bub"></div>`;
+ return {el:d,oa:d.querySelector('.oa'),of:d.querySelector('.of'),aa:0,ea:0,lt:0,ob:d.querySelector('.ob'),oh:d.querySelector('.oh'),lids:d.querySelectorAll('.lid'),net:d.querySelector('.onet'),ng:d.querySelector('.ng'),nf:d.querySelector('.nf'),bub:d.querySelector('.bub'),nextBlink:2,blinkT:-9};
 }
+/* the owner's hand in stage units for arm angle aa (deg): pivot / hand in .own px (84x110 box), the box is drawn at 56% from its bottom centre at (662,262) */
+function ownerHandV120(aa,ea){const rot=(vx,vy,d)=>{const a=d*Math.PI/180;return [vx*Math.cos(a)-vy*Math.sin(a),vx*Math.sin(a)+vy*Math.cos(a)];};
+ const S=[14.97,71.3],E=[9.69,100.4],H=[8.3,128],u=rot(E[0]-S[0],E[1]-S[1],aa),f=rot(H[0]-E[0],H[1]-E[1],aa+ea),x=S[0]+u[0]+f[0],y=S[1]+u[1]+f[1];
+ return {x:620+42+(x-42)*.56,y:152+110+(y-110)*.56};}
+function custHandV120(c){return {x:c.x+(c.faceT>0?11:-11),y:c.y-74};}
 function poseClerk(t){
  const K=ST.clerk,P=K.parts;if(!P)return;
- /* idle: breathing, a slow head sway, a blink every 2.5-6 s */
- let bx=0,by=0,br=0,bs=1+.007*Math.sin(t*1.6);
- let hr=Math.sin(t*.7)*1.4+Math.sin(t*1.9)*.5,hy=Math.sin(t*1.6)*.4,hx=0,net=false,nf=false,nr=0;
+ /* idle: breathing, a slow sway, now and then a glance at the shop floor; serving: a nod, a look towards the tanks while the fish
+    is caught, a look down while bagging, then the bag is held out over the counter (elbow bent, forearm level) */
+ if(!P.glT||t>P.glT+1.8){if(!P.glN||t>P.glN){P.glT=t;P.glN=t+5+Math.random()*4;}}
+ const gu=(t-(P.glT||-9))/1.8,gl=gu>=0&&gu<1?Math.sin(gu*Math.PI):0;
+ let bx=0,by=0,br=Math.sin(t*.45)*.6,bs=1+.01*Math.sin(t*1.6);
+ let hr=Math.sin(t*.7)*1.6+Math.sin(t*1.9)*.5-4*gl,hy=Math.sin(t*1.6)*.5,hx=-1.5*gl,net=false,nf=false,nr=0;
  const pp=K.part||0;
  if(K.c){
-  if(K.ph==='greet'){by=-1.8*Math.abs(Math.sin(t*7));hr=5+Math.sin(t*8)*2;}
-  else if(K.ph==='net'){net=true;bx=-3;br=-2.5;hr=-5;hy=1;nr=-40+Math.sin(pp*Math.PI*2)*18;nf=pp>.55;}
-  else if(K.ph==='bag'){bs=1.02;hr=3;hy=1.6;}
-  else if(K.ph==='hand'){bx=3*Math.sin(pp*Math.PI);br=2;hr=4;}
-  else if(K.ph==='pay'){hr=Math.sin(t*10)*2;hy=Math.abs(Math.sin(t*10))*1.2;}
+  if(K.ph==='greet'){by=-1.5*Math.abs(Math.sin(t*5));hr=4*Math.sin(t*6);hx=0;}
+  else if(K.ph==='net'){hr=-5;hx=-2;by=2;br=-2;}
+  else if(K.ph==='bag'){hr=6;hy=2;by=1.5;hx=0;}
+  else if(K.ph==='hand'){br=-2;hr=-4;hx=-1;}
+  else if(K.ph==='pay'){hr=3*Math.sin(t*8);hx=0;}
  }
+ /* his right arm (screen left): reach down while bagging, lift the bag towards the customer, lower it after */
+ let aT=0,eT=0;if(K.c){if(K.ph==='net'){aT=6;eT=10;}else if(K.ph==='bag'){aT=4;eT=25;}else if(K.ph==='hand'){if(pp<.85){aT=32;eT=60;}else{aT=10;eT=20;}}}
+ const adt=Math.min(.1,Math.max(0,t-(P.lt||t)));P.lt=t;P.aa+=(aT-P.aa)*Math.min(1,adt*4);P.ea+=(eT-P.ea)*Math.min(1,adt*4);
+ if(P.oa)P.oa.style.transform=`translate(${bx.toFixed(2)}px,${by.toFixed(2)}px) rotate(${P.aa.toFixed(2)}deg)`;
+ if(P.of)P.of.style.transform=`rotate(${P.ea.toFixed(2)}deg)`;
  if(t>=P.nextBlink){P.blinkT=t;P.nextBlink=t+2.5+Math.random()*3.5;}
  const u=(t-P.blinkT)/.16,cl=u>=0&&u<1?Math.sin(u*Math.PI):0;
  P.lids.forEach(l=>{l.style.opacity=cl>0?1:0;l.style.transform=`scaleY(${cl.toFixed(2)})`;});
@@ -241,9 +265,10 @@ function sceneHTML(){
   ${(window.ST120_LOGO&&window.ST120_LOGO.icon)?`<image href="${window.ST120_LOGO.icon}" x="258" y="6" width="50" height="50"/><image href="${window.ST120_LOGO.word}" x="313" y="8" width="190" height="46" preserveAspectRatio="xMidYMid meet"/>`:'<text x="380" y="38" text-anchor="middle" font-size="18" font-weight="900" fill="#092638" letter-spacing="2" font-family="Inter,system-ui,Arial,sans-serif">AFNICA FISHROOM</text>'}
   <rect x="6" y="96" width="86" height="250" rx="5" fill="#2a1a0c"/><rect x="14" y="104" width="70" height="234" fill="#bdeaff" opacity=".9"/><path d="M14 104L84 104L14 220Z" fill="#fff" opacity=".4"/>
   <rect x="2" y="344" width="94" height="8" rx="3" fill="#3a2a14"/>
-  <rect x="640" y="56" width="92" height="76" rx="5" fill="#0c1e28" stroke="#7a5a30" stroke-width="3"/><rect x="646" y="62" width="80" height="64" fill="#0d7893"/><path d="M660 100 q14 -14 30 0 q-14 14 -30 0z M690 100 l12 -8 v16z" fill="#ffb830"/><text x="686" y="120" text-anchor="middle" font-size="8" font-weight="800" fill="#d9f6ff" font-family="Inter,system-ui,Arial,sans-serif">FISH CARE TIPS</text>
+
  </svg>
  <div class="dr" id="st120door"></div>
+ <div class="board" id="st120board"></div>
  ${tanks}
  <div class="clk" id="st120clerk"></div>
  <div class="cnt"><svg viewBox="0 0 164 100" width="164" height="100"><rect x="0" y="0" width="164" height="14" rx="5" fill="#e8bd7c"/><rect x="4" y="14" width="156" height="86" fill="#9a6538"/><rect x="14" y="26" width="136" height="64" rx="4" fill="#6b4526" opacity=".6"/><text x="82" y="66" text-anchor="middle" font-size="16" font-weight="900" fill="#ffd9a0" opacity=".85" font-family="Inter,system-ui,Arial,sans-serif">PAY HERE</text></svg></div>
@@ -252,15 +277,17 @@ function sceneHTML(){
  <div class="qm" style="left:${PAY.x-30}px;top:${PAY.y-6}px"></div>
  </div></div>`;
 }
-const slotXY=i=>[{x:12,y:16},{x:88,y:12},{x:14,y:52},{x:86,y:50}][i];
+const SWIM=[{x:14,y:14},{x:88,y:20},{x:34,y:40},{x:104,y:44}],FLOOR=[{x:10,y:70},{x:62,y:72},{x:108,y:70},{x:36,y:72}];
+const isBottom=f=>f.species==='cory'||f.species==='anc';
 function syncFish(){
  const s=st.store,list=st.storeFish,seen=new Set();
  list.forEach((f,idx)=>{
   const ti=Math.floor(idx/s.slotsPerTank),si=idx%s.slotsPerTank,fb=$('st120fb'+ti);if(!fb)return;
+  const mates=list.slice(ti*s.slotsPerTank,idx),bot=isBottom(f),k=mates.filter(m=>isBottom(m)===bot).length;
   let el=ST.els.get(f.id);
-  if(!el){el=document.createElement('div');el.className='sf';el.innerHTML=`<div class="d" style="animation-duration:${(5+Math.random()*4).toFixed(1)}s;animation-delay:-${(Math.random()*6).toFixed(1)}s">${dexAvatarHTML(f,46,27)}</div>`;ST.els.set(f.id,el);}
+  if(!el){el=document.createElement('div');el.className='sf'+(isBottom(f)?' bt':'');el.innerHTML=`<div class="d" style="animation-duration:${(isBottom(f)?9:5)+Math.random()*4}s;animation-delay:-${(Math.random()*6).toFixed(1)}s">${dexAvatarHTML(f,32,19)}</div>`;ST.els.set(f.id,el);}
   if(el.parentNode!==fb)fb.appendChild(el);
-  const p=slotXY(si);el.style.left=p.x+'px';el.style.top=p.y+'px';
+  const p=(bot?FLOOR:SWIM)[k%4];el.style.left=p.x+'px';el.style.top=p.y+'px';
   el.classList.toggle('gone',!!f._net120);seen.add(f.id);
  });
  for(const [id,el] of ST.els)if(!seen.has(id)){el.remove();ST.els.delete(id);}
@@ -268,7 +295,7 @@ function syncFish(){
   const tg=$('st120tg'+i);if(!tg)continue;
   const fs=list.slice(i*s.slotsPerTank,(i+1)*s.slotsPerTank).filter(f=>!f._net120);
   if(!fs.length)tg.innerHTML='<b>empty</b>';
-  else{const pr=fs.map(priceV120),a=Math.min(...pr),b=Math.max(...pr);tg.innerHTML=`${fs.length} fish<br><b>🪙 ${a===b?a:a+'–'+b}</b>`;}
+  else{const pr=fs.map(priceV120),a=Math.min(...pr),b=Math.max(...pr);tg.innerHTML=`${fs.some(onSaleV120)?'<span class="sl">SALE</span> ':''}${fs.length} fish<br><b>🪙 ${a===b?a:a+'–'+b}</b>`;}
  }
 }
 
@@ -282,13 +309,25 @@ function rowHTML(f,mode){
  return `<div class="st120row"><div class="av">${dexAvatarHTML(f,56,34)}</div><div class="in"><b>${sicon(f)} ${sname(f)}${sx}</b> <span class="v10Grade ${g.cls}">${g.name}</span>
   <small>${mode==='shop'?`value 🪙 ${fair} · price <b>🪙 ${priceV120(f)}</b> (${f.storePct||115}%)`:`worth about 🪙 ${Math.round(fair*1.15)} in the store · health ${Math.round(f.health==null?100:f.health)}`}</small></div><div class="ctl">${btns}</div></div>`;
 }
+/* the sale sign on the wall: which species is on sale today and how much off */
+function boardUI(){
+ const b=$('st120board');if(!b)return;const sa=saleV120(),f=sa.species&&st.storeFish.find(x=>x.species===sa.species);
+ const h=f?`<b>SALE</b><div class="ss">${dexAvatarHTML(f,52,30)}</div><div class="sn">${sname(f)}</div><em>−${sa.pct}% today</em>`:`<b class="off">SALE</b><div class="sn">coming soon</div>`;
+ if(b.__h!==h){b.innerHTML=h;b.__h=h;}
+}
+window.stSale120=function(){
+ try{const sp=[...new Set(st.storeFish.map(f=>f.species))];const sa=saleV120();const i=sp.indexOf(sa.species);
+  sa.species=sp.length?(i<0||i===sp.length-1?(i<0?sp[0]:null):sp[i+1]):null;save();boardUI();syncFish();panel();}catch(e){console.error('AFNICA store sale',e);}
+};
 function panel(){
+ boardUI();
  const el=$('st120panel');if(!el)return;
  const s=st.store,d=s.day,lvl=repLevel();
  const elig=[];
  st.fish.forEach(f=>{if(eligibleV120(f))elig.push([f,'main']);});
  st.fry.forEach(f=>{if(eligibleV120(f))elig.push([f,'fry']);});
  el.innerHTML=`<div class="v8panel"><div class="v8head"><b>🏪 YOUR FISH STORE</b><span>★ LEVEL ${lvl}</span></div>
+  <div class="meta">On sale today: <b style="color:#ff6b5a">${(()=>{const sa=saleV120(),f=sa.species&&st.storeFish.find(x=>x.species===sa.species);return f?sname(f)+' −'+sa.pct+'%':'nothing'})()}</b> <button class="btn small blue" style="padding:4px 8px;min-height:24px;font-size:10px" onclick="stSale120()">CHANGE</button></div>
   <div class="st120rep"><i style="width:${s.rep}%"></i></div><div class="meta">Reputation ${s.rep}/100 · higher reputation = more customers and higher prices they accept.</div>
   <div class="meta">Today: <b>${d.customers}</b> customers · <b>${d.sales}</b> sales · 🪙 <b>${d.revenue}</b> · lifetime ${s.totalSales} sales, 🪙 ${s.totalRevenue}</div>
   <div class="meta">Upkeep: 🪙 2 per displayed fish per game day (counted while the store screen is open). Fish unsold for 7+ days get stressed.</div>
@@ -327,19 +366,22 @@ window.stPrice120=function(id,d){
 function stepWalk(c,dt){
  const t=c.path[0];if(!t){c.speed+=(0-c.speed)*Math.min(1,dt*6);return true;}
  const dx=t.x-c.x,dy=t.y-c.y,d=Math.hypot(dx,dy);
- if(d<2){c.path.shift();return c.path.length===0;}
+ if(d<(c.path.length===1?4:8)){c.path.shift();return c.path.length===0;}   /* close enough: others nudging must not stop an arrival */
  const last=c.path.length===1;
  let want=last?Math.min(c.maxSp,d*3+8):c.maxSp;
  c.hx+=(dx/d-c.hx)*Math.min(1,dt*6);c.hy+=(dy/d-c.hy)*Math.min(1,dt*6);
  const hl=Math.hypot(c.hx,c.hy)||1;const ux=c.hx/hl,uy=c.hy/hl;
- const inDoor=q=>q.state==='exit'&&q.x<125;
+ const inDoor=q=>q.state==='exit'&&q.x<125,x0=c.x,y0=c.y;
+ if(c.ghost>0)c.ghost-=dt;
  for(const o of ST.cust){
-  if(o===c||inDoor(c)||inDoor(o))continue;const ox=o.x-c.x,oy=o.y-c.y,od=Math.hypot(ox,oy);
+  if(o===c||inDoor(c)||inDoor(o)||c.ghost>0)continue;   /* 'excuse me': a blocked walker slips past for a moment */const ox=o.x-c.x,oy=o.y-c.y,od=Math.hypot(ox,oy);
   const R=Math.max(c.parts.rad||40,o.parts.rad||40);if(od<R){if(ox*ux+oy*uy>0&&od<R-4)want*=.5;const pu=Math.min((R-od)*3.2,40)*dt;c.x-=ox/(od||1)*pu;c.y-=oy/(od||1)*pu;}
  }
  c.speed+=(want-c.speed)*Math.min(1,dt*5);
  const step=Math.min(d,c.speed*dt);
- c.x+=ux*step;c.y+=uy*step;c.phase+=step*.09;c.dist=(c.dist||0)+step;
+ c.x+=ux*step;c.y+=uy*step;
+ /* blocked = hardly any real progress (pushes included) while trying to walk */
+ if(Math.hypot(c.x-x0,c.y-y0)<dt*8){c.stk=(c.stk||0)+dt;if(c.stk>1.2){c.ghost=1.5;c.stk=0;}}else c.stk=Math.max(0,(c.stk||0)-dt);c.phase+=step*.09;c.dist=(c.dist||0)+step;
  if(Math.abs(dx)>3)c.faceT=dx>0?1:-1;
  return false;
 }
@@ -363,6 +405,14 @@ function spawn(){
  const col=FCOL.guppy;parts.bf.setAttribute('fill',col);
  route(c,[{x:110,y:372}]);
 }
+/* what a customer thinks of the fish in one display tank: 'good' (something they like at a price they accept), 'pricey' (they like it, too dear), 'meh' */
+function tankOpinion(c,ti){
+ const lvl=repLevel(),fs=st.storeFish.slice(ti*st.store.slotsPerTank,(ti+1)*st.store.slotsPerTank).filter(f=>!f._res120&&!f._net120);let liked=false;
+ for(const f of fs){const g=gradeV10(f),rar=rarityV9(f.species);const match=c.type==='beginner'?true:c.type==='collector'?(rar!=='common'||g.rank>=3):false;
+  if(!match)continue;liked=true;const price=priceV120(f),fair=fairV120(f);if(price<=c.budget&&price<=fair*c.sense*(1+.15*lvl))return 'good';}
+ return liked?'pricey':'meh';
+}
+const pickV120=a=>a[Math.floor(Math.random()*a.length)];
 function nextStep(c){
  if(c.visits.length){
   const ti=c.visits.shift(),sl=freeSlot(ti,c);if(!sl)return nextStep(c);
@@ -393,7 +443,13 @@ function custTick(c,dt,t){
  const arrived=stepWalk(c,dt);
  switch(c.state){
   case 'enter':if(arrived)nextStep(c);break;
-  case 'goto':if(arrived){c.state='look';c.t=3+Math.random()*3;c.pointing=Math.random()<.6;c.faceT=(TX[c.slot.tank]+TW/2-c.x)>=0?1:-1;if(Math.random()<.6)bubble(c,'💙🐟',2);}break;
+  case 'goto':if(arrived){c.state='look';c.t=3+Math.random()*3;c.faceT=(TX[c.slot.tank]+TW/2-c.x)>=0?1:-1;
+   /* react to the prices in this tank; point at it when interested (the child of a pair points when it sees something) */
+   const op=tankOpinion(c,c.slot.tank);c.pointing=op==='good'||(c.parts.wide&&op!=='meh')||(op==='pricey'&&Math.random()<.4);
+   if(c.parts.wide&&op!=='meh')bubble(c,pickV120(['That one! 🐟','Look! 😍','Can we? 🥺']),2.4);
+   else if(op==='good')bubble(c,pickV120(['Good price! 👍','Ooh! 😍','Nice! 🐟']),2.4);
+   else if(op==='pricey')bubble(c,pickV120(['Pricey… 💸','Hmm, too much 😬']),2.4);
+   else bubble(c,pickV120(['👀','🙂']),1.6);}break;
   case 'look':c.t-=dt;c.speed=0;if(c.t<=0){releaseSlot(c);c.pointing=false;c.state='gone1';nextStep(c);}break;
   case 'toQueue':if(arrived){c.state='wait';c.faceT=1;if(!ST.pay&&!ST.clerk.c&&ST.queue[0]===c){ST.queue.shift();ST.pay=c;c.state='toPay';route(c,[PAY]);reQueue();}}break;
   case 'wait':c.wait+=dt;if(c.wait>45){const f=c.want;if(f)delete f._res120;c.want=null;ST.queue.splice(ST.queue.indexOf(c),1);bubble(c,'😠',2.4);walkout(c,'queue');leave(c);reQueue();}break;
@@ -412,19 +468,24 @@ function clerkTick(dt,t){
  for(const [n,d] of PH){if(K.t<acc+d){cur=n;dur=d;ph0=K.t-acc;break;}acc+=d;}
  const c=K.c,f=c.want,cb=$('st120cbag'),reg=$('st120reg');
  if(!cur){
-  cb.classList.remove('on');cb.style.transform='';c.bagged=true;if(f)P&&c.parts.bf.setAttribute('fill',FCOL[f.species]||'#ff9a3c');
+  cb.classList.remove('on');cb.style.transform='';c.bagged=true;c.bagCol=f?FCOL[f.species]||'#ff9a3c':'#ff9a3c';if(f)P&&c.parts.bf.setAttribute('fill',FCOL[f.species]||'#ff9a3c');
   K.c=null;K.ph='idle';ST.pay=null;c.state='exit';c.leaving=false;c.want=null;
   route(c,[{x:c.x-8,y:Math.max(c.y+30,440)},{x:140,y:440},{x:70,y:372},{x:DOOR.x,y:DOOR.y}]);c.faceT=-1;
   const h=ST.queue[0];if(h&&(h.state==='wait'||h.state==='toQueue')){ST.queue.shift();ST.pay=h;h.state='toPay';route(h,[PAY]);reQueue();}
   poseClerk(t);return;
  }
  K.part=ph0/dur;
+ if(K.ph==='hand'&&cur==='hand'){
+  /* picked up from the counter into his raised hand (0-35%), held out (35-50%), then into the customer's hand (50-95%) */
+  const u=K.part,sm=v=>{v=Math.max(0,Math.min(1,v));return v*v*(3-2*v);},p0={x:618,y:240},p1=(h=>({x:h.x+3,y:h.y+1}))(ownerHandV120(K.parts.aa,K.parts.ea)),p2=custHandV120(c);
+  let q,sc;if(u<.35){const e=sm(u/.35);q={x:p0.x+(p1.x-p0.x)*e,y:p0.y+(p1.y-p0.y)*e};sc=.45;}else if(u<.5){q=p1;sc=.45;}else{const e=sm((u-.5)/.45);q={x:p1.x+(p2.x-p1.x)*e,y:p1.y+(p2.y-p1.y)*e};sc=.45-.03*e;}
+  cb.style.transform=`translate(${(q.x-25-648).toFixed(1)}px,${(q.y-8-222).toFixed(1)}px) scale(${sc.toFixed(3)})`;}
  if(cur!==K.ph){
   K.ph=cur;
   if(cur==='greet'){bubble(c,'😊',1.2);K.parts.bub.textContent='👋';K.parts.bub.classList.add('on');K.bubT=1.2;}
   if(cur==='net'&&f){f._net120=true;syncFish();}
-  if(cur==='bag'&&f){cb.innerHTML=`<div class="bw"></div><div class="bfish">${dexAvatarHTML(f,44,26)}</div>`;cb.classList.add('on');cb.style.transform='';}
-  if(cur==='hand'){cb.style.transform=`translate(${(c.x+8)-648}px,${(c.y-70)-222}px)`;}
+  if(cur==='bag'&&f){cb.style.transition='none';cb.style.transform='translate(-55px,38px) scale(.45)';void cb.offsetWidth;cb.style.transition='';requestAnimationFrame(()=>{cb.style.transform='translate(-55px,10px) scale(.45)';});cb.innerHTML=`<div class="bw"></div><div class="bfish">${dexAvatarHTML(f,44,26)}</div>`;cb.classList.add('on');cb.style.transform='';}
+  if(cur==='hand'){cb.style.transition='none';}
   if(cur==='pay'&&f){
    const pr=sellV120(f,false);reg.textContent='🪙 '+pr;coinsUI();
    const cn=document.createElement('div');cn.className='coin';cn.textContent='+'+pr;$('st120stage').appendChild(cn);setTimeout(()=>cn.remove(),1300);
@@ -455,7 +516,7 @@ function loop(now,gen){
   const open=ST.cust.some(c=>c.x<120&&c.y<400);
   if(open!==ST.door){ST.door=open;$('st120door').classList.toggle('open',open);}
   /* bookkeeping */
-  ST.sec+=dt;if(ST.sec>=1){ST.sec=0;st.store.lastSimAt=Date.now();dayCheck();}
+  ST.sec+=dt;if(ST.sec>=1){ST.sec=0;st.store.lastSimAt=Date.now();dayCheck();boardUI();}
   ST.saveT+=dt;if(ST.saveT>15){ST.saveT=0;save();}
  }catch(e){console.error('AFNICA store loop',e);}
 }

@@ -7,7 +7,7 @@ rd = lambda n: open(os.path.join(HERE, n), encoding='utf-8').read()
 import base64
 def uri(n): return 'data:image/png;base64,' + base64.b64encode(open(os.path.join(HERE, n), 'rb').read()).decode()
 # the AFNICA FISHROOM logo (black on transparent, made from assets_blender/logo/afnica_fishroom_src.webp): shirt print + sign
-logo = 'window.ST120_LOGO={' + ','.join('%s:"%s"' % (k, uri('logo_%s.png' % k)) for k in ('icon', 'word')) + ',owner:"%s"};\n' % uri('owner_cut.png')
+logo = 'window.ST120_LOGO={' + ','.join('%s:"%s"' % (k, uri('logo_%s.png' % k)) for k in ('icon', 'word')) + ',' + ','.join('%s:"%s"' % (k, uri(f)) for k, f in (('owner', 'owner_cut.png'), ('ownerBody', 'owner_body.png'), ('ownerArm', 'owner_arm.png'), ('ownerUpper', 'owner_arm_upper.png'), ('ownerFore', 'owner_arm_fore.png'))) + '};' + chr(10)
 import glob
 pp = sorted(glob.glob(os.path.join(HERE, 'people', '*.png')))
 if pp: logo += 'window.ST120_PEOPLE=[' + ','.join('"data:image/png;base64,%s"' % base64.b64encode(open(f, 'rb').read()).decode() for f in pp) + '];' + chr(10)

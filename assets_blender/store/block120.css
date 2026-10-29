@@ -15,8 +15,11 @@
 .st120stage .tk .lt{position:absolute;left:30px;top:0;width:70px;height:4px;border-radius:2px;background:#fff6c0;opacity:.9}
 .st120stage .tg{top:186px;width:156px;text-align:center;font:800 11px/1.25 Inter,Arial;color:#9bb6c4;background:#092638;border:2px solid #18516a;border-radius:7px;padding:3px 0;z-index:3}
 .st120stage .tg b{color:#ffd24b;font-size:13px}
-.st120stage .sf{position:absolute;width:46px;height:27px;transition:left .6s ease,top .6s ease,opacity .5s,transform .5s}
-.st120stage .sf .d{width:46px;height:27px;animation:st120drift 6s ease-in-out infinite alternate}
+.st120stage .sf{position:absolute;width:32px;height:19px;transition:left .6s ease,top .6s ease,opacity .5s,transform .5s}
+.st120stage .sf .d{width:32px;height:19px;animation:st120drift 6s ease-in-out infinite alternate}
+.st120stage .sf.bt .d{animation-name:st120crawl}
+@keyframes st120crawl{0%{transform:translate(0,0)}50%{transform:translate(7px,0)}100%{transform:translate(-4px,0)}}
+.st120p .sprw canvas.wk.wkw{left:-80px;width:240px}
 .st120stage .sf.gone{opacity:0;transform:scale(.3)}
 @keyframes st120drift{0%{transform:translate(0,0)}50%{transform:translate(9px,-4px)}100%{transform:translate(-3px,3px)}}
 .st120stage .clk{left:620px;top:152px;width:84px;height:110px;z-index:300}
@@ -25,6 +28,12 @@
 .st120stage .own .ob{clip-path:inset(46% 0 0 0);transform-origin:42px 110px}
 .st120stage .own .oh{clip-path:inset(0 0 48% 0);transform-origin:42px 56px}
 .st120stage .own img{position:absolute;left:0;top:0;width:84px;height:auto;display:block}
+.st120stage .own .oa{position:absolute;left:0;top:0;width:84px;height:110px;transform-origin:14.97px 71.3px;will-change:transform}
+.st120stage .own .oa img{position:absolute;left:0;top:0;width:84px;height:auto}
+.st120stage .own .of{position:absolute;left:0;top:0;width:84px;height:110px;transform-origin:9.69px 100.4px}
+.st120stage .own .of img{position:absolute;left:0;top:0;width:84px;height:auto}
+.st120stage .own .onet{display:none}
+.st120stage .cbag{transform-origin:25px 8px}
 .st120stage .own .lid{position:absolute;width:8.4px;height:6.6px;border-radius:50%;background:#e2a384;opacity:0;filter:blur(.4px)}
 .st120stage .own .onet{position:absolute;left:-44px;top:36px;opacity:0;transition:opacity .2s}
 .st120stage .own .bub{position:absolute;left:42px;top:0;transform:translate(-50%,-100%) scale(.6);opacity:0;transition:opacity .25s,transform .25s;background:#fff;color:#222;border:2px solid #18516a;border-radius:14px;padding:3px 9px;font:700 17px/1.1 Inter,Arial;white-space:nowrap}
@@ -55,3 +64,11 @@
 .st120row .ctl .btn{padding:6px 8px;min-height:30px;font-size:11px;border-radius:9px}
 .st120rep{height:10px;background:#163747;border-radius:6px;overflow:hidden;margin:4px 0}
 .st120rep i{display:block;height:100%;background:linear-gradient(90deg,#ffb830,#ffd24b)}
+
+.st120stage .board{left:632px;top:50px;width:108px;height:90px;z-index:2;box-sizing:border-box;padding:3px 6px;border:4px solid #7a5a30;border-radius:6px;background:linear-gradient(#fffbe8,#f3e8c4);box-shadow:0 3px 6px #0006;font:800 9px/1.15 Inter,Arial;color:#2a1a0c;text-align:center;transform:rotate(-2deg)}
+.st120stage .board b{display:block;font:900 17px/1 Inter,Arial;color:#e23b2e;letter-spacing:.08em;text-shadow:0 1px 0 #fff}
+.st120stage .board b.off{color:#a99;margin-top:14px}
+.st120stage .board .ss{height:30px;display:flex;justify-content:center;margin:1px 0}
+.st120stage .board .sn{font-size:10px;text-transform:uppercase}
+.st120stage .board em{display:inline-block;margin-top:2px;font-style:normal;font-size:9.5px;color:#fff;background:#e23b2e;border-radius:8px;padding:1px 6px}
+.st120stage .tg .sl{color:#fff;background:#e23b2e;border-radius:6px;padding:0 4px;font-size:9px}
