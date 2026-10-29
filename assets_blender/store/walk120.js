@@ -133,8 +133,8 @@ function pointRig(up,w,h,fh,H){
  return {S,arm:cv(A),base:cv(B),rot:hd.a-Math.PI*.56};
 }
 /* a clear fish bag hanging from a hand point (image px), knot in the fist */
-function drawBagV120(ctx,x,y,col){
- ctx.save();ctx.translate(x,y+2);
+function drawBagV120(ctx,x,y,col,ang){
+ ctx.save();ctx.translate(x,y+2);if(ang)ctx.rotate(ang);
  const body=()=>{ctx.beginPath();ctx.moveTo(-3,2);ctx.quadraticCurveTo(-14,12,-12,27);ctx.quadraticCurveTo(0,33,12,27);ctx.quadraticCurveTo(14,12,3,2);ctx.closePath();};
  body();ctx.fillStyle='rgba(200,238,255,.5)';ctx.fill();
  ctx.save();body();ctx.clip();ctx.fillStyle='rgba(47,170,214,.55)';ctx.fillRect(-15,13,30,22);
@@ -172,13 +172,13 @@ if(pt>0&&R.pt){ctx.drawImage(R.pt.base,0,0);ctx.save();ctx.translate(R.pt.S.x,R.
   if(m>0){ctx.globalAlpha=m;ctx.drawImage(R.arms.walk[n],0,0);}
   ctx.globalAlpha=1;}
  else ctx.drawImage(R.L.upper,0,0);
- if(bag){const hp=handAt(R,phase,m,bag.hand);if(hp)drawBagV120(ctx,hp.x,hp.y,bag.col);}
+ if(bag){const hp=handAt(R,phase,m,bag.hand);if(hp)drawBagV120(ctx,hp.x,hp.y,bag.col,bag.ang||0);}
  ctx.restore();
 }
 function drawPairV120(ctx,P,dist,m,k,bag,pt){
- P.parts.forEach((q,i)=>{const R=q.R,b=i===0&&bag?{col:bag.col,hand:'back'}:null;ctx.save();ctx.translate((q.ox+R.w/2-P.w/2)*k,0);
+ P.parts.forEach((q,i)=>{const R=q.R,b=i===0&&bag?{col:bag.col,hand:'back',ang:bag.ang}:null;ctx.save();ctx.translate((q.ox+R.w/2-P.w/2)*k,0);
   if(R.still){const bob=-Math.abs(Math.sin(dist*.12))*1.6*m;ctx.scale(k,k);ctx.translate(-R.w/2,-R.ground+bob);ctx.drawImage(R.c,0,0);
-   if(b&&R.fh){const hd=R.fh.hands.slice().sort((a,c)=>a.x-c.x)[0];drawBagV120(ctx,hd.x,hd.y,b.col);}}
+   if(b&&R.fh){const hd=R.fh.hands.slice().sort((a,c)=>a.x-c.x)[0];drawBagV120(ctx,hd.x,hd.y,b.col,bag.ang||0);}}
   else drawWalkV120(ctx,R,dist/(cycleLenV120(R)*k),m,k,b,i===1?pt:0);   /* the child points with its free hand */
   ctx.restore();});
 }

@@ -4,14 +4,17 @@
 if(window.UI121===false)return;
 const $=id=>document.getElementById(id);
 const NAVMAP={home:'home',tank:'tank',breed:'breed',market:'market'};
-const TITLES={home:'FISHROOM',breed:'BREEDING',market:'MARKET',dex:'FISHDEX',shop:'SHOP',store:'STORE',progress:'PROGRESS',settings:'SETTINGS'};
-let cur='home',hist=[],breedTab='breeder',guard=0,unread=0,badgeAt=0,explicitTank=false,tapped=false,sheetOpen=false,sheetScroll=0;
+const TITLES={home:'FISHROOM',breed:'BREEDING',market:'ORDERS',dex:'FISHDEX',shop:'SUPPLIES',store:'MY FISH STORE',progress:'PROGRESS',settings:'SETTINGS'};
+let cur='home',hist=[],breedTab='info',onBreeder=false,guard=0,unread=0,badgeAt=0,explicitTank=false,tapped=false,sheetOpen=false,sheetScroll=0;
 window.addEventListener('pointerdown',()=>{tapped=true},{once:true,capture:true});
 const events=[];
 const arrFor=k=>k==='fry'?st.fry:k==='breeder'?st.breederTank:st.fish;
 const alive=a=>(a||[]).filter(f=>f&&!f.dead).length;
 const tankName=k=>k==='fry'?'FRY TANK':k==='breeder'?'BREEDER TANK':'MAIN TANK';
 const breederOpen=()=>!!(st.unlockedTanks&&st.unlockedTanks.tank3);
+/* the tank the Tank tab is showing: main / fry from v8Tank, or the Breeder Tank (its own renderer) */
+const curTank=()=>onBreeder?'breeder':(typeof v8Tank==='string'&&v8Tank!=='breeder'?v8Tank:'main');
+const openTank=k=>{if(k==='breeder')renderV103Breeder();else{onBreeder=false;switchTankV8(k);}};
 const safe=(fn,tag)=>{try{return fn()}catch(e){console.error('AFNICA ui121 '+(tag||''),e)}};
 
 /* ---------- save defaults ---------- */
@@ -65,7 +68,7 @@ function buildShell(){
  head.innerHTML='<button class="u121Back" id="u121Back" onclick="u121back()" aria-label="Back">←</button><b id="u121Title">FISHROOM</b><button class="u121Pill" id="u121Lvl" onclick="u121go(\'progress\')"></button><button class="u121Pill" id="u121Coins" onclick="u121go(\'shop\')"></button><button class="u121Pill" id="u121Food" onclick="u121go(\'shop\')"></button><button class="u121Bell" id="u121Bell" onclick="u121layer(\'notes\')" aria-label="Notifications">🔔<i id="u121Badge" data-n="0"></i></button>';
  app.insertBefore(head,scr);
  const nav=document.createElement('div');nav.id='u121Nav';nav.className='u121Nav';
- nav.innerHTML=[['home','🏠','HOME'],['tank','🐠','TANK'],['breed','❤️','BREEDING'],['market','📦','MARKET'],['more','☰','MORE']].map(n=>`<button data-k="${n[0]}" onclick="u121nav('${n[0]}')"><em>${n[1]}</em>${n[2]}</button>`).join('');
+ nav.innerHTML=[['home','🏠','HOME'],['tank','🐠','TANK'],['breed','❤️','BREEDING'],['market','📦','ORDERS'],['more','☰','MORE']].map(n=>`<button data-k="${n[0]}" onclick="u121nav('${n[0]}')"><em>${n[1]}</em>${n[2]}</button>`).join('');
  app.insertBefore(nav,scr.nextSibling);
  const lay=document.createElement('div');lay.id='u121Layer';lay.className='u121Layer';lay.onclick=e=>{if(e.target===lay)u121layer(false)};
  lay.innerHTML='<div class="u121Panel" id="u121LayerBody"></div>';
@@ -103,7 +106,7 @@ function go(name,opts){
  safe(()=>{
   setAfnicaScreenV104(name);
   if(name==='home')showHome();
-  else if(name==='tank'){explicitTank=true;try{renderV8('home')}finally{explicitTank=false}}
+  else if(name==='tank'){if(onBreeder&&breederOpen()){renderV103Breeder();return;}explicitTank=true;try{renderV8('home')}finally{explicitTank=false}}
   else if(name==='breed')showBreed(breedTab);
   else if(name==='market')renderV10Market();
   else if(name==='dex')renderV8('dex');
@@ -116,17 +119,17 @@ function go(name,opts){
 window.u121go=go;
 window.u121nav=function(k){if(k==='more'){layer('more');return;}layer(false);go(k);};
 window.u121back=function(){layer(false);const p=hist.pop();const t=p&&p!==cur?p:'home';const prev=cur;go(t);/* go() recorded the jump as forward: drop it */if(hist[hist.length-1]===prev)hist.pop();};
-window.u121tank=function(k){layer(false);switchTankV8(k);};
+window.u121tank=function(k){layer(false);openTank(k);};
 window.u121cycle=function(dir){
- const list=['main','fry'].concat(breederOpen()?['breeder']:[]),i=Math.max(0,list.indexOf(typeof v8Tank==='string'?v8Tank:'main')),n=list[(i+dir+list.length)%list.length];
- if(n==='breeder'){breedTab='breeder';go('breed');}else switchTankV8(n);
+ const list=['main','fry'].concat(breederOpen()?['breeder']:[]),i=Math.max(0,list.indexOf(curTank())),n=list[(i+dir+list.length)%list.length];
+ openTank(n);
 };
 function layer(kind){
  const L=$('u121Layer');if(!L)return;
  if(!kind){L.classList.remove('open');return;}
  const body=$('u121LayerBody');
  if(kind==='more'){
-  body.innerHTML='<div class="u121Grid"><button onclick="u121go(\'dex\')"><em>🐟</em>FISHDEX</button><button onclick="u121go(\'shop\')"><em>🛒</em>SHOP</button><button onclick="u121go(\'store\')"><em>🏪</em>STORE</button><button onclick="u121go(\'progress\')"><em>🏆</em>PROGRESS</button><button onclick="u121go(\'settings\')"><em>⚙️</em>SETTINGS</button></div>';
+  body.innerHTML='<div class="u121Grid"><button onclick="u121go(\'dex\')"><em>🐟</em>FISHDEX</button><button onclick="u121go(\'shop\')"><em>🛒</em>SUPPLIES</button><button onclick="u121go(\'store\')"><em>🏪</em>MY STORE</button><button onclick="u121go(\'progress\')"><em>🏆</em>PROGRESS</button><button onclick="u121go(\'settings\')"><em>⚙️</em>SETTINGS</button></div>';
  }else{
   unread=0;refreshHead(true);
   const ns=notices();
@@ -137,7 +140,7 @@ function layer(kind){
 }
 window.u121layer=layer;
 function noticeRow(n){return `<div class="u121Card warn"><div class="ic" style="font-size:22px">${n.ic}</div><div class="tx"><b>${n.tx}</b></div><button class="go" onclick="u121notice('${n.go}')">GO</button></div>`}
-window.u121notice=function(g){layer(false);if(g==='breed'){breedTab='breeder';go('breed');}else if(g==='progress')go('progress');else if(g==='breeder'){breedTab='breeder';go('breed');}else switchTankV8(g);};
+window.u121notice=function(g){layer(false);if(g==='breed'){go('breed');}else if(g==='progress')go('progress');else openTank(g);};
 
 /* ---------- wrap existing renderers ---------- */
 const oldRenderV8=window.renderV8;
@@ -146,6 +149,7 @@ window.renderV8=function(s){
  /* at load, bootAfnica and later blocks re-render the tank by themselves: until the first tap those calls open Home instead */
  if(s==='home'&&!guard&&!explicitTank&&!tapped&&performance.now()<9000){showHome();return;}
  const sb=$('u121Sheet')&&$('u121Sheet').lastElementChild;if(sb)sheetScroll=sb.scrollTop;   /* the tank screen is rebuilt by every action: keep the sheet as it was */
+ if(s==='home')onBreeder=false;
  const r=oldRenderV8.apply(this,arguments);
  if(!guard)safe(()=>{
   if(s==='dex'){deco('dex');}
@@ -161,7 +165,9 @@ window.renderV9Fishroom=function(){if(guard)return oldRoom.apply(this,arguments)
 const oldBreeder=window.renderV103Breeder;
 window.renderV103Breeder=function(){
  const r=oldBreeder.apply(this,arguments);
- if(!guard)safe(()=>{breedTab='breeder';deco('breed');decoBreed();},'breeder');
+ onBreeder=true;
+ if(!guard)safe(()=>{deco('tank');document.body.classList.remove('u121tank');   /* the Tank tab, but the breeder page keeps its own tall layout */
+  const sc=$('screen');tankBar(sc,'breeder',sc.firstElementChild);},'breeder');
  return r;
 };
 if(typeof window.renderStoreV120==='function'){
@@ -191,10 +197,10 @@ function showHome(){
  const ns=notices().slice(0,3);
  $('screen').innerHTML=`<div class="u121Card" style="margin-bottom:10px"><div class="v9LevelOrb" style="flex:none">${st.playerLevel}</div><div class="tx"><b>FISHROOM LEVEL ${st.playerLevel}</b><div class="v9XP" style="margin-top:5px"><i style="width:${pct}%"></i></div><small>${st.xp}/${need} XP · DAY ${st.day}</small></div></div>
  <div class="u121Sub"><b>YOUR TANKS</b><span>${[st.unlockedTanks&&st.unlockedTanks.main,st.unlockedTanks&&st.unlockedTanks.fry,breederOpen()].filter(Boolean).length}/3</span></div>
- ${card('main','🐠','Main Tank',"switchTankV8('main')")}${card('fry','🐣','Fry Tank',"switchTankV8('fry')")}${card('breeder','🧬','Breeder Tank',"u121go('breed')",!breederOpen())}
+ ${card('main','🐠','Main Tank',"switchTankV8('main')")}${card('fry','🐣','Fry Tank',"switchTankV8('fry')")}${card('breeder','🧬','Breeder Tank',"u121tank('breeder')",!breederOpen())}
  ${ns.length?'<div class="u121Sub"><b>NEEDS ATTENTION</b><span onclick="u121layer(\'notes\')" style="cursor:pointer">SEE ALL ›</span></div>'+ns.map(noticeRow).join(''):''}
  <div class="u121Card" style="margin-top:10px"><div class="ic">✅</div><div class="tx"><b>TODAY · ${done}/3 DONE (MAIN)</b><small>Fry Tank: ${[df.feed,df.water,df.clean].filter(Boolean).length}/3 · feed · water · clean</small></div><button class="go" onclick="u121nextDay()">NEXT DAY →</button></div>
- <div class="u121Quick"><button onclick="u121go('dex')">🐟 FISHDEX</button><button onclick="u121go('shop')">🛒 SHOP</button><button onclick="u121go('store')">🏪 STORE</button><button onclick="u121go('progress')">🏆 PROGRESS</button></div>`;
+ <div class="u121Quick"><button onclick="u121go('dex')">🐟 FISHDEX</button><button onclick="u121go('shop')">🛒 SUPPLIES</button><button onclick="u121go('store')">🏪 MY STORE</button><button onclick="u121go('progress')">🏆 PROGRESS</button></div>`;
  deco('home');
 }
 /* every NEXT DAY (Home, Progress, the sheet's old button, the breeder button) runs under the guard so its own re-render does not
@@ -209,13 +215,21 @@ window.nextDay=function(){
 window.u121nextDay=function(){window.nextDay();};
 
 /* ---------- Tank screen ---------- */
-function decoTank(){
- const scr=$('screen'),hero=scr.querySelector('.v8hero');if(!hero)return;
- const k=typeof v8Tank==='string'?v8Tank:'main',list=['main','fry'].concat(breederOpen()?['breeder']:[]);
- /* tank bar: arrows + position dots */
+/* the tank bar (arrows + one dot per tank + name) shared by Main, Fry and the Breeder Tank */
+function tankBar(scr,k,before){
+ const list=['main','fry'].concat(breederOpen()?['breeder']:[]);
  const bar=document.createElement('div');bar.className='u121TankBar';
  bar.innerHTML=`<button onclick="u121cycle(-1)" aria-label="Previous tank">◀</button><div>${list.map(x=>`<i class="${x===k?'on':''}"></i>`).join('')}<span>${tankName(k)}</span></div><button onclick="u121cycle(1)" aria-label="Next tank">▶</button>`;
- scr.insertBefore(bar,hero);
+ if(before&&before.parentNode===scr)scr.insertBefore(bar,before);else scr.prepend(bar);
+ return bar;
+}
+function decoTank(){
+ const scr=$('screen'),hero=scr.querySelector('.v8hero');if(!hero)return;
+ const k=curTank();
+ const bar=tankBar(scr,k,hero);
+
+
+
  /* details sheet: every panel that used to sit under the tank, moved as is */
  const sheet=document.createElement('div');sheet.className='u121Sheet';sheet.id='u121Sheet';
  sheet.innerHTML='<div class="u121SheetHead"><b>FISH & TANK DETAILS</b><button onclick="u121sheet(false)" aria-label="Close">✕</button></div><div class="u121SheetBody"></div>';
@@ -232,34 +246,20 @@ function decoTank(){
 window.u121sheet=function(open){sheetOpen=!!open;const s=$('u121Sheet');if(s)s.classList.toggle('open',sheetOpen);};
 
 /* ---------- Breeding ---------- */
-function segBar(){
- return `<div class="u121Seg" id="u121Seg">${[['breeder','BREEDER'],['fry','FRY TANK'],['info','INFO']].map(t=>`<button class="${t[0]===breedTab?'on':''}" onclick="u121breedTab('${t[0]}')">${t[1]}</button>`).join('')}</div>`;
-}
-window.u121breedTab=function(t){breedTab=t;showBreed(t);};
-function showBreed(tab){
- breedTab=tab||'breeder';
- if(breedTab==='breeder'){renderV103Breeder();return;}   /* its wrapper decorates */
+/* Breeding = the breeding guide and status only; the Breeder Tank and the Fry Tank are tanks (Tank tab) */
+window.u121breedTab=function(){showBreed();};
+function showBreed(){
+ breedTab='info';
  setAfnicaScreenV104('breed');ensureHealthState();
  const scr=$('screen');
- if(breedTab==='fry'){
-  const fry=(st.fry||[]).filter(f=>f&&!f.dead),young=fry.filter(f=>f.age<7).length;
-  let h=100;safe(()=>{h=tankHealthFor('fry')},'h');
-  const broods=Array.isArray(st.broods45)?st.broods45.length:0;
-  scr.innerHTML=segBar()+`<div class="u121Card"><div class="ic">🐣</div><div class="tx"><b>Fry Tank</b><small>${fry.length} fish · ${young} young · health ${h}%</small></div><button class="go" onclick="switchTankV8('fry')">OPEN</button></div>
-  <div class="u121Card"><div class="ic">🤰</div><div class="tx"><b>Broods expected</b><small>${broods} female${broods===1?'':'s'} carrying fry in your tanks</small></div></div>
-  ${st.corySpawn?'<div class="u121Card"><div class="ic">🥚</div><div class="tx"><b>Corydoras spawn</b><small>Eggs hatch next day. Open the Fry Tank to see the fry.</small></div></div>':''}
-  <div class="v8panel"><b>📦 BREEDING BOX</b><div class="meta" style="margin-top:5px">The box hangs on the front glass of the Fry Tank. Open the Fry Tank to move young corydoras and bristlenose fry in and out. Buy it in the Shop.</div></div>
-  ${coryMovePanelV172('main',st.fish||[])}`;
-  deco('breed');
- }else{
-  scr.innerHTML=segBar()+breedHTML()+coryReadinessPanelV172();
-  deco('breed');
- }
+ const broods=Array.isArray(st.broods45)?st.broods45.length:0;
+ scr.innerHTML=`<div class="u121Card"><div class="ic">🧬</div><div class="tx"><b>Breeder Tank</b><small>${breederOpen()?alive(st.breederTank)+' fish · pair them up there':'locked'}</small></div>${breederOpen()?`<button class="go" onclick="u121tank('breeder')">OPEN</button>`:''}</div>
+ <div class="u121Card"><div class="ic">🤰</div><div class="tx"><b>Broods expected</b><small>${broods} female${broods===1?'':'s'} carrying fry in your tanks</small></div></div>
+ ${st.corySpawn?'<div class="u121Card"><div class="ic">🥚</div><div class="tx"><b>Corydoras spawn</b><small>Eggs hatch next day. Open the Fry Tank to see the fry.</small></div></div>':''}
+ ${breedHTML()}${coryReadinessPanelV172()}`;
+ deco('breed');
 }
-function decoBreed(){
- const scr=$('screen');if(!scr||scr.querySelector('#u121Seg'))return;
- scr.insertAdjacentHTML('afterbegin',segBar());
-}
+function decoBreed(){}
 
 /* ---------- Store / Settings ---------- */
 function showStore(){

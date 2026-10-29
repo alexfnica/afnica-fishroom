@@ -37,7 +37,7 @@ const oldNav=window.v8Nav;
 window.v8Nav=function(a){
  let h=oldNav.apply(this,arguments);
  if(window.STORE120===false)return h;
- try{h=h.replace('repeat(6,1fr)','repeat(7,1fr)').replace(/<\/div>\s*$/,`<button class="${a==='store'?'active':''}" onclick="renderStoreV120()">🏪<span>STORE</span></button></div>`);}catch(e){console.error('AFNICA store nav',e);}
+ try{h=h.replace('repeat(6,1fr)','repeat(7,1fr)').replace(/<\/div>\s*$/,`<button class="${a==='store'?'active':''}" onclick="renderStoreV120()">🏪<span>MY STORE</span></button></div>`);}catch(e){console.error('AFNICA store nav',e);}
  return h;
 };
 
@@ -183,7 +183,9 @@ function poseP(c,t){
    if(P.img.style.display!=='none'){P.img.style.display='none';P.cv.style.display='block';}
    const g=P.cv.getContext('2d'),k=150/R.h,m=Math.min(1,c.speed/25),cw=P.wide?240:100,bag=c.bagged?{col:c.bagCol}:null;
    g.setTransform(2,0,0,2,0,0);g.clearRect(0,0,cw,160);g.translate(cw/2,156);
-   const ptT=c.state==='look'&&c.pointing?1:0,pdt=Math.min(.1,Math.max(0,t-(c.plt||t)));c.plt=t;c.pt=(c.pt||0)+(ptT-(c.pt||0))*Math.min(1,pdt*4);
+   const pdt=Math.min(.1,Math.max(0,t-(c.plt||t)));c.plt=t;c.pt=0;   /* pointing off: the cut-out arm looked wrong (owner); comes back with real pose images */
+   if(bag){const cyc=(c.dist||0)/(window.cycleLenV120(R.pair?R.parts[0].R:R)*k),tgt=.16*m*Math.sin(2*Math.PI*cyc-1.3);
+    c.bagV=(c.bagV||0)+((tgt-(c.bagA||0))*30-(c.bagV||0)*7)*pdt;c.bagA=(c.bagA||0)+c.bagV*pdt;bag.ang=c.bagA;}
    if(R.pair)window.drawPairV120(g,R,c.dist||0,m,k,bag,c.pt);else window.drawWalkV120(g,R,(c.dist||0)/(window.cycleLenV120(R)*k),m,k,bag,c.pt);
    const lean=c.state==='look'?-2+Math.sin(t*3+sd)*(c.pointing?1.5:.5):0;
    P.cv.style.transform=`rotate(${lean.toFixed(2)}deg)`;
@@ -456,7 +458,7 @@ function custTick(c,dt,t){
   case 'toPay':if(arrived){c.state='atpay';c.faceT=1;ST.clerk.c=c;ST.clerk.t=0;ST.clerk.ph='';}break;
   case 'exit':if(arrived||(c.leaving!==undefined&&c.x<70&&c.path.length<=1)){c.alpha=Math.max(0,c.alpha-dt*3);if(c.alpha<=0)c.dead=true;}else if(c.x<120)c.alpha=Math.max(0,Math.min(c.alpha,(c.x-DOOR.x)/70+.3));break;
  }
- c.face+=(c.faceT-c.face)*Math.min(1,dt*8);
+ c.face+=(c.faceT-c.face)*Math.min(1,dt*16);
  const P=c.parts;
  P.el.style.transform=`translate(${(c.x-40).toFixed(1)}px,${(c.y-130).toFixed(1)}px) scale(${c.sz})`;P.el.style.zIndex=Math.round(c.y);P.el.style.opacity=c.alpha;
  P.svg.style.transform=`scaleX(${c.face.toFixed(3)})`;poseP(c,t);

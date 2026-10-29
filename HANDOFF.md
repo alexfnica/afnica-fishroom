@@ -1,3 +1,12 @@
+# Handoff - 2026-10-29 late: Tank / Breeding cleanup + renames (V17.121 edited, NOT committed)
+- Owner: the Tank tab's 3rd tile jumped to Breeding, and Breeding had BREEDER / FRY TANK / INFO tabs (Fry Tank in two places). Now: the Breeder Tank is the 3rd tank of the TANK tab (same arrows + dots, `curTank()` / `openTank()` / `onBreeder` in block121.js, its page keeps its own tall layout); BREEDING = guide + status only (Breeder Tank card with OPEN, broods expected, cory spawn, breedHTML, cory readiness). Move Corydoras stays in the Main tank's details sheet.
+- Renames (owner: SHOP / MARKET / STORE too alike): SUPPLIES, ORDERS, MY FISH STORE (title) / MY STORE (menus, old v8Nav tab).
+- test_ui121.py updated for the new layout: 36/36 PASS. Screens: docs/ui_breeder_tank.png, ui_breeding_guide.png, ui_more_menu.png.
+
+# Handoff - 2026-10-29 late: owner feedback after commit 1f1c4f4 (NOT committed since)
+- Owner: the bag in the customers' hand moves badly, the pointing arm looks weird, the owner's handover looks wrong ('we can do better'). Done so far: pointing switched off (c.pt=0), bag gets a lagging pendulum swing and stays in the fist, faster turn (face lerp dt*16). The cut-out approach has hit its limit: next = Gemini pose images (owner handing a bag over; customers holding a bag; kids pointing) and crossfades between poses.
+- Owner: SHOP / MARKET / STORE names are too alike. Labels live in V17.121 (`TITLES`, the bottom nav array, the More grid, `u121Quick`) and in v8Nav (V17.120 adds a STORE tab). Proposal given in chat, waiting for the owner's pick.
+
 # Handoff - 2026-10-29: FISH STORE reactions, pointing, calmer clerk, no-jam walking (V17.120, NOT committed)
 - Clerk ('looks weird' feedback): arm now = upper arm + forearm (`owner_arm_upper/fore.png`, split at the sleeve hem by cut_owner_arm.py), elbow bends when holding the bag out; floating net removed; idle/serve motions toned down (head 1.5-6 deg, body 1-2 px). Bag: counter beside him -> his hand -> customer's hand (`ownerHandV120(aa,ea)`).
 - Reactions: at each tank `tankOpinion` = good / pricey / meh from the same rules as buying -> bubble ('Good price! 👍', 'Pricey… 💸', 👀) and pointing (good, or kids in pairs when they like something). Pointing = `pointRig` in walk120.js (front arm lifted out, hole filled from the body behind, rotated to just above level). `docs/reactions_0..2.png`.
