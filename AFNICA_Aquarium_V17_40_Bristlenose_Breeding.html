@@ -16071,10 +16071,11 @@ function loop(now,gen){
  }catch(e){console.error('AFNICA store loop',e);}
 }
 
-/* ---------- weekly import: an importer offers 3 random species every game Monday; bought fish spend 2 days in quarantine ---------- */
+/* ---------- weekly import: an importer offers 3 random species every game Monday; bought fish spend QDAYS (7) game days in quarantine ---------- */
 const weekOf=d=>Math.floor((Math.max(1,d)-1)/7),isMonday=d=>(Math.max(1,d)-1)%7===0;
 /* one imported fish of species sp around the offer's grade level gr (each fish its own genes), sex chosen by the player */
 const IMPMAX=10;   /* the importer brings at most 10 fish of each species per week */
+const QDAYS=7;   /* imported fish stay 7 game days in quarantine (owner) */
 function impFishV120(sp,gr,sex){
  const g=()=>Math.max(30,Math.min(99,Math.round(gr+(Math.random()*8-4))));
  const id='imp'+st.day+'_'+sp+'_'+Math.floor(Math.random()*1e7);
@@ -16090,7 +16091,7 @@ function fixOffersV120(){const o=st.imp120&&st.imp120.offers;if(!Array.isArray(o
  o.forEach((x,i)=>{if(x.fish&&!x.sp){const f=x.fish,gr=Math.round((f.genes.color+f.genes.pattern+f.genes.fins+f.genes.vitality)/4);o[i]={sp:f.species,gr,price:x.price,left:x.bought?IMPMAX-1:IMPMAX,sample:f};}});}
 function impCardsV120(){
  fixOffersV120();const o=st.imp120.offers||[];if(!o.length)return '<div class="meta">No shipment this week.</div>';
- return o.map((x,i)=>{const f=x.sample,g=gradeV10(f);return `<div class="st120row"><div class="av">${dexAvatarHTML(f,56,34)}</div><div class="in"><b>${sname(f)}</b> <span class="v10Grade ${g.cls}">${g.name}</span><small>🪙 ${x.price} each · <b>${x.left} / ${IMPMAX} left</b> · 2 days quarantine</small></div><div class="ctl">${x.left>0?`<button class="btn small green" onclick="stImportBuy120(${i},'M')">BUY ♂</button><button class="btn small green" onclick="stImportBuy120(${i},'F')">BUY ♀</button>`:'<b style="color:#ffb347;font-size:11px">SOLD OUT</b>'}</div></div>`;}).join('');
+ return o.map((x,i)=>{const f=x.sample,g=gradeV10(f);return `<div class="st120row"><div class="av">${dexAvatarHTML(f,56,34)}</div><div class="in"><b>${sname(f)}</b> <span class="v10Grade ${g.cls}">${g.name}</span><small>🪙 ${x.price} each · <b>${x.left} / ${IMPMAX} left</b> · 7 days quarantine</small></div><div class="ctl">${x.left>0?`<button class="btn small green" onclick="stImportBuy120(${i},'M')">BUY ♂</button><button class="btn small green" onclick="stImportBuy120(${i},'F')">BUY ♀</button>`:'<b style="color:#ffb347;font-size:11px">SOLD OUT</b>'}</div></div>`;}).join('');
 }
 function quarHTMLV120(){
  const q=st.quar120||[];if(!q.length)return '';
@@ -16102,12 +16103,28 @@ function importPanelV120(){
 }
 window.stImport120=function(){try{ensureHealthState();ensureStoreV120();if(st.imp120.week!==weekOf(st.day))makeOffersV120();st.imp120.shown=true;save();
  const IM=window.ST120_IMPORTER;
- pop('📦 WEEKLY IMPORT',`<div class="imp120"><div class="who">${IM?`<img src="${IM}" alt="">`:'<span class="sil">🧔</span>'}<div><b>Marco, the fish importer</b><small>"Fresh shipment this week! Pick what you like 📦"</small></div></div>${impCardsV120()}<div class="tip"><b>AFNICA tip:</b> imported fish bring new genes for breeding. They wait 2 days in quarantine before joining your tanks.</div></div>`,'LATER');}catch(e){console.error('AFNICA store import',e);}};
+ pop('📦 WEEKLY IMPORT',`<div class="imp120"><div class="who">${IM?`<img src="${IM}" alt="">`:'<span class="sil">🧔</span>'}<div><b>Marco, the fish importer</b><small>"Fresh shipment this week! Pick what you like 📦"</small></div></div>${impCardsV120()}<div class="tip"><b>AFNICA tip:</b> imported fish bring new genes for breeding. Put them in quarantine for 7 days first: new fish can carry diseases.</div></div>`,'LATER');}catch(e){console.error('AFNICA store import',e);}};
+/* buying asks where the fish goes: 7 days of quarantine (recommended) or straight into the Main Tank at the player's risk */
+let impPend=null;
 window.stImportBuy120=function(i,sex){
  try{fixOffersV120();const x=st.imp120.offers[i];if(!x||x.left<=0)return toast('Sold out for this week');if(st.coins<x.price)return toast('Not enough coins');
-  const f=impFishV120(x.sp,x.gr,sex==='F'?'F':'M');st.coins-=x.price;x.left--;st.quar120.push({fish:f,until:st.day+2,sick:Math.random()<.15});save();
-  toast(`📦 ${sname(f)} ${f.sex==='M'?'♂':'♀'} bought (${x.left} left) · 2 days in quarantine`);try{coinsUI();}catch(e){}
-  if(document.querySelector('.imp120'))stImport120();if($('st120panel'))panel();}catch(e){console.error('AFNICA store import buy',e);}
+  impPend={i,sex:sex==='F'?'F':'M',back:!!document.querySelector('.imp120')};
+  pop('🧪 QUARANTINE?',`<div class="imp120"><div class="tip" style="margin:0 0 8px"><b>AFNICA:</b> new fish can carry ich, fungus or bacteria without showing it. A ${QDAYS}-day quarantine is the safe way, boss: if one is sick, it is treated there and joins your tank healthy.</div>
+   <button class="btn green wide" style="margin-bottom:6px" onclick="stImportGo120(true)">🧪 QUARANTINE ${QDAYS} DAYS (recommended)</button>
+   <button class="btn wide" style="background:#a34040;margin-bottom:4px" onclick="stImportGo120(false)">⚠️ STRAIGHT TO THE MAIN TANK</button>
+   <div class="meta" style="font-size:11px;opacity:.85">At your own risk: a sick fish brings its disease into your tank, and it can spread.</div></div>`,'CANCEL');
+ }catch(e){console.error('AFNICA store import buy',e);}
+};
+window.stImportGo120=function(q){
+ try{const P=impPend;impPend=null;if(!P)return;const x=st.imp120.offers[P.i];if(!x||x.left<=0)return toast('Sold out for this week');if(st.coins<x.price)return toast('Not enough coins');
+  const f=impFishV120(x.sp,x.gr,P.sex),sick=Math.random()<.15;st.coins-=x.price;x.left--;
+  const dst=!q?[st.fish,st.fry].find(a=>Array.isArray(a)&&a.length<7):null;
+  if(q||!dst){st.quar120.push({fish:f,until:st.day+QDAYS,sick});toast(`🧪 ${sname(f)} ${f.sex==='M'?'♂':'♀'} in quarantine for ${QDAYS} days (${x.left} left)`+(!q?' · your tanks are full':''));}
+  else{if(sick){const r=Math.random();f.disease=r<.6?'ich':r<.8?'fungus':'bacteria';f.sickDays=0;f.treatment=null;f.health=Math.max(10,(f.health||100)-15);}
+   dst.push(f);toast(sick?`⚠️ The new ${sname(f)} brought ${f.disease==='ich'?'ich':f.disease} into your ${dst===st.fish?'Main':'Fry'} Tank! Treat it fast.`:`✅ ${sname(f)} ${f.sex==='M'?'♂':'♀'} went straight into your ${dst===st.fish?'Main':'Fry'} Tank (${x.left} left)`);}
+  save();try{coinsUI();}catch(e){}
+  if(typeof closePop==='function')closePop();if(P.back)setTimeout(()=>stImport120(),60);if($('st120panel'))panel();
+ }catch(e){console.error('AFNICA store import go',e);}
 };
 /* release from quarantine (any screen): sick ones were caught and treated there */
 function quarTickV120(){
