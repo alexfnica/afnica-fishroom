@@ -16073,18 +16073,24 @@ function loop(now,gen){
 
 /* ---------- weekly import: an importer offers 3 random species every game Monday; bought fish spend 2 days in quarantine ---------- */
 const weekOf=d=>Math.floor((Math.max(1,d)-1)/7),isMonday=d=>(Math.max(1,d)-1)%7===0;
-function impFishV120(sp,i){
- const r=Math.random(),gr=r<.1?88:r<.45?79:68,g=()=>Math.max(30,Math.min(99,Math.round(gr+(Math.random()*8-4))));
- const id='imp'+st.day+'_'+i+'_'+Math.floor(Math.random()*1e6);
- return {id,name:id,species:sp,sex:Math.random()<.5?'M':'F',age:(S[sp].adult||10)+4,genes:{color:g(),pattern:g(),fins:g(),vitality:g(),mutation:null},health:100,dead:false,disease:null,treatment:null,hungerDays:0,sickDays:0,imported:true};
+/* one imported fish of species sp around the offer's grade level gr (each fish its own genes), sex chosen by the player */
+const IMPMAX=10;   /* the importer brings at most 10 fish of each species per week */
+function impFishV120(sp,gr,sex){
+ const g=()=>Math.max(30,Math.min(99,Math.round(gr+(Math.random()*8-4))));
+ const id='imp'+st.day+'_'+sp+'_'+Math.floor(Math.random()*1e7);
+ return {id,name:id,species:sp,sex:sex||(Math.random()<.5?'M':'F'),age:(S[sp].adult||10)+4,genes:{color:g(),pattern:g(),fins:g(),vitality:g(),mutation:null},health:100,dead:false,disease:null,treatment:null,hungerDays:0,sickDays:0,imported:true};
 }
 function makeOffersV120(){
  const sps=Object.keys(S).filter(k=>S[k]&&S[k].price&&S[k].adult&&FCOL[k]).sort(()=>Math.random()-.5).slice(0,3);
- st.imp120={week:weekOf(st.day),shown:false,offers:sps.map((sp,i)=>{const f=impFishV120(sp,i);return {fish:f,price:Math.round(sellValueV9(f)*1.6/5)*5,bought:false};})};
+ st.imp120={week:weekOf(st.day),shown:false,offers:sps.map(sp=>{const r=Math.random(),gr=r<.1?88:r<.45?79:68,sample=impFishV120(sp,gr,'M');
+  return {sp,gr,price:Math.round(sellValueV9(sample)*1.6/5)*5,left:IMPMAX,sample};})};
 }
+/* saves from before the 10-per-species offer: one fish per card -> a 10-fish card of the same species and level */
+function fixOffersV120(){const o=st.imp120&&st.imp120.offers;if(!Array.isArray(o))return;
+ o.forEach((x,i)=>{if(x.fish&&!x.sp){const f=x.fish,gr=Math.round((f.genes.color+f.genes.pattern+f.genes.fins+f.genes.vitality)/4);o[i]={sp:f.species,gr,price:x.price,left:x.bought?IMPMAX-1:IMPMAX,sample:f};}});}
 function impCardsV120(){
- const o=st.imp120.offers||[];if(!o.length)return '<div class="meta">No shipment this week.</div>';
- return o.map((x,i)=>{const f=x.fish,g=gradeV10(f);return `<div class="st120row"><div class="av">${dexAvatarHTML(f,56,34)}</div><div class="in"><b>${sname(f)} ${f.sex==='M'?'♂':'♀'}</b> <span class="v10Grade ${g.cls}">${g.name}</span><small>new bloodline · 2 days quarantine</small></div><div class="ctl">${x.bought?'<b style="color:#7fe08a;font-size:11px">BOUGHT ✓</b>':`<button class="btn small green" onclick="stImportBuy120(${i})">🪙 ${x.price}</button>`}</div></div>`;}).join('');
+ fixOffersV120();const o=st.imp120.offers||[];if(!o.length)return '<div class="meta">No shipment this week.</div>';
+ return o.map((x,i)=>{const f=x.sample,g=gradeV10(f);return `<div class="st120row"><div class="av">${dexAvatarHTML(f,56,34)}</div><div class="in"><b>${sname(f)}</b> <span class="v10Grade ${g.cls}">${g.name}</span><small>🪙 ${x.price} each · <b>${x.left} / ${IMPMAX} left</b> · 2 days quarantine</small></div><div class="ctl">${x.left>0?`<button class="btn small green" onclick="stImportBuy120(${i},'M')">BUY ♂</button><button class="btn small green" onclick="stImportBuy120(${i},'F')">BUY ♀</button>`:'<b style="color:#ffb347;font-size:11px">SOLD OUT</b>'}</div></div>`;}).join('');
 }
 function quarHTMLV120(){
  const q=st.quar120||[];if(!q.length)return '';
@@ -16097,10 +16103,10 @@ function importPanelV120(){
 window.stImport120=function(){try{ensureHealthState();ensureStoreV120();if(st.imp120.week!==weekOf(st.day))makeOffersV120();st.imp120.shown=true;save();
  const IM=window.ST120_IMPORTER;
  pop('📦 WEEKLY IMPORT',`<div class="imp120"><div class="who">${IM?`<img src="${IM}" alt="">`:'<span class="sil">🧔</span>'}<div><b>Marco, the fish importer</b><small>"Fresh shipment this week! Pick what you like 📦"</small></div></div>${impCardsV120()}<div class="tip"><b>AFNICA tip:</b> imported fish bring new genes for breeding. They wait 2 days in quarantine before joining your tanks.</div></div>`,'LATER');}catch(e){console.error('AFNICA store import',e);}};
-window.stImportBuy120=function(i){
- try{const x=st.imp120.offers[i];if(!x||x.bought)return;if(st.coins<x.price)return toast('Not enough coins');
-  st.coins-=x.price;x.bought=true;const sick=Math.random()<.15;st.quar120.push({fish:x.fish,until:st.day+2,sick});save();
-  toast(`📦 ${sname(x.fish)} bought · 2 days in quarantine`);try{coinsUI();}catch(e){}
+window.stImportBuy120=function(i,sex){
+ try{fixOffersV120();const x=st.imp120.offers[i];if(!x||x.left<=0)return toast('Sold out for this week');if(st.coins<x.price)return toast('Not enough coins');
+  const f=impFishV120(x.sp,x.gr,sex==='F'?'F':'M');st.coins-=x.price;x.left--;st.quar120.push({fish:f,until:st.day+2,sick:Math.random()<.15});save();
+  toast(`📦 ${sname(f)} ${f.sex==='M'?'♂':'♀'} bought (${x.left} left) · 2 days in quarantine`);try{coinsUI();}catch(e){}
   if(document.querySelector('.imp120'))stImport120();if($('st120panel'))panel();}catch(e){console.error('AFNICA store import buy',e);}
 };
 /* release from quarantine (any screen): sick ones were caught and treated there */
