@@ -64,3 +64,9 @@
 .u122Sw i.on{border-color:#f2b33d;box-shadow:0 0 0 2px #f2b33d55}
 .u122Name{width:100%;box-sizing:border-box;background:#09232e;border:1px solid #25404c;border-radius:12px;padding:10px 12px;color:#fff;font:800 14px Inter,system-ui,sans-serif}
 @media (prefers-reduced-motion:reduce){.u122F,.u122Me.idle img,.u122Me.walk img,.u122Btns button.pulse{animation:none}}
+
+.u122F.bt{animation-name:u122Crawl;animation-timing-function:ease-in-out}
+@keyframes u122Crawl{0%{transform:translateX(0) scaleX(1)}46%{transform:translateX(var(--d)) scaleX(1)}50%{transform:translateX(var(--d)) scaleX(-1)}96%{transform:translateX(0) scaleX(-1)}100%{transform:translateX(0) scaleX(1)}}
+.u122Sign.long{font-size:11px;letter-spacing:.18em}
+.u122Legs{position:absolute;left:50%;bottom:0;transform:translateX(-50%);pointer-events:none}
+.u122Me.walk img{animation:none}

@@ -73,10 +73,15 @@ function tankWin(k,nm){
  else if(ns.length)badge=`<span class="u122Bub warn">${ns[0].ic}${ns.length>1?' '+ns.length:''}</span>`;
  else if(k==='fry'&&a.length)badge=`<span class="u122Bub ok">🐣 ${a.length}</span>`;
  else badge='<span class="u122Bub ok">✓</span>';
- const fish=open?'':a.slice(0,3).map((f,i)=>`<div class="u122F" style="top:${8+i*24}%;--d:${12+i*8}px;animation-duration:${7+i*2.3}s;animation-delay:${-i*2.1}s">${safe(()=>dexAvatarHTML(f,52,30),'fish')||''}</div>`).join('');
+ const av=(f,w,h)=>window.fishAvV120?window.fishAvV120(f,w,h):dexAvatarHTML(f,w,h);let nb=0,ns2=0;
+ const fish=open?'':a.slice(0,3).map((f,i)=>{const bot=f.species==='anc'||f.species==='cory';   /* bottom fish stay on the sand */
+  const pos=bot?`bottom:${7+(nb%2)*3}%;left:${6+(nb++)*30}%;--d:${8+i*5}px;animation-duration:${13+i*3}s`:`top:${8+(ns2++)*24}%;--d:${12+i*8}px;animation-duration:${7+i*2.3}s`;
+  return `<div class="u122F${bot?' bt':''}" style="${pos};animation-delay:${-i*2.1}s">${safe(()=>bot?av(f,40,23):av(f,52,30),'fish')||''}</div>`;}).join('');
  const fn=open?'unlockTank3V9()':k==='breeder'?"u121tank('breeder')":`switchTankV8('${k}')`;
  return `<div class="u122Tk" onclick="${fn}" role="button" aria-label="${nm}">${badge}<div class="u122Wtr">${fish}</div><i class="u122Sand"></i></div>`;
 }
+/* the fishroom sign carries the player's name (same name as the store sign) */
+function signName(){let n='';try{n=(window.playerNameV120?window.playerNameV120():me().name)||''}catch(e){}n=String(n).trim().toUpperCase();return n?(/S$/.test(n)?n+"'":n+"'S"):'AFNICA';}
 function sayText(m){
  const ns=api.notices(),list=[];
  if(!m.chosen)list.push(`Hi! I'm ${m.name}. Tap 🎨 below to choose who I am.`);
@@ -99,7 +104,7 @@ window.u122Home=function(){
  const dm=dailyFor('main'),df=dailyFor('fry'),done=[dm.feed,dm.water,dm.clean].filter(Boolean).length,ns=api.notices().slice(0,2);
  const g=++gen;
  $('screen').innerHTML=`<div class="u122Room ${isNight()?'night':''}" id="u122Room">
-  <div class="u122Win"></div><div class="u122Sign">AFNICA<small>FISHROOM</small></div>
+  <div class="u122Win"></div><div class="u122Sign${signName().length>9?' long':''}">${esc(signName())}<small>FISHROOM</small></div>
   <div class="u122Shelf">${tankWin('main','Main tank')}${tankWin('fry','Fry tank')}${tankWin('breeder','Breeder tank')}</div>
   <div class="u122Plank"></div><div class="u122Lbl"><span>MAIN</span><span>FRY</span><span>BREEDER</span></div>
   <div class="u122Door" onclick="u122Door()" role="button" aria-label="My store"><i>🏪</i><b>MY STORE</b></div>
@@ -117,19 +122,30 @@ window.u122Home=function(){
 };
 /* the character: stands facing the player, now and then walks to another spot (side-view picture, flipped when going left), then turns back */
 const SPOTS=[27,50,73];
+async function legRig(src){try{if(!window.rigSpriteV120)return null;const im=new Image();im.src=src;await im.decode();return window.rigSpriteV120(im,{noArms:true});}catch(e){console.error('AFNICA home leg rig',e);return null;}}
+/* while walking the picture is swapped for a canvas that draws the rig: legs step in time with the distance covered */
+function walkLegs(g,el,img,R,left,dpct,dur){
+ const room=$('u122Room');if(!room)return;const ch=img.offsetHeight||el.offsetHeight,k=ch/R.h,cw=Math.round(R.w*k*1.6),pxms=room.offsetWidth*dpct/100/dur,cyc=window.cycleLenV120(R)*k;
+ const cv=document.createElement('canvas'),dpr=window.devicePixelRatio||1;cv.width=cw*dpr;cv.height=ch*dpr;cv.className='u122Legs';cv.style.width=cw+'px';cv.style.height=ch+'px';el.appendChild(cv);img.style.visibility='hidden';
+ const c=cv.getContext('2d');let ph=0,t0=performance.now(),last=t0;
+ const fr=now=>{if(g!==gen||!cv.isConnected)return;const dt=now-last;last=now;ph+=dt*pxms/cyc;
+  if(now-t0>=dur){cv.remove();img.style.visibility='';return;}
+  c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,cw,ch);c.translate(cw/2,R.ground*k);if(left)c.scale(-1,1);window.drawWalkV120(c,R,ph,1,k,null,0);requestAnimationFrame(fr);};
+ fr(t0);   /* first frame now: with the page in the background rAF waits, and the step's own timer cleans up */
+}
 async function startCharacter(g,m){
  /* a picture that cannot be loaded or recoloured falls back to the original, so the character never disappears */
  const [front,walk]=await Promise.all([sprite(m.id,'front',m.outfit).catch(()=>AV.front[m.id]),sprite(m.id,'walk',m.outfit).catch(()=>AV.walk[m.id]||AV.front[m.id])]);
  const img=$('u122Img'),el=$('u122Me');if(g!==gen||!img||!el)return;
  img.src=front;img.onload=()=>{img.style.opacity='1'};if(img.complete)img.style.opacity='1';
  setTimeout(()=>{if(g===gen)showSay(sayText(m))},500);
- const hasWalk=!!AV.walk[m.id];let x=50;
+ const hasWalk=!!AV.walk[m.id];let x=50;const rig=hasWalk?await legRig(walk):null;
  const step=()=>{
   if(g!==gen||!$('u122Me'))return;
   const opts=SPOTS.filter(s=>Math.abs(s-x)>5),to=opts[Math.floor(Math.random()*opts.length)],dur=Math.abs(to-x)*95;   /* ms: 2.1 s for a 23 % hop, 4.4 s for the longest */
-  if(hasWalk){img.src=walk;img.style.transform=to<x?'scaleX(-1)':'none';el.classList.remove('idle');el.classList.add('walk');}
+  if(hasWalk){img.src=walk;img.style.transform=to<x?'scaleX(-1)':'none';el.classList.remove('idle');el.classList.add('walk');if(rig)walkLegs(g,el,img,rig,to<x,Math.abs(to-x),dur);}
   el.style.transitionDuration=dur+'ms';el.style.left=to+'%';x=to;
-  setTimeout(()=>{if(g!==gen||!$('u122Me'))return;img.src=front;img.style.transform='none';el.classList.remove('walk');el.classList.add('idle');el.style.transitionDuration='0ms';
+  setTimeout(()=>{if(g!==gen||!$('u122Me'))return;el.querySelectorAll('.u122Legs').forEach(x=>x.remove());img.style.visibility='';img.src=front;img.style.transform='none';el.classList.remove('walk');el.classList.add('idle');el.style.transitionDuration='0ms';
    setTimeout(step,5500+Math.random()*6000);},dur+60);
  };
  setTimeout(step,3500+Math.random()*3000);

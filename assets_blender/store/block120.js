@@ -310,6 +310,21 @@ function ancImgV120(f){
    const fl=[pf,ef].filter(x=>x&&x!=='none').join(' ');if(fl)g.filter=fl;g.drawImage(sh,-bp[0]*k,-bp[1]*k,w*k,h*k,0,0,c.width,c.height);res.src=c.toDataURL('image/png');};
   sh.src=m[1];return res;}catch(er){return null;}finally{d.remove();}
 }
+/* the bristlenose's small pictures (tanks, sale board, lists): the dex avatar scales its 2500 px sprite sheet down in CSS and looks blocky,
+   so it is cut from the sheet once (ancImgV120) and shrunk in halving steps to 3x the shown size, then drawn as a plain <img> */
+const ANCSM=new Map();let ancN120=0;
+function ancSmallV120(im,w){const key=im.src.length+'|'+im.src.slice(-40)+'|'+w;let u=ANCSM.get(key);if(u)return u;
+ let c=document.createElement('canvas');c.width=im.naturalWidth;c.height=im.naturalHeight;c.getContext('2d').drawImage(im,0,0);const W=Math.max(8,Math.round(w*3));
+ while(c.width/2>=W){const n=document.createElement('canvas');n.width=Math.round(c.width/2);n.height=Math.round(c.height/2);const g=n.getContext('2d');g.imageSmoothingQuality='high';g.drawImage(c,0,0,n.width,n.height);c=n;}
+ u=c.toDataURL('image/png');ANCSM.set(key,u);return u;}
+function avV120(f,w,h){
+ if(f&&f.species==='anc'&&typeof ancGraphicV1719==='function'){try{const im=ancImgV120(f);if(im){
+  if(im.complete&&im.naturalWidth)return `<img class="anc120" alt="" src="${ancSmallV120(im,w)}" style="width:${w}px;height:${h}px">`;
+  const id='anc120_'+(++ancN120);im.addEventListener('load',()=>{const e=document.getElementById(id);if(e)e.src=ancSmallV120(im,w);},{once:true});
+  return `<img class="anc120" id="${id}" alt="" style="width:${w}px;height:${h}px">`;}}catch(e){console.error('AFNICA store anc picture',e);}}
+ return dexAvatarHTML(f,w,h);
+}
+window.fishAvV120=avV120;   /* also used by the V17.122 fishroom Home */
 function fishImgV120(f){
  try{if(f.species==='anc'&&typeof ancGraphicV1719==='function'){const a=ancImgV120(f);if(a)return a;}let u=realAssetV154(f);if(!u){const set=REAL_FISH_ASSETS_V154[assetSpeciesKeyV154(f)]||{};u=set.adult_m||set.adult_f||set.juvenile||set.fry;}
   if(!u)return null;const im=new Image();im.src=u;return im;}catch(e){return null;}
@@ -406,7 +421,7 @@ function syncFish(){
   const ti=Math.floor(f.storeSlot/s.slotsPerTank),si=f.storeSlot%s.slotsPerTank,fb=$('st120fb'+ti);if(!fb)return;
   const bot=isBottom(f),k=si;   /* its own place: bottom fish on the sand, the others in the water */
   let el=ST.els.get(f.id);
-  if(!el){el=document.createElement('div');el.className='sf'+(isBottom(f)?' bt':'');el.innerHTML=`<div class="d" style="animation-duration:${(isBottom(f)?9:5)+Math.random()*4}s;animation-delay:-${(Math.random()*6).toFixed(1)}s">${dexAvatarHTML(f,32,19)}</div>`;ST.els.set(f.id,el);}
+  if(!el){el=document.createElement('div');el.className='sf'+(isBottom(f)?' bt':'');el.innerHTML=`<div class="d" style="animation-duration:${(isBottom(f)?9:5)+Math.random()*4}s;animation-delay:-${(Math.random()*6).toFixed(1)}s">${avV120(f,32,19)}</div>`;ST.els.set(f.id,el);}
   if(el.parentNode!==fb)fb.appendChild(el);
   const p=(bot?FLOOR:SWIM)[k%4];if(!el.sw){el.sw={x:p.x,y:p.y,tx:p.x,ty:p.y,f:Math.random()<.5?1:-1,fs:1,w:Math.random()*3,bot};el.style.left='0px';el.style.top='0px';el.firstChild.style.animation='none';}
   el.classList.toggle('gone',!!f._net120);seen.add(f.id);
@@ -427,13 +442,13 @@ function rowHTML(f,mode){
   ?`<button class="btn small blue" onclick="stPrice120('${f.id}',-10)">−10%</button><button class="btn small blue" onclick="stPrice120('${f.id}',10)">+10%</button><button class="btn small" style="background:#8a3a3a" onclick="stReturn120('${f.id}')">RETURN</button>`
   :`<button class="btn small green" onclick="stStock120('${f.id}')">STOCK</button>`;
  const sx=knownSex(f)?(f.sex==='M'?' ♂':f.sex==='F'?' ♀':''):'';
- return `<div class="st120row"><div class="av">${dexAvatarHTML(f,56,34)}</div><div class="in"><b>${sicon(f)} ${sname(f)}${sx}</b> <span class="v10Grade ${g.cls}">${g.name}</span>
+ return `<div class="st120row"><div class="av">${avV120(f,56,34)}</div><div class="in"><b>${sicon(f)} ${sname(f)}${sx}</b> <span class="v10Grade ${g.cls}">${g.name}</span>
   <small>${mode==='shop'?`value 🪙 ${fair} · price <b>🪙 ${priceV120(f)}</b> (${f.storePct||115}%)`:`worth about 🪙 ${Math.round(fair*1.15)} in the store · health ${Math.round(f.health==null?100:f.health)}`}</small></div><div class="ctl">${btns}</div></div>`;
 }
 /* the sale sign on the wall: which species is on sale today and how much off */
 function boardUI(){
  const b=$('st120board');if(!b)return;const sa=saleV120(),f=sa.species&&st.storeFish.find(x=>x.species===sa.species);
- const h=f?`<b>SALE</b><div class="ss">${dexAvatarHTML(f,52,30)}</div><div class="sn">${sname(f)}</div><em>−${sa.pct}% today</em>`:`<b class="off">SALE</b><div class="sn">coming soon</div>`;
+ const h=f?`<b>SALE</b><div class="ss">${avV120(f,52,30)}</div><div class="sn">${sname(f)}</div><em>−${sa.pct}% today</em>`:`<b class="off">SALE</b><div class="sn">coming soon</div>`;
  if(b.__h!==h){b.innerHTML=h;b.__h=h;}
 }
 window.stSale120=function(){
@@ -445,7 +460,7 @@ function speciesRowsV120(){
  const by={};st.storeFish.forEach(f=>{if(!f._res120)(by[f.species]=by[f.species]||[]).push(f);});
  const ks=Object.keys(by);if(!ks.length)return '';
  return `<div class="v8panel"><div class="v8head"><b>PRICE PER SPECIES</b><span>ALL AT ONCE</span></div>${ks.map(k=>{const fs=by[k],pr=fs.map(priceV120),a=Math.min(...pr),b=Math.max(...pr),pc=Math.round(fs.reduce((x,f)=>x+(f.storePct||115),0)/fs.length);
-  return `<div class="st120row"><div class="av">${dexAvatarHTML(fs[0],56,34)}</div><div class="in"><b>${sname(fs[0])} ×${fs.length}</b><small>🪙 ${a===b?a:a+'–'+b} · ${pc}% of value</small></div><div class="ctl"><button class="btn small blue" onclick="stPriceSp120('${k}',-10)">−10%</button><button class="btn small blue" onclick="stPriceSp120('${k}',10)">+10%</button></div></div>`;}).join('')}</div>`;
+  return `<div class="st120row"><div class="av">${avV120(fs[0],56,34)}</div><div class="in"><b>${sname(fs[0])} ×${fs.length}</b><small>🪙 ${a===b?a:a+'–'+b} · ${pc}% of value</small></div><div class="ctl"><button class="btn small blue" onclick="stPriceSp120('${k}',-10)">−10%</button><button class="btn small blue" onclick="stPriceSp120('${k}',10)">+10%</button></div></div>`;}).join('')}</div>`;
 }
 window.stPriceSp120=function(sp,d){
  st.storeFish.forEach(f=>{if(f.species===sp&&!f._res120)f.storePct=Math.max(50,Math.min(200,(f.storePct||115)+d));});save();syncFish();panel();
@@ -745,7 +760,7 @@ function clerkTick(dt,t){
   if(cur==='pay')ownerSay(pickV120(['Thank you! 🙏','Come back soon! 👋','Happy fishkeeping! 🐟']),1.6);
   if(cur==='net'&&f){f._net120=true;syncFish();}
   if(cur==='bag')sndV120('rustle');
-  if(cur==='bag'&&f){cb.classList.remove('on');cb.innerHTML=`<div class="bw"></div><div class="bfish">${dexAvatarHTML(f,44,26)}</div>`;}   /* he holds it in the 'bag' picture */
+  if(cur==='bag'&&f){cb.classList.remove('on');cb.innerHTML=`<div class="bw"></div><div class="bfish">${avV120(f,44,26)}</div>`;}   /* he holds it in the 'bag' picture */
   if(cur==='hand'){cb.style.transition='none';}
   if(cur==='pay'&&f){
    const pr=sellV120(f,false,c);
@@ -810,11 +825,11 @@ function fixOffersV120(){const o=st.imp120&&st.imp120.offers;if(!Array.isArray(o
  o.forEach((x,i)=>{if(x.fish&&!x.sp){const f=x.fish,gr=Math.round((f.genes.color+f.genes.pattern+f.genes.fins+f.genes.vitality)/4);o[i]={sp:f.species,gr,price:x.price,left:x.bought?IMPMAX-1:IMPMAX,sample:f};}});}
 function impCardsV120(){
  fixOffersV120();const o=st.imp120.offers||[];if(!o.length)return '<div class="meta">No shipment this week.</div>';
- return o.map((x,i)=>{const f=x.sample,g=gradeV10(f);return `<div class="st120row"><div class="av">${dexAvatarHTML(f,56,34)}</div><div class="in"><b>${sname(f)}</b> <span class="v10Grade ${g.cls}">${g.name}</span>${x.mut?`<span class="spc120">✨ SPECIAL · ${x.mut}</span>`:''}<small>🪙 ${x.price} each · <b>${x.left} / ${x.max||IMPMAX} left</b> · delivered tomorrow</small></div><div class="ctl">${x.left>0?`<button class="btn small green" onclick="stImportBuy120(${i},'M')">BUY ♂</button><button class="btn small green" onclick="stImportBuy120(${i},'F')">BUY ♀</button>`:'<b style="color:#ffb347;font-size:11px">SOLD OUT</b>'}</div></div>`;}).join('');
+ return o.map((x,i)=>{const f=x.sample,g=gradeV10(f);return `<div class="st120row"><div class="av">${avV120(f,56,34)}</div><div class="in"><b>${sname(f)}</b> <span class="v10Grade ${g.cls}">${g.name}</span>${x.mut?`<span class="spc120">✨ SPECIAL · ${x.mut}</span>`:''}<small>🪙 ${x.price} each · <b>${x.left} / ${x.max||IMPMAX} left</b> · delivered tomorrow</small></div><div class="ctl">${x.left>0?`<button class="btn small green" onclick="stImportBuy120(${i},'M')">BUY ♂</button><button class="btn small green" onclick="stImportBuy120(${i},'F')">BUY ♀</button>`:'<b style="color:#ffb347;font-size:11px">SOLD OUT</b>'}</div></div>`;}).join('');
 }
 function quarHTMLV120(){
  const q=st.quar120||[];if(!q.length)return '';
- return `<div class="meta" style="margin-top:6px"><b>🧪 In quarantine</b></div>`+q.map(x=>`<div class="st120row"><div class="av">${dexAvatarHTML(x.fish,56,34)}</div><div class="in"><b>${sname(x.fish)} ${x.fish.sex==='M'?'♂':'♀'}</b><small>${x.until>st.day?'ready on day '+x.until:'waiting for room in your tanks (7 fish max)'}</small></div></div>`).join('');
+ return `<div class="meta" style="margin-top:6px"><b>🧪 In quarantine</b></div>`+q.map(x=>`<div class="st120row"><div class="av">${avV120(x.fish,56,34)}</div><div class="in"><b>${sname(x.fish)} ${x.fish.sex==='M'?'♂':'♀'}</b><small>${x.until>st.day?'ready on day '+x.until:'waiting for room in your tanks (7 fish max)'}</small></div></div>`).join('');
 }
 function importPanelV120(){
  const left=7-((Math.max(1,st.day)-1)%7),ord=(st.ord120||[]).length?`<div class="meta" style="margin-top:6px"><b>🚚 On the way</b> · ${st.ord120.length} fish · Marco delivers on day ${Math.min(...st.ord120.map(o=>o.due))}</div>`:'';
@@ -862,7 +877,7 @@ function deliveryPopV120(){
  const due=dueOrdersV120();if(!due.length){delivering=false;return;}delivering=true;
  const MP=window.ST120_MARCO||{},pic=MP.thumbs||window.ST120_IMPORTER;
  pop('📦 DELIVERY FROM MARCO',`<div class="imp120"><div class="who">${pic?`<img src="${pic}" alt="" style="object-position:50% 8%">`:'<span class="sil">🧔</span>'}<div><b>Marco</b><small>"Your fish are here, boss! ${due.length} fish, all in good shape… I think 😉 See you on Monday, day ${nextMondayV120()}!"</small></div></div>
-  <div class="dlv">${due.map(o=>`<span>${dexAvatarHTML(o.fish,52,30)}<i>${sname(o.fish)} ${o.fish.sex==='M'?'♂':'♀'}</i></span>`).join('')}</div>
+  <div class="dlv">${due.map(o=>`<span>${avV120(o.fish,52,30)}<i>${sname(o.fish)} ${o.fish.sex==='M'?'♂':'♀'}</i></span>`).join('')}</div>
   <div class="tip" style="margin:6px 0 8px"><b>AFNICA:</b> new fish can carry ich, fungus or bacteria without showing it. A ${QDAYS}-day quarantine is the safe way, boss: a sick one is treated there and joins your tank healthy.</div>
   ${owns('qt')?`<button class="btn green wide" style="margin-bottom:6px" onclick="stDeliver120(true)">🧪 QUARANTINE ${QDAYS} DAYS (recommended)</button>${due.length>qFreeV120()?`<div class="meta" style="font-size:11px;color:#ffb347;margin:-2px 0 6px">The quarantine tank has room for ${qFreeV120()} more; the other ${due.length-qFreeV120()} would go straight into your tanks.</div>`:''}`:`<button class="btn green wide" style="margin-bottom:6px" onclick="stBuyQt120(2)">🧪 BUY A QUARANTINE TANK (🪙 350) · recommended</button>`}
   <button class="btn wide" style="background:#a34040;margin-bottom:4px" onclick="stDeliver120(false)">⚠️ STRAIGHT TO THE MAIN TANK</button>
@@ -918,10 +933,10 @@ let QG=0;
 window.renderQuarV120=function(){
  try{ensureHealthState();ensureStoreV120();setAfnicaScreenV104('quar');const e=$('screen');if(!e)return;const q=st.quar120||[];
   const row=x=>{const start=x.until-QDAYS,d=Math.min(QDAYS,Math.max(0,st.day-start)),found=x.sick&&st.day>=start+2;
-   return `<div class="st120row"><div class="av">${dexAvatarHTML(x.fish,56,34)}</div><div class="in"><b>${sname(x.fish)} ${x.fish.sex==='M'?'♂':'♀'}</b><small>${found?'💊 white spot found · being treated':'looks healthy'} · day ${d}/${QDAYS} · ${x.until>st.day?'ready on day '+x.until:'ready, waiting for room (7 fish per tank)'}</small></div></div>`;};
+   return `<div class="st120row"><div class="av">${avV120(x.fish,56,34)}</div><div class="in"><b>${sname(x.fish)} ${x.fish.sex==='M'?'♂':'♀'}</b><small>${found?'💊 white spot found · being treated':'looks healthy'} · day ${d}/${QDAYS} · ${x.until>st.day?'ready on day '+x.until:'ready, waiting for room (7 fish per tank)'}</small></div></div>`;};
   e.innerHTML=v8Top()+`<div class="qt120" id="qt120"><div class="w"></div><div class="sd"></div><i class="ht"></i><i class="air"></i><div class="lbl">🧪 QUARANTINE · ${q.length}/${QCAP}</div><div class="fb" id="qt120fb"></div><div class="gl"></div></div>
    <div class="v8panel"><div class="v8head"><b>🧪 QUARANTINE TANK</b><span>${q.length}/${QCAP}</span></div><div class="meta">New fish from Marco stay here ${QDAYS} days before joining your tanks. A sick one is treated here (🪙 20) and leaves healthy.</div>${q.map(row).join('')||'<div class="meta">Empty. Fish you put in quarantine from Marco’s deliveries show up here.</div>'}</div>`+v8Nav('home');
-  const fb=$('qt120fb'),els=q.map(x=>{const d=document.createElement('div');d.className='qf'+(isBottom(x.fish)?' bt':'');d.innerHTML=dexAvatarHTML(x.fish,44,26);fb.appendChild(d);
+  const fb=$('qt120fb'),els=q.map(x=>{const d=document.createElement('div');d.className='qf'+(isBottom(x.fish)?' bt':'');d.innerHTML=avV120(x.fish,44,26);fb.appendChild(d);
    const b=isBottom(x.fish);return {el:d,q:{x:20+Math.random()*240,y:b?150:20+Math.random()*100,tx:0,ty:0,w:Math.random()*2,f:1,fs:1,bot:b}};});
   const gen=++QG;let last=performance.now();
   const tick=now=>{if(gen!==QG||!document.getElementById('qt120'))return;requestAnimationFrame(tick);const dt=Math.min(.1,(now-last)/1000);last=now;const W2=fb.clientWidth||300;
