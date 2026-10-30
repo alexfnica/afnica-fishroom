@@ -12,13 +12,14 @@ JS = r"""(async(name,cust)=>{const im=new Image();im.src=name;await im.decode();
 const cv=document.createElement('canvas');cv.width=w;cv.height=h;const g=cv.getContext('2d');g.drawImage(im,0,0);const I=g.getImageData(0,0,w,h),p=I.data;
 const orange=k=>{const r=p[k*4],gg=p[k*4+1],b=p[k*4+2];return p[k*4+3]>60&&r>190&&gg>(cust?75:45)&&gg<175&&b<110&&r-gg>55&&r-b>110;};
 /* biggest 8-connected orange cluster */
-const lab=new Int32Array(w*h).fill(-1);let best=-1,bn=0,bb=null;
+const lab=new Int32Array(w*h).fill(-1);let best=-1,bn=0,bb=null,bs=0;
 /* customers: the bag hangs from the front hand, so only look there (red hair / mustard sweaters are orange too) */
-const inReg=k=>{if(!cust)return true;const x=k%w,y=(k-x)/w;return x>=w*.5&&y>=h*.3&&y<=h*.66;};
+const pair=w/h>.5,inReg=k=>{if(!cust)return true;const x=k%w,y=(k-x)/w;return pair?(x<=w*.42&&y>=h*.45&&y<=h*.85):(x>=w*.5&&y>=h*.3&&y<=h*.66);};   /* pairs: the parent's free hand, on the left */
 for(let k=0;k<w*h;k++){if(lab[k]>=0||!inReg(k)||!orange(k))continue;const id=k,st=[k];lab[k]=id;let n=0,x0=w,x1=0,y0=h,y1=0;
- while(st.length){const q=st.pop(),x=q%w,y=(q-x)/w;n++;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;
+ let od=0;while(st.length){const q=st.pop(),x=q%w,y=(q-x)/w;n++;od+=p[q*4]-p[q*4+1];if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;
   for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=w||ny>=h)continue;const nk=ny*w+nx;if(lab[nk]<0&&inReg(nk)&&orange(nk)){lab[nk]=id;st.push(nk);}}}
- if(n>bn){bn=n;best=id;bb=[x0,y0,x1,y1];}}
+ /* the fish is a deep orange; mustard / tan clothes are paler: rank by size x orange depth */
+ const sc=n*Math.max(0,od/n-62);if(sc>(bs||0)){bs=sc;bn=n;best=id;bb=[x0,y0,x1,y1];}}
 if(!bb||bn<8)return JSON.stringify({err:'no fish',bn});
 /* grow the cluster over the fish's shaded parts (any orange / red-ish pixel connected to it, within a box around it) */
 const relaxed=k=>{const r=p[k*4],gg=p[k*4+1],b=p[k*4+2];return p[k*4+3]>40&&r>120&&r-b>45&&r-gg>18;};
@@ -43,7 +44,10 @@ try:
     for f in files:
         n = os.path.splitext(os.path.basename(f))[0]; shutil.copy(f, os.path.join(W, 'bf_' + n + '.png'))
         r = json.loads(c.js(JS + "(%s,%s)" % (json.dumps('bf_' + n + '.png'), 'true' if n.startswith('person') else 'false')))
-        if 'err' in r: print('SKIP', n, r); continue
+        if 'err' in r:
+            print('SKIP', n, r); cp = os.path.join(PZ, n + '_clean.png')
+            if os.path.exists(cp): os.remove(cp)   # no stale cleaned picture
+            continue
         open(os.path.join(PZ, n + '_clean.png'), 'wb').write(base64.b64decode(r['url'].split(',')[1])); meta[n] = r['box']; print(n, r['box'], r['n'])
 finally: c.close()
 json.dump(meta, open(os.path.join(PZ, 'bagfish.json'), 'w'), indent=1)

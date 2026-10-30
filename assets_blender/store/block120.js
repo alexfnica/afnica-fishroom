@@ -240,12 +240,12 @@ function pointFor(src){let e=PTI.get(src);if(!e){e={im:null};PTI.set(src,e);cons
  const w=im.naturalWidth,h=im.naturalHeight,c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');g.drawImage(im,0,0);const D=g.getImageData(0,0,w,h).data;
  let gr=h-1;for(;gr>0;gr--){let f=false;for(let x=0;x<w;x++)if(D[(gr*w+x)*4+3]>110){f=true;break;}if(f)break;}e.ground=gr;e.ax=hipX(im);e.im=im;}catch(er){console.error('AFNICA store point pose',er);}};im.src=src;}return e;}
 function mkSprite(src,asp,pose){
- const wide=asp>.62;
+ const wide=asp>.5;   /* pairs are ~0.55-0.8 wide for their height, single people ~0.41-0.47 */
  const d=document.createElement('div');d.className='st120p sp'+(wide?' wide':'');
  d.innerHTML=`<div class="shd${wide?' w':''}"></div><div class="sprw"><img src="${src}" alt=""><canvas class="wk${wide?' wkw':''}" width="${wide?480:200}" height="320"></canvas><svg class="bagh" width="22" height="28" viewBox="0 0 22 28"><path d="M3 4 q-3 8 1 18 q7 5 14 0 q4 -10 1 -18z" fill="#9ee2f7" fill-opacity=".65" stroke="#e8fbff" stroke-width="1.2"/><path d="M4 4 q7 -8 13 0" stroke="#e8fbff" stroke-width="1.6" fill="none"/><path class="bf" d="M6 15 q5 -5 10 0 q-5 5 -10 0z" fill="#ff9a3c"/></svg></div><div class="bub"></div>`;
  const w=d.querySelector('.sprw'),bag=d.querySelector('.bagh');
  if(wide){bag.style.left='96px';bag.style.top='96px';}
- return {spr:true,wide,rad:wide?60:40,rig:rigFor(src,wide),bagRig:pose&&pose.bag?rigFor(pose.bag,false,true):null,bagFish:pose&&pose.fish||null,ptP:pose&&pose.point?pointFor(pose.point):null,cv:d.querySelector('.wk'),shd:d.querySelector('.shd'),el:d,svg:w,img:w.firstChild,bagEl:bag,bag:{setAttribute(a,v){bag.style.display=v==='visible'?'block':'none';}},bf:d.querySelector('.bf'),bub:d.querySelector('.bub')};
+ return {spr:true,wide,rad:wide?60:40,rig:rigFor(src,wide),bagRig:pose&&pose.bag?rigFor(pose.bag,wide,true):null,bagFish:pose&&pose.fish||null,ptP:pose&&pose.point?pointFor(pose.point):null,cv:d.querySelector('.wk'),shd:d.querySelector('.shd'),el:d,svg:w,img:w.firstChild,bagEl:bag,bag:{setAttribute(a,v){bag.style.display=v==='visible'?'block':'none';}},bf:d.querySelector('.bf'),bub:d.querySelector('.bub')};
 }
 function poseP(c,t){
  const P=c.parts,mv=Math.min(1,c.speed/30),sw=Math.sin(c.phase)*mv,sd=c.seed;
@@ -261,11 +261,17 @@ function poseP(c,t){
    g.setTransform(2,0,0,2,0,0);g.clearRect(0,0,cw,160);g.translate(cw/2,156);
    const pdt=Math.min(.1,Math.max(0,t-(c.plt||t)));c.plt=t;
    /* pointing = the person's own 'point' picture (pose sheet), crossfaded in while they stand at a tank they like */
-   const PT=P.ptP&&P.ptP.im?P.ptP:null,ptT=PT&&!R.pair&&c.state==='look'&&c.pointing&&m<.2?1:0;c.pt=(c.pt||0)+(ptT-(c.pt||0))*Math.min(1,pdt*5);
+   const PT=P.ptP&&P.ptP.im?P.ptP:null,ptT=PT&&c.state==='look'&&c.pointing&&m<.2?1:0;c.pt=(c.pt||0)+(ptT-(c.pt||0))*Math.min(1,pdt*5);
    if(bag){const cyc=(c.dist||0)/(window.cycleLenV120(R.pair?R.parts[0].R:R)*k),tgt=.16*m*Math.sin(2*Math.PI*cyc-1.3);
     c.bagV=(c.bagV||0)+((tgt-(c.bagA||0))*30-(c.bagV||0)*7)*pdt;c.bagA=(c.bagA||0)+c.bagV*pdt;bag.ang=c.bagA;}
-   if(R.pair)window.drawPairV120(g,R,c.dist||0,m,k,bag,0);
-   else{const FB=RB&&P.bagFish,over=FB&&c.bagImg&&c.bagImg.complete&&c.bagImg.naturalWidth?(x=>{const im=c.bagImg,w=Math.max(FB[2],FB[3]*1.8)*1.35,h=w*im.naturalHeight/im.naturalWidth;x.drawImage(im,FB[0]+FB[2]/2-w/2,FB[1]+FB[3]/2-h/2,w,h);}):null;
+   if(R.pair){
+    if(c.pt<.99){g.globalAlpha=1-c.pt;window.drawPairV120(g,R,c.dist||0,m,k,bag,0);
+     /* the bought fish in the parent's bag (bag pose): the painted fish was taken out, the real one is drawn at its box */
+     const FB=RB&&P.bagFish,im=c.bagImg;if(FB&&im&&im.complete&&im.naturalWidth){const gr=R.parts[0].R.ground,w=Math.max(FB[2]*1.35,FB[3]*2.4,FB[5]*.085),h=w*im.naturalHeight/im.naturalWidth;
+      g.save();g.scale(k,k);g.translate(-R.w/2,-gr);g.drawImage(im,FB[0]+FB[2]/2-w/2,FB[1]+FB[3]/2-h/2,w,h);g.restore();}}
+    if(c.pt>.01){g.globalAlpha=c.pt;const kp=150/PT.im.naturalHeight;g.save();g.scale(kp,kp);g.translate(-PT.im.naturalWidth/2,-PT.ground);g.drawImage(PT.im,0,0);g.restore();}
+    g.globalAlpha=1;}
+   else{const FB=RB&&P.bagFish,over=FB&&c.bagImg&&c.bagImg.complete&&c.bagImg.naturalWidth?(x=>{const im=c.bagImg,w=Math.max(FB[2]*1.35,FB[3]*2.4,FB[5]*.085),h=w*im.naturalHeight/im.naturalWidth;   /* never smaller than ~8.5% of the person's height */x.drawImage(im,FB[0]+FB[2]/2-w/2,FB[1]+FB[3]/2-h/2,w,h);}):null;
     if(c.pt<.99){g.globalAlpha=1-c.pt;window.drawWalkV120(g,R,(c.dist||0)/(window.cycleLenV120(R)*k),m,k,bag,0,over);}
     if(c.pt>.01){g.globalAlpha=c.pt;const kp=150/PT.im.naturalHeight;g.save();g.scale(kp,kp);g.translate(-PT.ax+((R.ax||R.w/2)-R.w/2)*k/kp,-PT.ground);g.drawImage(PT.im,0,0);g.restore();}
     g.globalAlpha=1;}

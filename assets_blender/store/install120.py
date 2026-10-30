@@ -17,6 +17,9 @@ pp = sorted(glob.glob(os.path.join(HERE, 'people', '*.png')))
 # a pose sheet (poses/personNN_walk/bag/point.png, cut by cut_sheet.py) replaces person NN's old picture, so all its poses match
 PZ = os.path.join(HERE, 'poses')
 pp = [os.path.join(PZ, 'person%02d_walk.png' % (i + 1)) if os.path.exists(os.path.join(PZ, 'person%02d_walk.png' % (i + 1))) else f for i, f in enumerate(pp)]
+# new people that exist only as a pose sheet (person19_walk.png ...): extra customers after the original ones, numbers in a row
+nn = len(pp) + 1
+while os.path.exists(os.path.join(PZ, 'person%02d_walk.png' % nn)): pp.append(os.path.join(PZ, 'person%02d_walk.png' % nn)); nn += 1
 def puri(f): return '"data:image/png;base64,%s"' % base64.b64encode(open(f, 'rb').read()).decode()
 def poses(i):
     b, q = os.path.join(HERE, cleanp('person%02d_bag' % (i + 1))), os.path.join(PZ, 'person%02d_point.png' % (i + 1))
@@ -30,6 +33,8 @@ def asp(f):
 if pp: logo += 'window.ST120_PEOPLE_ASPECT=[' + ','.join(str(asp(f)) for f in pp) + '];' + chr(10)
 logo += 'window.ST120_BAGFISH=' + _json.dumps({k: v for k, v in BF.items() if k.startswith('owner')}) + ';' + chr(10)
 if os.path.exists(os.path.join(HERE, 'poses', 'afnica_face.png')): logo += 'window.ST120_AFNICA_FACE="%s";' % uri(os.path.join('poses', 'afnica_face.png')) + chr(10)   # AFNICA's round face for tips
+AP = [k for k in ('tip', 'point', 'thumbs', 'worried') if os.path.exists(os.path.join(HERE, 'afnica', 'afnica_%s.png' % k))]   # AFNICA's tip / tutorial poses (cut_afnica_poses.py)
+if AP: logo += 'window.ST120_AFNICA_POSES={' + ','.join('%s:"%s"' % (k, uri(os.path.join('afnica', 'afnica_%s.png' % k))) for k in AP) + '};' + chr(10)
 MF = os.path.join(HERE, 'marco', 'marco_face.png')   # Marco, the weekly importer (cut_marco.py)
 if os.path.exists(os.path.join(HERE, 'marco', 'marco_box.png')): logo += 'window.ST120_MARCO={' + ','.join('%s:"%s"' % (k, uri(os.path.join('marco', 'marco_%s.png' % k))) for k in ('box', 'wave', 'thumbs')) + '};' + chr(10)
 if os.path.exists(MF): logo += 'window.ST120_IMPORTER="%s";' % uri(os.path.join('marco', 'marco_face.png')) + chr(10)

@@ -30,12 +30,17 @@ if(heads.length>3){heads.sort((a,b)=>a-b);}if(heads.length!==3)return JSON.strin
 /* seeds: every opaque pixel in a narrow column under each head, from the top to 60% height */
 /* split by a cheapest-path fill (Dijkstra): a step costs more across a colour edge or a faint pixel, so the boundary between two
    touching figures follows the outline between them instead of the shortest way round */
-const lab=new Int8Array(w*h).fill(-1),dist=new Float32Array(w*h).fill(1e9);
-const H=[],push=(d,k)=>{H.push([d,k]);let i=H.length-1;while(i){const q=(i-1)>>1;if(H[q][0]<=H[i][0])break;[H[q],H[i]]=[H[i],H[q]];i=q;}},
- pop=()=>{const t=H[0],l=H.pop();if(H.length){H[0]=l;let i=0;for(;;){const a=2*i+1,b=a+1;let m=i;if(a<H.length&&H[a][0]<H[m][0])m=a;if(b<H.length&&H[b][0]<H[m][0])m=b;if(m===i)break;[H[m],H[i]]=[H[i],H[m]];i=m;}}return t;};
+const lab=new Int8Array(w*h).fill(-1),dist=new Float64Array(w*h).fill(1e9);
+/* binary heap on typed arrays (an object per entry was far too slow on 1400x770 pair sheets) */
+let cap=1<<20,HK=new Float64Array(cap),HV=new Int32Array(cap),hn=0;
+const push=(d,k)=>{if(hn===cap){cap*=2;const a=new Float64Array(cap);a.set(HK);HK=a;const b=new Int32Array(cap);b.set(HV);HV=b;}
+ let i=hn++;while(i){const q=(i-1)>>1;if(HK[q]<=d)break;HK[i]=HK[q];HV[i]=HV[q];i=q;}HK[i]=d;HV[i]=k;};
+let PD=0,PK=0;const pop=()=>{PD=HK[0];PK=HV[0];const d=HK[--hn],k=HV[hn];let i=0;
+ for(;;){const a=2*i+1;if(a>=hn)break;const b=a+1,m=b<hn&&HK[b]<HK[a]?b:a;if(HK[m]>=d)break;HK[i]=HK[m];HV[i]=HV[m];i=m;}HK[i]=d;HV[i]=k;};
 heads.forEach((hx,i)=>{for(let y=yT;y<yT+(yB-yT)*.6;y++)for(let x=Math.round(hx-6);x<=hx+6;x++){const k=y*w+x;if(op(k)&&dist[k]>0){dist[k]=0;lab[k]=i;push(0,k);}}});
-while(H.length){const [d,k]=pop();if(d>dist[k])continue;const x=k%w,y=(k-x)/w,l=lab[k];
- for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=w||ny>=h)continue;const n=ny*w+nx;if(!op(n))continue;
+const DX=[1,-1,0,0],DY=[0,0,1,-1];
+while(hn){pop();const d=PD,k=PK;if(d>dist[k])continue;const x=k%w,y=(k-x)/w,l=lab[k];
+ for(let j=0;j<4;j++){const nx=x+DX[j],ny=y+DY[j];if(nx<0||ny<0||nx>=w||ny>=h)continue;const n=ny*w+nx;if(!op(n))continue;
   const e=Math.abs(p[k*4]-p[n*4])+Math.abs(p[k*4+1]-p[n*4+1])+Math.abs(p[k*4+2]-p[n*4+2]),nd=d+1+e*.25+(255-p[n*4+3])*.2;
   if(nd<dist[n]){dist[n]=nd;lab[n]=l;push(nd,n);}}}
 const out=[];
@@ -46,7 +51,7 @@ for(let i=0;i<3;i++){let x0=w,x1=0,y0=h,y1=0;for(let k=0;k<w*h;k++)if(lab[k]===i
  const oh=220,ow=Math.round(c.width*oh/c.height),o=document.createElement('canvas');o.width=ow;o.height=oh;const og=o.getContext('2d');og.imageSmoothingQuality='high';og.drawImage(c,0,0,ow,oh);
  out.push({url:o.toDataURL('image/png'),box:[x0,y0,x1,y1]});}
 return JSON.stringify({heads,out});})"""
-c = Chrome(800, 800, 1, port=9555)
+c = Chrome(800, 800, 1, port=9555); c.ws.s.settimeout(600)   # big pair sheets take a few minutes
 try:
     c.cmd('Page.navigate', url='http://127.0.0.1:8792/l.html'); c.wait_event('Page.loadEventFired', 20); time.sleep(.5)
     r = json.loads(c.js(JS + "(%s)" % json.dumps('sheet_in' + os.path.splitext(SRC)[1])))
