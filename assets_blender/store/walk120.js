@@ -53,11 +53,11 @@ function rigSpriteV120(img,opt){
   for(let y=0;y<h;y++)for(let x=0;x<w;x++){const k=y*w+x;if(D[k*4+3]&&pick(legOf(x,y,lab[k]))){I.data[k*4]=D[k*4];I.data[k*4+1]=D[k*4+1];I.data[k*4+2]=D[k*4+2];I.data[k*4+3]=D[k*4+3];}}
   og.putImageData(I,0,0);return o;};
  const L={back:layer(v=>v===1),front:layer(v=>v===2),upper:layer(v=>v===0)};
- /* fingertips that hang below the hem went to a thigh layer: give the skin pixels around each hand back to the upper body */
+ /* fingertips that hang below the hem went to a thigh layer: give the pixels around each hand that are not leg-coloured back to the upper body */
  {const fh0=findHands(cv,w,h,(()=>{let y=0;while(y<h&&!runs(y).length)y++;return y;})(),yB);if(fh0){const rr=.075*h,gu=L.upper.getContext('2d'),U=gu.getImageData(0,0,w,h);
   for(const lc of [L.back,L.front]){const gl=lc.getContext('2d'),G=gl.getImageData(0,0,w,h);let ch=false;
    for(const q of fh0.hands)for(let y=Math.max(0,Math.floor(q.y-rr));y<Math.min(h,q.y+rr);y++)for(let x=Math.max(0,Math.floor(q.x-rr));x<Math.min(w,q.x+rr);x++){const k=(y*w+x)*4;if(!G.data[k+3])continue;
-    const R0=G.data[k],G0=G.data[k+1],B0=G.data[k+2];if(!(R0>95&&G0>45&&B0>25&&R0>G0+10&&R0>B0+25))continue;
+    const R0=G.data[k],G0=G.data[k+1],B0=G.data[k+2];if(Math.hypot(R0-low[0],G0-low[1],B0-low[2])<70)continue;   /* not trouser/leg coloured = part of the hand (skin, shading, soft edge) */
     for(let c=0;c<4;c++){U.data[k+c]=G.data[k+c];G.data[k+c]=0;}ch=true;}
    if(ch)gl.putImageData(G,0,0);}
   gu.putImageData(U,0,0);}}
@@ -66,10 +66,14 @@ function rigSpriteV120(img,opt){
  const leg=(c)=>{const fx=footX(c),fy=c.maxY,dx=fx-pv.x,dy=fy-pv.y;return {L:Math.hypot(dx,dy),a:Math.atan2(dx,dy),fy};};
  const B=leg(back),F=leg(front);
  const sF=Math.sin(F.a),sB=Math.sin(B.a);
- const arms=(opt.noArms||window.ARMS120===false)?null:armRig(L.upper,w,h,yT,yB,hem),   /* arm swing: smooth field warp (V17.120b); window.ARMS120=false turns it off */
+ const arms=(opt.noArms||window.ARMS120===false)?null:armRig(L.upper,w,h,yT,yB,hem,opt.armSide),   /* arm swing: smooth field warp (V17.120b); window.ARMS120=false turns it off */
  fh=findHands(L.upper,w,h,yT,yB);
  const pt=fh?pointRig(L.upper,w,h,fh,yB-yT):null;
- return {w,h,pv,yc,hem,L,B,F,arms,fh,pt,A:(sF-sB)/2,C:(sF+sB)/2,Lm:(B.L+F.L)/2,ground:Math.max(B.fy,F.fy)};
+ /* waist filler source: the upper body's last rows above the hem without the hands (they swing; a copy left here showed as bars) */
+ const wf=document.createElement('canvas');wf.width=w;wf.height=h;{const wg=wf.getContext('2d');wg.drawImage(L.upper,0,0);if(fh){wg.globalCompositeOperation='destination-out';for(const q of fh.hands){wg.beginPath();wg.arc(q.x,q.y,.055*(yB-yT),0,7);wg.fill();}}
+  /* only over the thighs: outside them nothing is hidden under the legs, and a copy there would show */
+  wg.globalCompositeOperation='destination-out';const xL=Math.min(KB.x,KF.x)-bw,xR=Math.max(KB.x,KF.x)+bw;wg.fillRect(0,0,Math.max(0,xL),h);wg.fillRect(xR,0,w,h);}
+ return {w,h,pv,yc,hem,L,B,F,arms,fh,pt,wf,A:(sF-sB)/2,C:(sF+sB)/2,Lm:(B.L+F.L)/2,ground:Math.max(B.fy,F.fy)};
 }
 /* arms: the hands are the outermost silhouette points between 42% and 66% height (back hand left, front hand right);
    the shoulder sits at 22% height in the middle of the torso. Each arm is swung by a smooth rotation warp around the
@@ -79,38 +83,51 @@ function findHands(up,w,h,yT,yB){
  const H=yB-yT,S=up.getContext('2d').getImageData(0,0,w,h).data,op=(x,y)=>S[(y*w+x)*4+3]>110;
  const sy=Math.round(yT+.22*H);let a0=-1,a1=-1;for(let x=0;x<w;x++)if(op(x,sy)){if(a0<0)a0=x;a1=x;}
  if(a0<0)return null;
- const sh={x:(a0+a1)/2,y:sy},sk=[[0,0,0],[0,0,0]];
- for(let y=Math.round(yT+.42*H);y<yT+.62*H;y++)for(let x=0;x<w;x++){if(!op(x,y))continue;const k=(y*w+x)*4,R=S[k],G=S[k+1],B=S[k+2];
-  if(!(R>95&&G>45&&B>25&&R>G+10&&R>B+25&&R-B<150))continue;const i=x<sh.x?0:1;sk[i][0]+=x;sk[i][1]+=y;sk[i][2]++;}
+ const sh={x:(a0+a1)/2,y:sy};
+ /* skin blobs in the hand band; on each side of the shoulder line the hand is the blob furthest out (a centroid of all skin
+    on that side was pulled in by necklines, bare forearms and the other hand) */
+ const y0=Math.round(yT+.42*H),y1=Math.round(yT+.62*H),lab=new Int32Array(w*h).fill(-1),blobs=[];
+ const skin=(x,y)=>{if(!op(x,y))return false;const k=(y*w+x)*4,R=S[k],G=S[k+1],B=S[k+2];return R>95&&G>45&&B>25&&R>G+10&&R>B+25&&R-B<150;};
+ for(let y=y0;y<y1;y++)for(let x=0;x<w;x++){if(lab[y*w+x]>=0||!skin(x,y))continue;const id=blobs.length,st=[[x,y]],b={n:0,sx:0,sy:0};lab[y*w+x]=id;
+  while(st.length){const [px,py]=st.pop();b.n++;b.sx+=px;b.sy+=py;for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const nx=px+dx,ny=py+dy;if(nx<0||nx>=w||ny<y0||ny>=y1||lab[ny*w+nx]>=0||!skin(nx,ny))continue;lab[ny*w+nx]=id;st.push([nx,ny]);}}
+  blobs.push(b);}
+ const sk=[0,1].map(side=>{let best=null,bd=-1;for(const b of blobs){if(b.n<=12)continue;const cx=b.sx/b.n;if((cx<sh.x?0:1)!==side)continue;const d=Math.abs(cx-sh.x);if(d>bd){bd=d;best=b;}}return best?[best.sx,best.sy,best.n]:[0,0,0];});
  const hands=sk.filter(v=>v[2]>12).map(v=>{const p={x:v[0]/v[2],y:v[1]/v[2]};const a=Math.atan2(p.x-sh.x,p.y-sh.y);return {...p,a,amp:Math.sign(a||1)*Math.min(Math.abs(a),window.ARMAMP120||.08)};});
  return hands.length?{sh,hands}:null;
 }
-function armRig(up,w,h,yT,yB,hem){
+function armRig(up,w,h,yT,yB,hem,armSide){
  /* arm swing from one walking picture: a smooth displacement field, strongest at each hand and fading towards the shoulder and
     sideways over about an arm's width, slides the forearm + hand forward/back (the sleeve and coat edge bend
     with it like cloth). The field is smooth everywhere, so nothing tears. The two hands move in opposite directions:
     dx = +-A*cos(2*pi*phase); at phase 0 the drawn pose is exaggerated a little, at half a cycle the arms have swung the other way. */
  const H=yB-yT,S=up.getContext('2d').getImageData(0,0,w,h).data;
  const fh=findHands(up,w,h,yT,yB);if(!fh)return null;const sh=fh.sh;
- const hs=fh.hands.slice().sort((a,b)=>a.x-b.x);   /* back hand (left) first, front hand (right) */
- const A=(window.ARMAMP120||.06)*H,sx=(window.ARMSX120||.075)*H;
- const arms=hs.map((hd,i)=>({hd,dir:i===0&&hs.length>1?-1:1,y0:sh.y+(hd.y-sh.y)*.15,sy:Math.max(4,(hd.y-sh.y)*.85)}));
- const wt=(a,x,y)=>{const out=(x-a.hd.x)*(a.hd.x<sh.x?-1:1),ax=out>=0?out/sx:out/(sx*.4);if(ax*ax>9)return 0;const v=(y-a.y0)/(a.hd.y+.12*H-a.y0);if(v<=0)return 0;const vv=Math.min(1,v),s2=vv*vv*(3-2*vv);
+ const hs=fh.hands.slice().sort((a,b)=>a.x-b.x).filter(hd=>!armSide||(armSide==='front')===(hd.x>=fh.sh.x));   /* back hand (left) first, front hand (right) */
+ const A=(window.ARMAMP120||.09)*H,sx=(window.ARMSX120||.1)*H;
+ const arms=hs.map(hd=>({hd,dir:hd.x<sh.x?-1:1,y0:sh.y+(hd.y-sh.y)*.15,sy:Math.max(4,(hd.y-sh.y)*.85)}));
+ const wt=(a,x,y)=>{const tl=Math.max(0,Math.min(1,(y-sh.y)/Math.max(1,a.hd.y-sh.y))),lx=sh.x+(a.hd.x-sh.x)*(.5+.5*tl),out=(x-lx)*(a.hd.x<sh.x?-1:1),ax=out>=-.045*H?0:(out+.045*H)/(.025*H);   /* the whole hand width and everything outside it moves as one (only background there), so the hand is never stretched */if(ax*ax>9)return 0;const v=(y-a.y0)/(a.hd.y+.12*H-a.y0);if(v<=0)return 0;const vv=Math.min(1,v),s2=vv*vv*(3-2*vv);
   const below=y>a.hd.y?Math.exp(-Math.pow((y-a.hd.y)/(.1*H),2)):1;
-  const nearHand=Math.hypot(x-a.hd.x,y-a.hd.y)<.06*H,hemF=hem&&!nearHand?Math.max(0,Math.min(1,(hem-2-y)/6)):1;return Math.exp(-ax*ax/2)*s2*below*hemF;};
+  const nearHand=ax===0||Math.hypot(x-a.hd.x,y-a.hd.y)<.1*H,hemF=hem&&!nearHand?Math.max(0,Math.min(1,(hem-2-y)/6)):1;return Math.exp(-ax*ax/2)*s2*below*hemF;};
  const W=arms.map(a=>{const f=new Float32Array(w*h);for(let y=0;y<h;y++)for(let x=0;x<w;x++)f[y*w+x]=wt(a,x,y);return f;});
  const frame=q=>{   /* q = cos(2*pi*phase) scaled; each hand moves dir*A*q */
   const o=document.createElement('canvas');o.width=w;o.height=h;const og=o.getContext('2d'),O=og.createImageData(w,h),T=O.data;
+  const dAt=(xs,y)=>{const xi=Math.max(0,Math.min(w-1,Math.round(xs)));let d=0;for(let i=0;i<arms.length;i++){const ww=W[i][y*w+xi];if(ww)d+=arms[i].dir*A*q*ww;}return d;};
   for(let y=0;y<h;y++)for(let x=0;x<w;x++){let dx=0,dy=0;
-   for(let i=0;i<arms.length;i++){const ww=W[i][y*w+x];if(!ww)continue;const m=arms[i].dir*A*q*ww;dx+=m;}
+   /* the picture pixel s that the field carries onto x (x = s + d(s)), by fixed-point steps: the hand keeps its shape as it moves */
+   {const sol=s0=>{let s2=s0;for(let it=0;it<8;it++)s2=x-dAt(s2,y);return Math.abs(s2+dAt(s2,y)-x)<.6?s2:null;};
+    const full=arms.length?Math.max(...arms.map(a=>Math.abs(A*q))):0,cands=[sol(x)];for(const a of arms)cands.push(sol(x-a.dir*A*q));
+    let best=null;for(const c of cands){if(c===null)continue;const xi=Math.max(0,Math.min(w-1,Math.round(c)));const op2=S[(y*w+xi)*4+3]>40,wg=Math.abs(dAt(c,y));
+     if(!best||(op2&&!best.op)||(op2===best.op&&wg>best.wg))best={c,op:op2,wg};}
+    dx=best?x-best.c:0;}
    const k=(y*w+x)*4;if(!dx&&!dy){T[k]=S[k];T[k+1]=S[k+1];T[k+2]=S[k+2];T[k+3]=S[k+3];continue;}
    const fx=x-dx,fy=y-dy,x0=Math.floor(fx),y0=Math.floor(fy),ax=fx-x0,ay=fy-y0;if(x0<0||y0<0||x0>=w-1||y0>=h-1)continue;
    /* premultiplied bilinear sample, so the soft edges do not darken */
    let a4=0,c0=0,c1=0,c2=0;for(const [xx,yy,f] of [[x0,y0,(1-ax)*(1-ay)],[x0+1,y0,ax*(1-ay)],[x0,y0+1,(1-ax)*ay],[x0+1,y0+1,ax*ay]]){const kk=(yy*w+xx)*4,al=S[kk+3]*f;a4+=al;c0+=S[kk]*al;c1+=S[kk+1]*al;c2+=S[kk+2]*al;}
    if(a4>0){T[k]=c0/a4;T[k+1]=c1/a4;T[k+2]=c2/a4;T[k+3]=a4;}}
   og.putImageData(O,0,0);return o;};
- const walk=[];for(let n=0;n<16;n++)walk.push(frame(Math.cos(2*Math.PI*n/16)));
- return {sh,hands:fh.hands,arms,A,walk,stand:frame(-.35)};   /* standing: hands a little closer to the body than drawn */
+ /* q from 0 (as drawn) to -1 (hands in along the body) and back each cycle: the hands swing in towards the body between the drawn steps */
+ const walk=[];for(let n=0;n<16;n++)walk.push(frame(-(1-Math.cos(2*Math.PI*n/16))/2));
+ return {sh,hands:fh.hands,arms,A,walk,stand:frame(-.6)};   /* standing: hands a little closer to the body than drawn */
 }
 /* parent + child holding hands in one image (parent left, child right): cut at the emptiest column between them
    (where only the joined hands cross), rig each person on its own; no arm swing (they hold hands). */
@@ -119,11 +136,12 @@ function rigPairV120(img){
  const D=g.getImageData(0,0,w,h).data;let best=-1,bn=1e9;
  for(let x=Math.round(w*.35);x<w*.75;x++){let n=0;for(let y=0;y<h;y++)if(D[(y*w+x)*4+3]>60)n++;if(n<bn){bn=n;best=x;}}
  if(best<0)return null;
- const part=(x0,x1)=>{const c=document.createElement('canvas');c.width=x1-x0;c.height=h;c.getContext('2d').drawImage(cv,x0,0,x1-x0,h,0,0,x1-x0,h);return c;};
- const still=c=>{const d=c.getContext('2d').getImageData(0,0,c.width,h).data;let yT=0,yB=h-1;const row=y=>{for(let x=0;x<c.width;x++)if(d[(y*c.width+x)*4+3]>110)return true;return false;};
+ const part=(x0,x1,crop)=>{let y0=0;if(crop){y0=h;for(let y=0;y<h&&y0===h;y++)for(let x=x0;x<x1;x++)if(D[(y*w+x)*4+3]>110){y0=Math.max(0,y-2);break;}}   /* the child is cropped to its own height so the rig's proportions fit it */
+  const c=document.createElement('canvas');c.width=x1-x0;c.height=h-y0;c.getContext('2d').drawImage(cv,x0,y0,x1-x0,h-y0,0,0,x1-x0,h-y0);return c;};
+ const still=c=>{const h=c.height,d=c.getContext('2d').getImageData(0,0,c.width,h).data;let yT=0,yB=h-1;const row=y=>{for(let x=0;x<c.width;x++)if(d[(y*c.width+x)*4+3]>110)return true;return false;};
   while(yT<h&&!row(yT))yT++;while(yB>0&&!row(yB))yB--;return {still:true,c,w:c.width,h,ground:yB,fh:findHands(c,c.width,h,yT,yB)};};
- const ca=part(0,best),cb=part(best,w);
- const A=rigSpriteV120(ca,{noArms:true})||still(ca),B=rigSpriteV120(cb,{noArms:true})||still(cb);
+ const ca=part(0,best),cb=part(best,w,true);
+ const A=rigSpriteV120(ca,{armSide:'back'})||still(ca),B=rigSpriteV120(cb,{armSide:'front'})||still(cb);   /* only the free hands swing; the joined hands stay together */
  if(A.still&&B.still)return null;
  return {pair:true,w,h,cut:best,parts:[{R:A,ox:0},{R:B,ox:best}]};
 }
@@ -157,7 +175,7 @@ function drawBagV120(ctx,x,y,col,ang,img){
 /* hand point for this frame: the drawn hand rotated by the same arm angle as the warp frames */
 function handAt(R,phase,m,which){
  const fh=R.fh;if(!fh)return null;const hs=fh.hands.slice().sort((a,b)=>a.x-b.x);const hd=which==='back'?hs[0]:hs[hs.length-1];
- let ang=0;if(R.arms){const n=Math.round((((phase%1)+1)%1)*16)%16,q=m*Math.cos(2*Math.PI*n/16)+(1-m)*-.35,d=(which==='back'&&R.arms.arms.length>1?-1:1)*R.arms.A*q;return {x:hd.x+d,y:hd.y};}
+ let ang=0;if(R.arms){const n=Math.round((((phase%1)+1)%1)*16)%16,q=m*-(1-Math.cos(2*Math.PI*n/16))/2+(1-m)*-.6,a=R.arms.arms.find(x=>x.hd.x===hd.x&&x.hd.y===hd.y);if(a)return {x:hd.x+a.dir*R.arms.A*q,y:hd.y};}
  const dx=hd.x-fh.sh.x,dy=hd.y-fh.sh.y,c=Math.cos(ang),s2=Math.sin(ang);return {x:fh.sh.x+dx*c-dy*s2,y:fh.sh.y+dx*s2+dy*c};
 }
 /* leg state for phase q in [0,1): stance first half (foot slides back linearly), swing second half (eased forward) */
@@ -175,7 +193,7 @@ function drawWalkV120(ctx,R,phase,m,k,bag,pt,over){
  ctx.save();ctx.scale(k,k);ctx.translate(-R.w/2,-R.ground+lift);
  const drawLeg=(cv,base,t,sw)=>{ctx.save();ctx.translate(R.pv.x,R.pv.y);ctx.rotate(-(t-base));ctx.scale(1,1-.07*sw);ctx.translate(-R.pv.x,-R.pv.y);ctx.drawImage(cv,0,0);ctx.restore();};
  /* waist filler: the last rows above the hem smeared a few px down behind the legs, so no light seam shows where the thighs turn */
- {const y0=Math.round(R.hem)-3;for(const d of [2,4,6])ctx.drawImage(R.L.upper,0,y0,R.w,3,0,y0+d,R.w,3);}
+ if(R.wf){const y0=Math.round(R.hem)-3;for(const d of [2,4,6])ctx.drawImage(R.wf,0,y0,R.w,3,0,y0+d,R.w,3);}
  drawLeg(R.L.back,R.B.a,tB,B.sw);
  drawLeg(R.L.front,R.F.a,tF,F.sw);
  /* upper body: a slight forward lean when walking and a small sway with each step (about the hip) */

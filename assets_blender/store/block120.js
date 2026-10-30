@@ -551,7 +551,7 @@ function stepWalk(c,dt){
  c.x+=ux*step;c.y+=uy*step;
  /* blocked = hardly any real progress (pushes included) while trying to walk */
  if(Math.hypot(c.x-x0,c.y-y0)<dt*8){c.stk=(c.stk||0)+dt;if(c.stk>1.2){c.ghost=1.5;c.stk=0;}}else c.stk=Math.max(0,(c.stk||0)-dt);c.phase+=step*.09;c.dist=(c.dist||0)+step;
- if(Math.abs(dx)>3)c.faceT=dx>0?1:-1;
+ if(Math.abs(dx)>3&&d>10&&c.state!=='look')c.faceT=dx>0?1:-1;   /* short shuffles (and steps at a tank) do not turn them round */
  return false;
 }
 function route(c,pts){c.path=pts.slice();}
@@ -694,7 +694,7 @@ function custTick(c,dt,t){
    else bubble(c,pickV120(['👀','🙂']),1.6);}break;
   case 'look':c.t-=dt;if(!c.path.length)c.speed=0;
    if(!c.idle&&c.lookT0&&c.t<c.lookT0-1.4&&c.t>1.2&&!c.talkTo){c.idle=true;   /* after a moment: a small step closer to the glass, or a glance at the next tank */
-    if(Math.random()<.55)route(c,[{x:c.x+(Math.random()*10-5),y:c.y-5}]);else{c.glanceT=t+.9;c.faceT=-c.faceT;}}
+    if(Math.random()<.55)route(c,[{x:c.x,y:c.y-5}]);}   /* a small step closer to the glass, still facing the tank (no turning away: owner) */
    if(c.glanceT&&t>c.glanceT){c.glanceT=0;if(c.slot&&typeof c.slot.tank==='number')c.faceT=(TX[c.slot.tank]+TW/2-c.x)>=0?1:-1;}
    if(c.t<=0){c.idle=false;c.glanceT=0;releaseSlot(c);c.pointing=false;c.state='gone1';nextStep(c);}break;
   case 'toQueue':if(arrived){c.state='wait';c.faceT=1;if(!ST.pay&&!ST.clerk.c&&ST.queue[0]===c){ST.queue.shift();ST.pay=c;c.state='toPay';route(c,[PAY]);reQueue();}}break;
