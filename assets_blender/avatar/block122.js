@@ -122,7 +122,7 @@ window.u122Home=function(){
 };
 /* the character: stands facing the player, now and then walks to another spot (side-view picture, flipped when going left), then turns back */
 const SPOTS=[27,50,73];
-async function legRig(src){try{if(!window.rigSpriteV120)return null;const im=new Image();im.src=src;await im.decode();return window.rigSpriteV120(im,{noArms:true});}catch(e){console.error('AFNICA home leg rig',e);return null;}}
+async function legRig(src){try{if(!window.rigSpriteV120)return null;const im=new Image();im.src=src;await im.decode();return window.rigSpriteV120(im,{});}catch(e){console.error('AFNICA home leg rig',e);return null;}}
 /* while walking the picture is swapped for a canvas that draws the rig: legs step in time with the distance covered */
 function walkLegs(g,el,img,R,left,dpct,dur){
  const room=$('u122Room');if(!room)return;const ch=img.offsetHeight||el.offsetHeight,k=ch/R.h,cw=Math.round(R.w*k*1.6),pxms=room.offsetWidth*dpct/100/dur,cyc=window.cycleLenV120(R)*k;
