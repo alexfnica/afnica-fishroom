@@ -22,11 +22,17 @@ const ST={cust:[],queue:[],pay:null,clerk:{c:null,ph:'idle',t:0,part:null},next:
 const $=id=>document.getElementById(id);
 
 /* ---------- save defaults ---------- */
+/* one game day of store numbers; per species: sold, 'too pricey' reactions, 'too cheap' reactions, missed requests; add-ons sold */
+function newDayV120(rep){return {customers:0,sales:0,revenue:0,upkeep:0,walkouts:0,best:0,rep0:rep||0,sold:{},pricey:{},cheap:{},reqMiss:{},addon:{}};}
+const bumpV120=(k,sp)=>{try{const o=st.store.day[k]||(st.store.day[k]={});o[sp]=(o[sp]||0)+1;}catch(e){}};
 function ensureStoreV120(){
  if(!st.store||typeof st.store!=='object')st.store={};
- const s=st.store,d={unlocked:true,tanks:3,slotsPerTank:SPT,rep:0,markupPct:115,decor:[],clerks:1,lastSimAt:0,dayNo:0,totalSales:0,totalRevenue:0,sale:null};
+ const s=st.store,d={unlocked:true,tanks:3,slotsPerTank:SPT,rep:0,markupPct:115,decor:[],clerks:1,lastSimAt:0,dayNo:0,totalSales:0,totalRevenue:0,sale:null,regulars:{},owned:{},name:null};
  for(const k in d)if(s[k]===undefined)s[k]=d[k];
- if(!s.day||typeof s.day!=='object')s.day={customers:0,sales:0,revenue:0,upkeep:0,walkouts:0,best:0,rep0:s.rep};
+ if(!s.day||typeof s.day!=='object')s.day=newDayV120(s.rep);
+ for(const k of ['sold','pricey','cheap','reqMiss','addon'])if(!s.day[k]||typeof s.day[k]!=='object')s.day[k]={};
+ if(!s.regulars||typeof s.regulars!=='object')s.regulars={};
+ if(!st.imp120||typeof st.imp120!=='object')st.imp120={week:-1,offers:[],shown:false};if(!Array.isArray(st.quar120))st.quar120=[];if(!s.owned||typeof s.owned!=='object')s.owned={};
  if(!Array.isArray(st.storeFish))st.storeFish=[];
  placeFishV120();
 }
@@ -69,6 +75,21 @@ const onSaleV120=f=>{const sa=saleV120();return !!sa.species&&sa.species===f.spe
 function priceV120(f){return Math.max(1,Math.round(fairV120(f)*(f.storePct||115)/100*(onSaleV120(f)?1-saleV120().pct/100:1)));}
 function eligibleV120(f){return !f.dead&&!f.disease&&S[f.species]&&f.age>=S[f.species].adult&&(f.health==null||f.health>=50)&&!Number.isFinite(f.gestStart)&&!(f.spermBroods>0);}
 const repLevel=()=>Math.floor((st.store.rep||0)/20);
+/* the player's name (V17.122 avatar) and the store's name on the sign (renamable; default "<NAME>'S FISH STORE") */
+function playerNameV120(){try{const a=st.avatar122;if(a&&a.name)return a.name;if(window.u122Debug)return u122Debug().me.name||'';}catch(e){}return '';}
+function storeNameV120(){const n=st.store&&st.store.name;if(n)return n;const p=playerNameV120().trim();if(!p)return 'MY FISH STORE';const P=p.toUpperCase();return (/S$/.test(P)?P+"'":P+"'S")+' FISH STORE';}
+window.stRename120=function(){try{const i=$('st120name');if(!i)return;const v=i.value.replace(/[<>&"]/g,'').trim().slice(0,22);st.store.name=v||null;save();toast('🏪 '+storeNameV120());renderStoreV120(true);}catch(e){console.error('AFNICA store rename',e);}};
+/* store upgrades (st.store.owned): the plant tank and the freezer sell add-ons, the rug and poster make customers accept a little more */
+const UPG=[{k:'plants',name:'Plant tank',ic:'🌿',cost:400,txt:'Customers can add aquarium plants (🪙 15) to their fish.'},
+ {k:'freezer',name:'Frozen food freezer',ic:'🧊',cost:500,txt:'Customers can add frozen food (🪙 10) to their fish.'},
+ {k:'rug',name:'Cosy rug',ic:'🟫',cost:200,txt:'+3% on the prices customers accept.'},
+ {k:'poster',name:'Fish poster',ic:'🖼️',cost:150,txt:'+2% on the prices customers accept.'}];
+const ADDON={plants:{price:15,ic:'🌿',name:'plants'},frozen:{price:10,ic:'🧊',name:'frozen food'}};
+const owns=k=>!!(st.store&&st.store.owned&&st.store.owned[k]);
+const decorV120=()=>1+(owns('rug')?.03:0)+(owns('poster')?.02:0)+(owns('plants')?.02:0);
+/* time of day on the shop: daylight / evening glow / night (dimmer, CLOSED sign); uses the same hour as the arrivals */
+function todV120(){try{const h=window.__afHourOverride!=null?+window.__afHourOverride:new Date().getHours(),tod=h<8||h>=22?'night':h>=18?'eve':'day',sg=$('st120stage');
+ if(sg&&sg.dataset.tod!==tod){sg.dataset.tod=tod;const d=$('st120door');if(d)d.classList.toggle('closed',tod==='night');}}catch(e){}}
 function hourF(){const h=window.__afHourOverride!=null?+window.__afHourOverride:new Date().getHours();return h<8||h>=22?0:(h>=10&&h<19?1.3:.7);}
 function cap(){return st.store.tanks*st.store.slotsPerTank;}
 function sname(f){const sp=S[f.species];return sp?sp.name:f.species;}
@@ -85,25 +106,31 @@ function evaluate(p){
  for(const f of st.storeFish){
   if(f._res120||(f.health!=null&&f.health<50))continue;
   const g=gradeV10(f),rar=rarityV9(f.species);
-  const match=p.type==='beginner'?true:p.type==='collector'?(rar!=='common'||g.rank>=3):false;
+  const match=p.req?(f.species===p.req.sp&&g.rank>=p.req.minRank):p.type==='beginner'?true:p.type==='collector'?(rar!=='common'||g.rank>=3):false;
   if(!match)continue;saw=true;
   const price=priceV120(f),fair=fairV120(f);
-  if(price>p.budget||price>fair*p.sense*(1+.15*lvl))continue;
+  if(p.req){if(price>p.budget*1.4||price>fair*(p.sense+.2)*(1+.15*lvl)*decorV120())continue;const sc=g.rank*10+fair/price;if(sc>bs){bs=sc;best=f;}continue;}   /* they came for it */
+  if(price>p.budget||price>fair*p.sense*(1+.15*lvl)*decorV120())continue;
   const sc=(p.type==='collector'?g.rank*10+fair/price:fair/price+Math.random()*.3)+(onSaleV120(f)?.6:0);   /* the sale draws buyers */
   if(sc>bs){bs=sc;best=f;}
  }
- let dear=null,dl=1e9;if(!best&&saw)for(const f of st.storeFish){if(f._res120)continue;const lim=Math.min(p.budget,fairV120(f)*p.sense*(1+.15*lvl)),o=priceV120(f)/lim;if(o<dl){dl=o;dear=f;}}
- return {fish:best,dear,reason:best?'':(saw?'expensive':'nomatch')};
+ let dear=null,dl=1e9;if(!best&&saw)for(const f of st.storeFish){if(f._res120)continue;const lim=Math.min(p.budget,fairV120(f)*p.sense*(1+.15*lvl)*decorV120()),o=priceV120(f)/lim;if(o<dl){dl=o;dear=f;}}
+ return {fish:best,dear,reason:best?'':(saw?'expensive':p.req?'reqmiss':'nomatch')};
 }
-function sellV120(f,silent){
+function sellV120(f,silent,c){
  const i=st.storeFish.indexOf(f);if(i<0)return 0;
- const price=priceV120(f),g=gradeV10(f),nm=sname(f),s=st.store;
+ const s=st.store,g=gradeV10(f),nm=sname(f);let price=c&&c.offer&&c.offerOk?c.offer:priceV120(f);
+ let extra=0,note='';
+ if(c&&c.req&&c.req.sp===f.species){extra+=Math.round(price*.25);note+=' · request tip +'+Math.round(price*.25);s.rep=Math.min(100,s.rep+2);}
+ if(c&&c.addon&&owns(c.addon==='plants'?'plants':'freezer')){const a=ADDON[c.addon];extra+=a.price;note+=' · '+a.ic+' +'+a.price;bumpV120('addon',c.addon);}
+ if(c&&c.pi!=null&&c.pi>=0){const R=s.regulars||(s.regulars={});R[c.pi]=Math.min(6,(R[c.pi]||0)+1);}
+ bumpV120('sold',f.species);price+=extra;
  st.storeFish.splice(i,1);
  st.coins+=price;st.totalSold=(st.totalSold||0)+1;
  s.totalSales++;s.totalRevenue+=price;s.day.sales++;s.day.revenue+=price;s.day.best=Math.max(s.day.best,price);
  s.rep=Math.min(100,s.rep+2);
  try{addXPV9(8+g.rank*3);}catch(e){}
- if(!silent){sndV120('till');toast(`🪙 Sold ${g.name} ${nm} for ${price} · rep +2`);}
+ if(!silent){sndV120('till');toast(`🪙 Sold ${g.name} ${nm} for ${price}${note} · rep +2`);}
  return price;
 }
 function walkout(p,reason){
@@ -124,7 +151,7 @@ function dayCheck(){
    st.storeFish.forEach(f=>{if(st.day-(f.storeSince||st.day)>=7)f.health=Math.max(10,(f.health==null?100:f.health)-3);});
   }
   s.lastSummary=Object.assign({},dd,{day:s.dayNo,rep1:s.rep,shown:false});
-  s.dayNo++;s.day={customers:0,sales:0,revenue:0,upkeep:0,walkouts:0,best:0,rep0:s.rep};n++;
+  s.dayNo++;s.day=newDayV120(s.rep);n++;
  }
  if(s.dayNo<st.day)s.dayNo=st.day;
 }
@@ -143,7 +170,13 @@ function batchSim(){
  return out;
 }
 function summaryHTML(m){
- return `<div style="text-align:left;line-height:1.7">Customers: <b>${m.customers}</b><br>Sales: <b>${m.sales}</b> · 🪙 <b>${m.revenue}</b><br>Upkeep paid: 🪙 ${m.upkeep}<br>Walked out: ${m.walkouts}<br>Best sale: 🪙 ${m.best}<br>Reputation: ${m.rep0} → ${m.rep1}</div>`;
+ const sp=new Set([...Object.keys(m.sold||{}),...Object.keys(m.pricey||{}),...Object.keys(m.cheap||{}),...Object.keys(m.reqMiss||{})]);
+ const nm=k=>S[k]&&S[k].name?S[k].name:k,rows=[...sp].map(k=>{const so=(m.sold||{})[k]||0,pr=(m.pricey||{})[k]||0,ch=(m.cheap||{})[k]||0,rq=(m.reqMiss||{})[k]||0;
+  const tip=rq&&!st.storeFish.some(f=>f.species===k)?'stock some — customers asked':pr>=3&&pr>so*2?'lower −10%':ch>=3?'raise +10%':so?'price looks right':'—';
+  return `<tr><td>${nm(k)}</td><td>${so}</td><td>${pr}</td><td>${ch}</td><td>${rq}</td><td><b>${tip}</b></td></tr>`;}).join('');
+ const ad=m.addon||{},adds=(ad.plants?`🌿 plants ×${ad.plants} `:'')+(ad.frozen?`🧊 frozen food ×${ad.frozen}`:'');
+ const table=rows?`<table class="rep120"><tr><th>Species</th><th>Sold</th><th>Too pricey</th><th>Too cheap</th><th>Asked, none</th><th>Suggestion</th></tr>${rows}</table>`:'';
+ return table+(adds?`<div style="text-align:left;margin:6px 0">Add-ons: ${adds}</div>`:'')+`<div style="text-align:left;line-height:1.7">Customers: <b>${m.customers}</b><br>Sales: <b>${m.sales}</b> · 🪙 <b>${m.revenue}</b><br>Upkeep paid: 🪙 ${m.upkeep}<br>Walked out: ${m.walkouts}<br>Best sale: 🪙 ${m.best}<br>Reputation: ${m.rep0} → ${m.rep1}</div>`;
 }
 
 /* ---------- drawing a person ---------- */
@@ -168,7 +201,7 @@ function mkPerson(p,z){
  return {el:d,svg:q('svg'),all:q('.all'),aL:q('.aL'),aR:q('.aR'),lL:q('.lL'),lR:q('.lR'),hd:q('.hd'),bag:q('.bag'),net:q('.net'),nf:q('.nf'),bf:q('.bf'),bub:q('.bub')};
 }
 /* a speech bubble; '§' in the text is replaced by a small picture of fish f (the player sees which fish is meant) */
-function bubble(c,txt,sec,f){const b=c.parts.bub;b.textContent='';const im=f&&txt.indexOf('§')>=0?fishImgV120(f):null;
+function bubble(c,txt,sec,f){const b=c.parts.bub;b.textContent='';b.classList.toggle('lft',c.x>560);const im=f&&txt.indexOf('§')>=0?fishImgV120(f):null;
  txt.split('§').forEach((s,i)=>{if(i&&im){const e=document.createElement('img');e.className='bfi';e.alt='';if(im.src)e.src=im.src;else im.addEventListener('load',()=>{e.src=im.src;},{once:true});b.appendChild(e);}b.appendChild(document.createTextNode(s));});
  b.classList.add('on');c.bubT=sec||2.2;}
 /* realistic customers: a rendered full-body cut-out (assets_blender/store/people, made with cut_people.py), walked with a bob / rock / squash instead of limbs */
@@ -179,7 +212,7 @@ const depthV120=y=>.9+.15*Math.max(0,Math.min(1,(y-340)/130));
 /* shop sounds (respect the sound switch): door bell, footsteps, bag rustle, till; crowd murmur in murmurV120 */
 let lastStepV120=0;
 function sndV120(kind){try{if(!st.soundOn)return;
- if(kind==='bell'){toneV141(1318,.9,'sine',.022);toneV141(988,1.2,'sine',.018,.17);}
+ if(kind==='bell'){toneV141(1318,.9,'sine',.009);toneV141(988,1.2,'sine',.007,.17);}
  else if(kind==='step'){const now=performance.now();if(now-lastStepV120<110)return;lastStepV120=now;toneV141(80+Math.random()*30,.05,'sine',.01);noiseV141(.02,.0025);}
  else if(kind==='rustle'){for(let i=0;i<7;i++)noiseV141(.025+Math.random()*.035,.006+Math.random()*.006,i*.08+Math.random()*.05);}
  else if(kind==='till'){toneV141(150,.12,'triangle',.025);noiseV141(.05,.01,.02);toneV141(2093,.45,'triangle',.016,.13);toneV141(2637,.55,'triangle',.013,.21);}
@@ -278,9 +311,9 @@ function mkOwner(){
  /* the painted fish was taken out of the bag pictures: the fish being sold is drawn there instead (box from fix_bag_fish.py) */
  const fishEl=k=>{const b=BF['owner_'+k];if(!b)return '';const cx=(b[0]+b[2]/2)*S,cy=(b[1]+b[3]/2)*S,w=Math.max(b[2],b[3]*1.8)*S*1.25;
   return `<img class="ofish" data-k="${k}" alt="" style="left:${(cx-w/2).toFixed(1)}px;top:${(cy-w*.3).toFixed(1)}px;width:${w.toFixed(1)}px;opacity:0">`;};
- d.innerHTML=['idle','greet','bag','give'].map(k=>`<img class="op" data-k="${k}" src="${PO[k]||''}" alt="" style="opacity:${k==='idle'?1:0}">`).join('')+fishEl('bag')+fishEl('give')+'<div class="bub"></div>';
+ d.innerHTML='<div class="obody">'+['idle','greet','bag','give'].map(k=>`<img class="op" data-k="${k}" src="${PO[k]||''}" alt="" style="opacity:${k==='idle'?1:0}">`).join('')+fishEl('bag')+fishEl('give')+'</div><div class="bub"></div>';   /* the bubble stays outside the breathing body */
  const im={},fi={};d.querySelectorAll('img.op').forEach(e=>im[e.dataset.k]=e);d.querySelectorAll('img.ofish').forEach(e=>fi[e.dataset.k]=e);
- return {el:d,im,fi,fishFor:null,op:{idle:1,greet:0,bag:0,give:0},lt:0,bub:d.querySelector('.bub')};
+ return {el:d,body:d.querySelector('.obody'),im,fi,fishFor:null,op:{idle:1,greet:0,bag:0,give:0},lt:0,bub:d.querySelector('.bub')};
 }
 function custHandV120(c){return {x:c.x+(c.faceT>0?11:-11),y:c.y-74};}
 function poseClerk(t){
@@ -292,10 +325,19 @@ function poseClerk(t){
  if(f&&P.fishFor!==f){P.fishFor=f;const im=fishImgV120(f);for(const k in P.fi)if(im){if(im.src)P.fi[k].src=im.src;else{const el=P.fi[k];im.addEventListener('load',()=>{el.src=im.src;},{once:true});}}}
  for(const k in P.op){P.op[k]+=((k===want?1:0)-P.op[k])*Math.min(1,dt*rate);P.im[k].style.opacity=P.op[k].toFixed(3);if(P.fi[k])P.fi[k].style.opacity=(f?P.op[k]:0).toFixed(3);}
  /* life: breathing and a very slow sway */
- P.el.style.transform=`translateY(${(Math.sin(t*1.7)*.35).toFixed(2)}px) scaleY(${(1+.006*Math.sin(t*1.7)).toFixed(4)}) rotate(${(Math.sin(t*.5)*.4).toFixed(2)}deg)`;
+ P.body.style.transform=`translateY(${(Math.sin(t*1.7)*.35).toFixed(2)}px) scaleY(${(1+.006*Math.sin(t*1.7)).toFixed(4)}) rotate(${(Math.sin(t*.5)*.4).toFixed(2)}deg)`;
 }
 
 /* ---------- scene ---------- */
+/* the plant tank (on a stand) and the chest freezer stand on the floor against the wall, between the display tanks' viewing spots */
+function extrasHTML(){
+ let h='';
+ if(owns('plants'))h+=`<div class="ptk120"><div class="pw"></div><div class="ps"></div>
+  <svg viewBox="0 0 100 44" preserveAspectRatio="none"><path d="M8 44 Q4 26 10 6 Q14 26 14 44Z M16 44 Q20 22 30 10 Q24 30 22 44Z M34 44 Q30 20 38 4 Q42 24 40 44Z M46 44 Q52 26 60 14 Q56 32 52 44Z M64 44 Q62 22 70 6 Q74 26 70 44Z M76 44 Q82 24 92 12 Q86 32 82 44Z" fill="#3f9f3a"/><path d="M26 44 Q26 30 32 22 Q30 34 30 44Z M58 44 Q56 32 62 26 Q62 36 62 44Z M88 44 Q88 30 94 24 Q92 36 92 44Z" fill="#6cc24a"/></svg>
+  <div class="pg"></div><i class="lg l"></i><i class="lg r"></i><div class="lb">🌿 PLANTS 🪙 15</div></div>`;
+ if(owns('freezer'))h+=`<div class="frz120"><div class="fl"><i style="background:#c0392b"></i><i style="background:#8e44ad"></i><i style="background:#c0392b"></i><i style="background:#e67e22"></i><i style="background:#8e44ad"></i><i style="background:#c0392b"></i></div><div class="lb">🧊 FROZEN FOOD 🪙 10</div></div>`;
+ return h;
+}
 function sceneHTML(){
  const s=st.store;let tanks='';
  for(let i=0;i<s.tanks;i++){
@@ -314,13 +356,17 @@ function sceneHTML(){
   <g stroke="#3d2411" stroke-opacity=".5" stroke-width="2"><path d="M0 366H${W}M0 424H${W}"/><path d="M120 312V366M360 312V366M600 312V366M240 366V424M480 366V424M60 424V480M300 424V480M540 424V480"/></g>
   <rect x="${sx}" y="${TY+TH+4}" width="${sw}" height="12" rx="3" fill="#5a3a1d"/>
   <rect x="250" y="3" width="260" height="56" rx="10" fill="#fff" stroke="#3bc8f5" stroke-width="3"/>
-  ${(window.ST120_LOGO&&window.ST120_LOGO.icon)?`<image href="${window.ST120_LOGO.icon}" x="258" y="6" width="50" height="50"/><image href="${window.ST120_LOGO.word}" x="313" y="8" width="190" height="46" preserveAspectRatio="xMidYMid meet"/>`:'<text x="380" y="38" text-anchor="middle" font-size="18" font-weight="900" fill="#092638" letter-spacing="2" font-family="Inter,system-ui,Arial,sans-serif">AFNICA FISHROOM</text>'}
+  ${(()=>{const nm=storeNameV120(),fs=nm.length>18?13:nm.length>14?15:17,ic=window.ST120_LOGO&&window.ST120_LOGO.icon;   /* the player's shop name; the small AFNICA fish stays as the shop's mark */
+   return (ic?`<image href="${ic}" x="258" y="9" width="44" height="44"/>`:'')+`<text x="${ic?405:380}" y="38" text-anchor="middle" font-size="${fs}" font-weight="900" fill="#092638" letter-spacing="1.5" font-family="Inter,system-ui,Arial,sans-serif" ${nm.length>16?'textLength="196" lengthAdjust="spacingAndGlyphs"':''}>${nm.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</text>`;})()}
   <rect x="6" y="96" width="86" height="250" rx="5" fill="#2a1a0c"/><rect x="14" y="104" width="70" height="234" fill="#bdeaff" opacity=".9"/><path d="M14 104L84 104L14 220Z" fill="#fff" opacity=".4"/>
   <rect x="2" y="344" width="94" height="8" rx="3" fill="#3a2a14"/>
+  ${owns('rug')?'<ellipse cx="380" cy="430" rx="200" ry="34" fill="#8e3b2f" opacity=".9"/><ellipse cx="380" cy="430" rx="184" ry="28" fill="none" stroke="#e7b75f" stroke-width="3" opacity=".8"/><ellipse cx="380" cy="430" rx="150" ry="20" fill="none" stroke="#e7b75f" stroke-width="1.5" opacity=".6"/>':''}
+  ${owns('poster')?'<g transform="translate(16 46) rotate(-2)"><rect width="66" height="44" rx="3" fill="#fffbe8" stroke="#7a5a30" stroke-width="3"/><path d="M14 22 q14 -12 30 0 q-14 12 -30 0z M44 22 l10 -7 v14z" fill="#ff8a2a"/><circle cx="20" cy="20" r="1.6" fill="#222"/><text x="33" y="40" text-anchor="middle" font-size="7" font-weight="900" fill="#2a1a0c" font-family="Inter,Arial">KEEP FISH HAPPY</text></g>':''}
 
  </svg>
- <div class="dr" id="st120door"></div>
+ <div class="dr" id="st120door"><i class="pane"></i></div>
  <div class="board" id="st120board"></div>
+ ${extrasHTML()}
  ${tanks}
  <div class="clk" id="st120clerk"></div>
  <div class="cnt"><svg viewBox="0 0 192 100" width="192" height="100"><rect x="0" y="0" width="192" height="14" rx="5" fill="#e8bd7c"/><rect x="4" y="14" width="184" height="86" fill="#9a6538"/><rect x="14" y="26" width="164" height="64" rx="4" fill="#6b4526" opacity=".6"/><text x="96" y="56" text-anchor="middle" font-size="16" font-weight="900" fill="#ffd9a0" opacity=".85" font-family="Inter,system-ui,Arial,sans-serif">PAY HERE</text></svg></div>
@@ -331,6 +377,17 @@ function sceneHTML(){
 }
 const SWIM=[{x:14,y:14},{x:88,y:20},{x:34,y:40},{x:104,y:44}],FLOOR=[{x:10,y:70},{x:62,y:72},{x:108,y:70},{x:36,y:72}];
 const isBottom=f=>f.species==='cory'||f.species==='anc';
+/* each display fish wanders inside its tank: swimmers pick a new spot every few seconds (turning round through a short
+   squeeze), bottom fish creep along the sand with pauses */
+function swimTickV120(dt){
+ for(const el of ST.els.values()){const q=el.sw;if(!q)continue;
+  if(q.w>0)q.w-=dt;else{const dx=q.tx-q.x,dy=q.ty-q.y,d=Math.hypot(dx,dy);
+   if(d<1.5){q.w=q.bot?1+Math.random()*3:Math.random()*1.2;q.tx=q.bot?6+Math.random()*112:4+Math.random()*116;q.ty=q.bot?68+Math.random()*6:6+Math.random()*44;}
+   else{const sp=q.bot?5:11+3*Math.sin(performance.now()/700+q.x),st2=Math.min(d,sp*dt);q.x+=dx/d*st2;q.y+=dy/d*st2;if(Math.abs(dx)>2)q.f=dx>0?1:-1;}}
+  q.fs+=(q.f-q.fs)*Math.min(1,dt*6);
+  el.style.transform=`translate(${q.x.toFixed(1)}px,${q.y.toFixed(1)}px)`;el.firstChild.style.transform=`scaleX(${(FISHFACE*Math.sign(q.fs||1)*Math.max(.15,Math.abs(q.fs))).toFixed(3)})`;}
+}
+const FISHFACE=1;   /* the fish pictures face right: +1 = swimming right */
 function syncFish(){
  const s=st.store,list=st.storeFish,seen=new Set();
  list.forEach((f,idx)=>{
@@ -340,7 +397,7 @@ function syncFish(){
   let el=ST.els.get(f.id);
   if(!el){el=document.createElement('div');el.className='sf'+(isBottom(f)?' bt':'');el.innerHTML=`<div class="d" style="animation-duration:${(isBottom(f)?9:5)+Math.random()*4}s;animation-delay:-${(Math.random()*6).toFixed(1)}s">${dexAvatarHTML(f,32,19)}</div>`;ST.els.set(f.id,el);}
   if(el.parentNode!==fb)fb.appendChild(el);
-  const p=(bot?FLOOR:SWIM)[k%4];el.style.left=p.x+'px';el.style.top=p.y+'px';
+  const p=(bot?FLOOR:SWIM)[k%4];if(!el.sw){el.sw={x:p.x,y:p.y,tx:p.x,ty:p.y,f:Math.random()<.5?1:-1,fs:1,w:Math.random()*3,bot};el.style.left='0px';el.style.top='0px';el.firstChild.style.animation='none';}
   el.classList.toggle('gone',!!f._net120);seen.add(f.id);
  });
  for(const [id,el] of ST.els)if(!seen.has(id)){el.remove();ST.els.delete(id);}
@@ -372,6 +429,21 @@ window.stSale120=function(){
  try{const sp=[...new Set(st.storeFish.map(f=>f.species))];const sa=saleV120();const i=sp.indexOf(sa.species);
   sa.species=sp.length?(i<0||i===sp.length-1?(i<0?sp[0]:null):sp[i+1]):null;save();boardUI();syncFish();panel();}catch(e){console.error('AFNICA store sale',e);}
 };
+/* one row per species on display: change the price of all of them at once */
+function speciesRowsV120(){
+ const by={};st.storeFish.forEach(f=>{if(!f._res120)(by[f.species]=by[f.species]||[]).push(f);});
+ const ks=Object.keys(by);if(!ks.length)return '';
+ return `<div class="v8panel"><div class="v8head"><b>PRICE PER SPECIES</b><span>ALL AT ONCE</span></div>${ks.map(k=>{const fs=by[k],pr=fs.map(priceV120),a=Math.min(...pr),b=Math.max(...pr),pc=Math.round(fs.reduce((x,f)=>x+(f.storePct||115),0)/fs.length);
+  return `<div class="st120row"><div class="av">${dexAvatarHTML(fs[0],56,34)}</div><div class="in"><b>${sname(fs[0])} ×${fs.length}</b><small>🪙 ${a===b?a:a+'–'+b} · ${pc}% of value</small></div><div class="ctl"><button class="btn small blue" onclick="stPriceSp120('${k}',-10)">−10%</button><button class="btn small blue" onclick="stPriceSp120('${k}',10)">+10%</button></div></div>`;}).join('')}</div>`;
+}
+window.stPriceSp120=function(sp,d){
+ st.storeFish.forEach(f=>{if(f.species===sp&&!f._res120)f.storePct=Math.max(50,Math.min(200,(f.storePct||115)+d));});save();syncFish();panel();
+};
+window.stBuy120=function(k){
+ try{const u=UPG.find(x=>x.k===k);if(!u||owns(k))return;if(st.coins<u.cost)return toast('Not enough coins for the '+u.name);
+  st.coins-=u.cost;st.store.owned[k]=true;save();toast(u.ic+' '+u.name+' added to your store!');coinsUI();renderStoreV120(true);}catch(e){console.error('AFNICA store buy',e);}
+};
+window.stReport120=function(){try{const s=st.store;pop('📋 TODAY’S STORE REPORT',summaryHTML(Object.assign({},s.day,{rep1:s.rep,day:st.day})),'OK');}catch(e){console.error('AFNICA store report',e);}};
 function panel(){
  boardUI();
  const el=$('st120panel');if(!el)return;
@@ -379,13 +451,18 @@ function panel(){
  const elig=[];
  st.fish.forEach(f=>{if(eligibleV120(f))elig.push([f,'main']);});
  st.fry.forEach(f=>{if(eligibleV120(f))elig.push([f,'fry']);});
- el.innerHTML=`<div class="v8panel"><div class="v8head"><b>🏪 YOUR FISH STORE</b><span>★ LEVEL ${lvl}</span></div>
+ el.innerHTML=`<div class="v8panel"><div class="v8head"><b>🏪 ${storeNameV120()}</b><span>★ LEVEL ${lvl}</span></div>
   <div class="meta">On sale today: <b style="color:#ff6b5a">${(()=>{const sa=saleV120(),f=sa.species&&st.storeFish.find(x=>x.species===sa.species);return f?sname(f)+' −'+sa.pct+'%':'nothing'})()}</b> <button class="btn small blue" style="padding:4px 8px;min-height:24px;font-size:10px" onclick="stSale120()">CHANGE</button></div>
   <div class="st120rep"><i style="width:${s.rep}%"></i></div><div class="meta">Reputation ${s.rep}/100 · higher reputation = more customers and higher prices they accept.</div>
   <div class="meta">Today: <b>${d.customers}</b> customers · <b>${d.sales}</b> sales · 🪙 <b>${d.revenue}</b> · lifetime ${s.totalSales} sales, 🪙 ${s.totalRevenue}</div>
   <div class="meta">Upkeep: 🪙 2 per displayed fish per game day (counted while the store screen is open). Fish unsold for 7+ days get stressed.</div>
   ${st.storeFish.length?'':'<div class="meta" style="color:#ffd24b">Stock some fish below, customers only come when there is something to buy.</div>'}</div>
+  <div class="v8panel"><div class="v8head"><b>🏪 STORE NAME</b><span>ON THE SIGN</span></div><div style="display:flex;gap:6px;margin-top:4px"><input id="st120name" maxlength="22" placeholder="${storeNameV120()}" value="${(st.store.name||'').replace(/"/g,'')}" style="flex:1;min-width:0;border-radius:8px;border:1px solid #18516a;background:#061923;color:#fff;padding:6px 8px;font:700 12px Inter,Arial"><button class="btn small blue" onclick="stRename120()">SAVE</button></div><div class="meta">Leave it empty to use your name. AFNICA runs the counter for you.</div></div>
+  ${importPanelV120()}
+  <div class="v8panel"><div class="v8head"><b>📋 TODAY</b><span>DAY ${st.day}</span></div><div class="meta">What customers said about your prices today, per species, with a suggestion.</div><button class="btn small blue wide" style="margin-top:6px" onclick="stReport120()">OPEN TODAY'S REPORT</button></div>
+  ${speciesRowsV120()}
   <div class="v8panel"><div class="v8head"><b>ON DISPLAY</b><span>${st.storeFish.length}/${cap()}</span></div>${st.storeFish.map(f=>f._res120?`<div class="st120row"><div class="in"><b>${sname(f)}</b> <small>being sold…</small></div></div>`:rowHTML(f,'shop')).join('')||'<div class="meta">Nothing on display.</div>'}</div>
+  <div class="v8panel"><div class="v8head"><b>🛠️ STORE UPGRADES</b><span>🪙 ${st.coins}</span></div>${UPG.map(u=>`<div class="st120row"><div class="av" style="font-size:24px;text-align:center">${u.ic}</div><div class="in"><b>${u.name}</b><small>${u.txt}</small></div><div class="ctl">${owns(u.k)?'<b style="color:#7fe08a;font-size:11px">OWNED ✓</b>':`<button class="btn small green" onclick="stBuy120('${u.k}')">🪙 ${u.cost}</button>`}</div></div>`).join('')}</div>
   <div class="v8panel"><div class="v8head"><b>STOCK FROM YOUR TANKS</b><span>${elig.length} ELIGIBLE</span></div><div class="meta">Healthy adult fish from the Main and Fry tanks (not pregnant).</div>${elig.map(x=>rowHTML(x[0],'stock')).join('')||'<div class="meta">No eligible adult fish right now.</div>'}</div>`;
 }
 function coinsUI(){document.querySelectorAll('.v8money .v8pill').forEach(p=>{if(p.textContent.indexOf('🪙')===0)p.textContent='🪙 '+st.coins;});}
@@ -445,8 +522,10 @@ function viaRow(c,x,y){
 function buildSlots(){
  ST.slots=[];for(let i=0;i<st.store.tanks;i++){const cx=TX[i]+TW/2;ST.slots.push([{x:cx-34,y:374,by:null,tank:i},{x:cx+34,y:374,by:null,tank:i}]);}
 }
+/* the plant tank and the freezer each have one spot to stand at */
+const XS={P:{x:282,y:378,fx:282,by:null,tank:'P'},F:{x:470,y:380,fx:470,by:null,tank:'F'}};
 function freeSlot(ti,c){const L=ST.slots[ti];if(!L)return null;if(c&&c.parts.wide)return (!L[0].by&&!L[1].by)?{x:(L[0].x+L[1].x)/2,y:L[0].y,by:null,tank:ti,both:L}:null;return L.find(s=>!s.by);}
-function releaseSlot(c){if(c.slot){c.slot.by=null;if(c.slot.both)c.slot.both.forEach(s=>s.by=null);c.slot=null;}}
+function releaseSlot(c){if(c.slot){c.slot.by=null;if(typeof c.slot.tank==='string'){c.slot=null;return;}if(c.slot.both)c.slot.both.forEach(s=>s.by=null);c.slot=null;}}
 
 /* ---------- customer flow ---------- */
 /* a person who is not in the shop right now (each picture is one real person); the one who left last is avoided too */
@@ -454,7 +533,9 @@ function pickPersonV120(PP){
  if(!PP||!PP.length)return -1;
  const busy=new Set(ST.cust.map(c=>c.pi));if(ST.lastPi!=null&&PP.length>ST.cust.length+1)busy.add(ST.lastPi);
  const free=[];for(let i=0;i<PP.length;i++)if(!busy.has(i))free.push(i);
- return free.length?free[Math.floor(Math.random()*free.length)]:-1;
+ if(!free.length)return -1;
+ const R=(st.store&&st.store.regulars)||{},w=free.map(i=>1+Math.min(4,R[i]||0)*.6),tot=w.reduce((a,b)=>a+b,0);   /* regulars come back more often */
+ let x=Math.random()*tot;for(let k=0;k<free.length;k++){x-=w[k];if(x<=0)return free[k];}return free[free.length-1];
 }
 function spawn(){
  if(window.ST120_PEOPLE&&window.ST120_PEOPLE.length&&pickPersonV120(window.ST120_PEOPLE)<0)return;   /* everyone is already inside */
@@ -465,6 +546,18 @@ function spawn(){
  avail.sort(()=>Math.random()-.5);c.visits=avail.slice(0,1+Math.floor(Math.random()*Math.min(3,avail.length)));
  const col=FCOL.guppy;parts.bf.setAttribute('fill',col);
  route(c,[{x:110,y:372}]);
+ const t0=performance.now()/1000,reg=pi>=0?((st.store.regulars||{})[pi]||0):0;
+ if(reg>=2){c.regular=true;c.sense+=.05*Math.min(4,reg);}
+ if(ST.friendNext){ST.friendNext=false;c.friend=true;sayLater(c,pickV120(['My friend said this shop is great! ⭐','I heard about this place! 😊']),t0+1,2.8);}
+ else if(c.type!=='shopper'&&Math.random()<.22){   /* a request: they come for one species (sometimes a top grade) */
+  const sps=Object.keys(S).filter(k=>S[k]&&S[k].price&&FCOL[k]);const sp=pickV120(sps);c.req={sp,minRank:c.type==='collector'||Math.random()<.25?3:0};
+  const has=[];for(let i=0;i<st.store.tanks;i++)if(tankFishV120(i).some(f=>f.species===sp&&!f._res120))has.push(i);
+  c.visits=has.concat(c.visits.filter(i=>!has.includes(i))).slice(0,3);
+  sayLater(c,c.req.minRank?'Looking for a top-grade § ✨':'Looking for a § 🔎',t0+.9,3,{id:'req'+sp,species:sp,sex:'M',age:200,genes:{color:80,pattern:80,fins:80,vitality:80}});}
+ else if(c.regular)sayLater(c,pickV120(['Back again! 😄','Hello again! 👋','My favourite shop! ⭐']),t0+.9,2.4);
+ if(c.regular&&Math.random()<.3){ST.friendNext=true;ST.next=Math.min(ST.next,2.5);}   /* sometimes brings a friend */
+ /* with a plant tank / freezer some customers have a look there too */
+ if(owns('plants')&&Math.random()<.25)c.visits.push('P');if(owns('freezer')&&Math.random()<.25)c.visits.push('F');
 }
 /* what a customer thinks of the fish in one display tank: 'good' (something they like at a price they accept), 'pricey' (they like it, too dear), 'meh' */
 /* what a customer thinks of one display tank, and WHICH fish it is about (so the player knows which price to change):
@@ -473,7 +566,7 @@ function tankOpinion(c,ti){
  const lvl=repLevel(),fs=tankFishV120(ti).filter(f=>!f._res120&&!f._net120);
  let good=null,gs=-1,dear=null,ds=1e9;
  for(const f of fs){const g=gradeV10(f),rar=rarityV9(f.species);const match=c.type==='beginner'?true:c.type==='collector'?(rar!=='common'||g.rank>=3):false;
-  if(!match)continue;const price=priceV120(f),fair=fairV120(f),lim=Math.min(c.budget,fair*c.sense*(1+.15*lvl));
+  if(!match)continue;const price=priceV120(f),fair=fairV120(f),lim=Math.min(c.budget,fair*c.sense*(1+.15*lvl)*decorV120());
   if(price<=lim){const sc=fair/price;if(sc>gs){gs=sc;good=f;}}else{const over=price/lim;if(over<ds){ds=over;dear=f;}}}
  if(good)return {op:gs>=1.35?'cheap':'good',f:good};
  if(dear)return {op:'pricey',f:dear};
@@ -492,7 +585,7 @@ function socialTick(t){
  let done=false;
  for(let i=0;i<C.length&&!done;i++)for(let j=0;j<C.length&&!done;j++){if(i===j)continue;const a=C[i],b=C[j];
   /* at the same tank */
-  if(a.state==='look'&&b.state==='look'&&a.slot&&b.slot&&a.slot.tank===b.slot.tank&&!a.parts.wide&&tankOpinion(a,a.slot.tank).f){
+  if(a.state==='look'&&b.state==='look'&&a.slot&&b.slot&&typeof a.slot.tank==='number'&&a.slot.tank===b.slot.tank&&!a.parts.wide&&tankOpinion(a,a.slot.tank).f){
    const O=tankOpinion(a,a.slot.tank),nm=O.f?'§':'fish',F=O.f;
    bubble(a,O.op==='pricey'?pickV120(['Pricey '+nm+' , right? 😬','Look at that '+nm+' … 💸']):pickV120(['Nice '+nm+' , huh? 😍','Have you seen this? '+nm,'I like this one '+nm+' 👍']),2.4,F);
    sayLater(b,O.op==='pricey'?pickV120(['Yeah, a bit much 😅','Maybe on sale later 🤞']):pickV120(['Beautiful! 😍','I might get one too 🙂','Good choice! 👍']),t+1.3);
@@ -511,19 +604,28 @@ function socialTick(t){
 }
 function nextStep(c){
  if(c.visits.length){
-  const ti=c.visits.shift(),sl=freeSlot(ti,c);if(!sl)return nextStep(c);
+  const ti=c.visits.shift(),sl=typeof ti==='string'?(XS[ti]&&!XS[ti].by?XS[ti]:null):freeSlot(ti,c);if(!sl)return nextStep(c);
   c.slot=sl;sl.by=c;if(sl.both)sl.both.forEach(s=>s.by=c);c.state='goto';route(c,viaRow(c,sl.x,sl.y));return;
  }
  decide(c);
 }
 function decide(c){
  const r=evaluate(c);
+ /* haggling: a fish they like is a little too dear -> they offer what they would pay (the player accepts or refuses at the counter) */
+ if(!r.fish&&r.reason==='expensive'&&r.dear&&c.type!=='shopper'&&Math.random()<.4){
+  const f=r.dear,lim=Math.min(c.budget*(c.req?1.4:1),fairV120(f)*(c.sense+(c.req?.2:0))*(1+.15*repLevel())*decorV120()),pr=priceV120(f);
+  if(pr<=lim*1.35&&!f._res120){r.fish=f;c.offer=Math.max(1,Math.round(lim/5)*5);bubble(c,'I’d give 🪙 '+c.offer+' for § 🤝',2.6,f);}
+ }
  if(r.fish){
-  r.fish._res120=c.id;c.want=r.fish;bubble(c,'😊',1.6);
+  r.fish._res120=c.id;c.want=r.fish;if(!c.offer)bubble(c,'😊',1.6);
+  if(!c.addon&&Math.random()<.3){const ks=[];if(owns('plants'))ks.push('plants');if(owns('freezer'))ks.push('frozen');if(ks.length)c.addon=pickV120(ks);}
   if(!ST.pay&&!ST.queue.length&&!ST.clerk.c){ST.pay=c;c.state='toPay';route(c,[{x:c.x,y:Math.max(c.y,388)},PAY]);}
   else{ST.queue.push(c);c.state='toQueue';route(c,[{x:c.x,y:Math.max(c.y,388)},QS[Math.min(ST.queue.length-1,3)]]);}
  }else{
-  if(c.type!=='shopper'){bubble(c,r.reason==='expensive'?(r.dear?pickV120(['§ too expensive… 💸','§ ? Out of my budget 😬']):'Too expensive… 💸'):pickV120(['Nothing for me 😕','Not what I wanted 😕','Hmm, no 🤷']),2.6,r.dear);walkout(c,r.reason);}
+  if(r.reason==='reqmiss'&&Math.random()<.5)bossSay('Boss, people keep asking for that one 🔎');
+  if(r.reason==='expensive'&&r.dear&&Math.random()<.3)bossSay('Maybe lower that price a bit, boss? 🤔');
+  if(r.reason==='reqmiss'){bubble(c,pickV120(['No § today 😢','Hmm, no § … 😕']),2.8,{id:'req'+c.req.sp,species:c.req.sp,sex:'M',age:200,genes:{color:80,pattern:80,fins:80,vitality:80}});bumpV120('reqMiss',c.req.sp);walkout(c,'req');}
+  else if(c.type!=='shopper'){if(r.dear)bumpV120('pricey',r.dear.species);bubble(c,r.reason==='expensive'?(r.dear?pickV120(['§ too expensive… 💸','§ ? Out of my budget 😬']):'Too expensive… 💸'):pickV120(['Nothing for me 😕','Not what I wanted 😕','Hmm, no 🤷']),2.6,r.dear);walkout(c,r.reason);}
   else bubble(c,'🙂',1.6);
   leave(c);
  }
@@ -539,28 +641,50 @@ function custTick(c,dt,t){
  const arrived=stepWalk(c,dt);
  switch(c.state){
   case 'enter':if(arrived)nextStep(c);break;
-  case 'goto':if(arrived){c.state='look';c.t=3+Math.random()*3;c.faceT=(TX[c.slot.tank]+TW/2-c.x)>=0?1:-1;
+  case 'goto':if(arrived&&typeof c.slot.tank==='string'){c.state='look';c.t=2.5+Math.random()*2;c.lookT0=c.t;c.faceT=c.slot.fx>=c.x?1:-1;
+   bubble(c,c.slot.tank==='P'?pickV120(['Fresh plants! 🌿','Nice java fern 🌿','My tank needs plants 🌱']):pickV120(['Frozen bloodworms! 🧊','Treats for my fish 🧊','Brine shrimp! 🦐']),2.4);break;}
+   if(arrived){c.state='look';c.t=3+Math.random()*3;c.lookT0=c.t;c.faceT=(TX[c.slot.tank]+TW/2-c.x)>=0?1:-1;
    /* react to the prices in this tank; point at it when interested (the child of a pair points when it sees something) */
-   const O=tankOpinion(c,c.slot.tank),op=O.op,nm='§',F=O.f;c.pointing=op==='good'||op==='cheap'||(c.parts.wide&&op!=='meh')||(op==='pricey'&&Math.random()<.4);
+   const O=tankOpinion(c,c.slot.tank),op=O.op,nm='§',F=O.f;if(F&&op==='pricey')bumpV120('pricey',F.species);if(F&&op==='cheap')bumpV120('cheap',F.species);c.pointing=op==='good'||op==='cheap'||(c.parts.wide&&op!=='meh')||(op==='pricey'&&Math.random()<.4);
    if(c.parts.wide&&op!=='meh')bubble(c,pickV120(['That '+nm+'! 😍','Look! '+nm,'Can we get one? '+nm+' 🥺']),2.8,F);
    else if(op==='cheap')bubble(c,pickV120(['Wow, so cheap! '+nm+' 😮',nm+' is a steal! 🤑']),2.8,F);
    else if(op==='good')bubble(c,pickV120(['Good price! '+nm+' 👍','Nice '+nm+' 😍','Fair price '+nm+' 🙂']),2.8,F);
    else if(op==='pricey')bubble(c,pickV120([nm+' too pricey… 💸',nm+' ? Too much 😬']),2.8,F);
    else bubble(c,pickV120(['👀','🙂']),1.6);}break;
-  case 'look':c.t-=dt;c.speed=0;if(c.t<=0){releaseSlot(c);c.pointing=false;c.state='gone1';nextStep(c);}break;
+  case 'look':c.t-=dt;if(!c.path.length)c.speed=0;
+   if(!c.idle&&c.lookT0&&c.t<c.lookT0-1.4&&c.t>1.2&&!c.talkTo){c.idle=true;   /* after a moment: a small step closer to the glass, or a glance at the next tank */
+    if(Math.random()<.55)route(c,[{x:c.x+(Math.random()*10-5),y:c.y-5}]);else{c.glanceT=t+.9;c.faceT=-c.faceT;}}
+   if(c.glanceT&&t>c.glanceT){c.glanceT=0;if(c.slot&&typeof c.slot.tank==='number')c.faceT=(TX[c.slot.tank]+TW/2-c.x)>=0?1:-1;}
+   if(c.t<=0){c.idle=false;c.glanceT=0;releaseSlot(c);c.pointing=false;c.state='gone1';nextStep(c);}break;
   case 'toQueue':if(arrived){c.state='wait';c.faceT=1;if(!ST.pay&&!ST.clerk.c&&ST.queue[0]===c){ST.queue.shift();ST.pay=c;c.state='toPay';route(c,[PAY]);reQueue();}}break;
   case 'wait':c.wait+=dt;if(c.wait>45){const f=c.want;if(f)delete f._res120;c.want=null;ST.queue.splice(ST.queue.indexOf(c),1);bubble(c,pickV120(['Too slow! 😠','I can’t wait any longer 😤']),2.6);walkout(c,'queue');leave(c);reQueue();}break;
   case 'toPay':if(arrived){c.state='atpay';c.faceT=-1;   /* turned toward the owner, who stands to their left */ST.clerk.c=c;ST.clerk.t=0;ST.clerk.ph='';}break;
   case 'exit':if(c.happy&&!c.bye&&c.x<170&&c.bubT<=0){c.bye=true;bubble(c,pickV120(['Bye! 👋','See you! 👋']),1.4);}
    if(arrived||(c.leaving!==undefined&&c.x<70&&c.path.length<=1)){c.alpha=Math.max(0,c.alpha-dt*3);if(c.alpha<=0)c.dead=true;}else if(c.x<120)c.alpha=Math.max(0,Math.min(c.alpha,(c.x-DOOR.x)/70+.3));break;
  }
- if(c.talkTo&&t<c.talkUntil){if(c.state==='look'||c.state==='wait')c.faceT=c.talkTo.x>=c.x?1:-1;}else if(c.talkTo){c.talkTo=null;if(c.state==='look'&&c.slot)c.faceT=(TX[c.slot.tank]+TW/2-c.x)>=0?1:-1;else if(c.state==='wait')c.faceT=1;}
- c.face+=(c.faceT-c.face)*Math.min(1,dt*16);
+ if(c.talkTo&&t<c.talkUntil){if(c.state==='look'||c.state==='wait')c.faceT=c.talkTo.x>=c.x?1:-1;}else if(c.talkTo){c.talkTo=null;if(c.state==='look'&&c.slot&&typeof c.slot.tank==='number')c.faceT=(TX[c.slot.tank]+TW/2-c.x)>=0?1:-1;else if(c.state==='wait')c.faceT=1;}
+ c.face+=(c.faceT-c.face)*Math.min(1,dt*11);c.turnDip=Math.abs(c.face)<.85?(1-Math.abs(c.face))*.035:0;   /* step-turn: a small dip while turning */
  const P=c.parts;
- P.el.style.transform=`translate(${(c.x-40).toFixed(1)}px,${(c.y-130).toFixed(1)}px) scale(${(c.sz*depthV120(c.y)).toFixed(3)})`;P.el.style.zIndex=Math.round(c.y);P.el.style.opacity=c.alpha;
- P.svg.style.transform=`scaleX(${c.face.toFixed(3)})`;poseP(c,t);
+ const sc=c.sz*depthV120(c.y);P.el.style.transform=`translate(${(c.x-40).toFixed(1)}px,${(c.y-130).toFixed(1)}px) scale(${sc.toFixed(3)})`;P.el.style.setProperty('--bs',(1/sc).toFixed(3));   /* the bubble keeps one size whatever the depth */P.el.style.zIndex=Math.round(c.y);P.el.style.opacity=c.alpha;
+ P.svg.style.transform=`translateY(${((c.turnDip||0)*40).toFixed(2)}px) scaleX(${(Math.sign(c.face||1)*Math.max(.12,Math.abs(c.face))).toFixed(3)})`;poseP(c,t);
 }
 /* the owner's speech bubble above him at the counter */
+/* an offer card over the counter: the player accepts or refuses (refused after 15 s) */
+function showOfferV120(c,t){
+ const K=ST.clerk,f=c.want;if(!f)return;const d=document.createElement('div');d.className='offer120';
+ const im=fishImgV120(f);d.innerHTML=`<div class="ot">Offer for <img alt=""></div><div class="op">price <s>🪙 ${priceV120(f)}</s> → <b>🪙 ${c.offer}</b></div><div class="ob"><button class="ok" onclick="stOffer120(true)">✔ ACCEPT</button><button class="no" onclick="stOffer120(false)">✖ NO</button></div>`;
+ const ie=d.querySelector('img');if(im){if(im.src)ie.src=im.src;else im.addEventListener('load',()=>{ie.src=im.src;},{once:true});}
+ $('st120stage').appendChild(d);K.offerEl=d;K.offerT=t;ownerSay('Hmm… 🤔',2);
+}
+window.stOffer120=function(yes){
+ try{const K=ST.clerk,c=K.c;if(!c||!c.offer||c.offerDone)return;c.offerDone=true;if(K.offerEl){K.offerEl.remove();K.offerEl=null;}
+  if(yes){c.offerOk=true;ownerSay('Deal! 🤝',1.6);bubble(c,'Thank you! 😊',1.6);K.t=0;K.ph='';return;}
+  const f=c.want;if(f){delete f._res120;bumpV120('pricey',f.species);}c.want=null;K.c=null;ST.pay=null;ownerSay('Sorry, the price is fixed 🙂',1.8);bubble(c,pickV120(['Oh well… 😕','Maybe next time 😕']),2.2);leave(c);
+  const h=ST.queue[0];if(h&&(h.state==='wait'||h.state==='toQueue')){ST.queue.shift();ST.pay=h;h.state='toPay';route(h,[PAY]);reQueue();}
+ }catch(e){console.error('AFNICA store offer',e);}
+};
+let bossT=0;
+function bossSay(txt,sec){const t=performance.now()/1000;if(t<bossT)return;bossT=t+12;setTimeout(()=>{if(!ST.clerk.c)ownerSay(txt,sec||2.4);},2600);}
 function ownerSay(txt,sec){const K=ST.clerk;if(!K.parts||!K.parts.bub)return;K.parts.bub.textContent=txt;K.parts.bub.classList.add('on');K.bubT=sec||1.6;}
 function clerkTick(dt,t){
  const K=ST.clerk,P=K.parts;
@@ -568,6 +692,7 @@ function clerkTick(dt,t){
  K.t+=dt;let acc=0,cur=null,dur=1,ph0=0;
  for(const [n,d] of PH){if(K.t<acc+d){cur=n;dur=d;ph0=K.t-acc;break;}acc+=d;}
  const c=K.c,f=c.want,cb=$('st120cbag'),reg=$('st120reg');
+ if(c.offer&&!c.offerDone){K.t=0;if(!K.offerEl)showOfferV120(c,t);else if(t-K.offerT>15)window.stOffer120(false);if(K.bubT>0){K.bubT-=dt;if(K.bubT<=0)K.parts.bub.classList.remove('on');}poseClerk(t);return;}
  if(!cur){
   cb.classList.remove('on');cb.style.transform='';if(!c.bagged){c.bagImg=f?fishImgV120(f):null;}c.bagged=true;c.bagCol=f?FCOL[f.species]||'#ff9a3c':'#ff9a3c';if(f)P&&c.parts.bf.setAttribute('fill',FCOL[f.species]||'#ff9a3c');
   c.boughtFish=f||null;K.c=null;K.ph='idle';ST.pay=null;c.state='exit';c.leaving=false;c.want=null;c.happy=true;
@@ -584,6 +709,7 @@ function clerkTick(dt,t){
   if(u>=.9&&!c.bagged){cb.classList.remove('on');c.bagImg=f?fishImgV120(f):null;c.bagged=true;c.bagCol=f?FCOL[f.species]||'#ff9a3c':'#ff9a3c';}}
  if(cur!==K.ph){
   K.ph=cur;
+  if(cur==='greet'&&c.addon){sayLater(c,c.addon==='plants'?'And some plants, please 🌿':'And some frozen food 🧊',t+1.7,2);}
   if(cur==='greet'){bubble(c,c.parts.wide?pickV120(['Hello! 👋','Hi! 😊']):pickV120(['This one, please 🐟','I’ll take it! 😊','Hi! 👋']),1.6);ownerSay(pickV120(['Welcome! 😊','Hi there! 👋','Great choice! 👍','Good eye! 🐟']),1.4);}
   if(cur==='net')ownerSay(pickV120(['Let me catch it 🎣','Coming right up! 🐟','One moment… 🎣']),1.4);
   if(cur==='bag')ownerSay(pickV120(['Bagging it 💧','Fresh water for you 💧','Nice and safe 💧']),1.4);
@@ -594,7 +720,8 @@ function clerkTick(dt,t){
   if(cur==='bag'&&f){cb.classList.remove('on');cb.innerHTML=`<div class="bw"></div><div class="bfish">${dexAvatarHTML(f,44,26)}</div>`;}   /* he holds it in the 'bag' picture */
   if(cur==='hand'){cb.style.transition='none';}
   if(cur==='pay'&&f){
-   const pr=sellV120(f,false);reg.textContent='🪙 '+(st.store.day.revenue||0);coinsUI();   /* the till shows today's total */
+   const pr=sellV120(f,false,c);
+   if(c.req&&c.req.sp===f.species)bossSay('They came just for that one, boss! ⭐');else if(c.offer)bossSay('A deal is a deal, boss 🤝');else if(Math.random()<.35)bossSay(pickV120(['Nice sale, boss! 👍','Another happy customer, boss 😊','The till likes that, boss 🪙']));reg.textContent='🪙 '+(st.store.day.revenue||0);coinsUI();   /* the till shows today's total */
    const cn=document.createElement('div');cn.className='coin';cn.textContent='+'+pr;$('st120stage').appendChild(cn);setTimeout(()=>cn.remove(),1300);
    syncFish();panel();save();
   }
@@ -615,6 +742,7 @@ function loop(now,gen){
    if(hf>0&&st.storeFish.length&&ST.cust.length<5&&!ST.cust.some(o=>Math.hypot(o.x-DOOR.x,o.y-DOOR.y)<(o.parts.rad||40)+50)){spawn();ST.next=(18+Math.random()*20)/((1+.15*repLevel())*Math.max(.3,hf||.3));}
    else ST.next=hf>0&&st.storeFish.length&&ST.cust.length<5?1.5:(18+Math.random()*20)/((1+.15*repLevel())*Math.max(.3,hf||.3));   /* doorway busy: try again shortly */
   }
+  try{swimTickV120(dt);}catch(e){}
   for(const c of ST.cust)custTick(c,dt,t);
   try{socialTick(t);}catch(e){console.error('AFNICA store social',e);}
   for(let i=ST.cust.length-1;i>=0;i--)if(ST.cust[i].dead){ST.lastPi=ST.cust[i].pi;ST.cust[i].parts.el.remove();ST.cust.splice(i,1);}
@@ -624,26 +752,74 @@ function loop(now,gen){
   const open=ST.cust.some(c=>c.x<120&&c.y<400);
   if(open!==ST.door){ST.door=open;$('st120door').classList.toggle('open',open);}
   /* bookkeeping */
-  ST.sec+=dt;if(ST.sec>=1){ST.sec=0;murmurV120(ST.cust.length);st.store.lastSimAt=Date.now();dayCheck();boardUI();}
+  ST.sec+=dt;if(ST.sec>=1){ST.sec=0;todV120();murmurV120(ST.cust.length);st.store.lastSimAt=Date.now();dayCheck();boardUI();}
   ST.saveT+=dt;if(ST.saveT>15){ST.saveT=0;save();}
  }catch(e){console.error('AFNICA store loop',e);}
 }
 
+/* ---------- weekly import: an importer offers 3 random species every game Monday; bought fish spend 2 days in quarantine ---------- */
+const weekOf=d=>Math.floor((Math.max(1,d)-1)/7),isMonday=d=>(Math.max(1,d)-1)%7===0;
+function impFishV120(sp,i){
+ const r=Math.random(),gr=r<.1?88:r<.45?79:68,g=()=>Math.max(30,Math.min(99,Math.round(gr+(Math.random()*8-4))));
+ const id='imp'+st.day+'_'+i+'_'+Math.floor(Math.random()*1e6);
+ return {id,name:id,species:sp,sex:Math.random()<.5?'M':'F',age:(S[sp].adult||10)+4,genes:{color:g(),pattern:g(),fins:g(),vitality:g(),mutation:null},health:100,dead:false,disease:null,treatment:null,hungerDays:0,sickDays:0,imported:true};
+}
+function makeOffersV120(){
+ const sps=Object.keys(S).filter(k=>S[k]&&S[k].price&&S[k].adult&&FCOL[k]).sort(()=>Math.random()-.5).slice(0,3);
+ st.imp120={week:weekOf(st.day),shown:false,offers:sps.map((sp,i)=>{const f=impFishV120(sp,i);return {fish:f,price:Math.round(sellValueV9(f)*1.6/5)*5,bought:false};})};
+}
+function impCardsV120(){
+ const o=st.imp120.offers||[];if(!o.length)return '<div class="meta">No shipment this week.</div>';
+ return o.map((x,i)=>{const f=x.fish,g=gradeV10(f);return `<div class="st120row"><div class="av">${dexAvatarHTML(f,56,34)}</div><div class="in"><b>${sname(f)} ${f.sex==='M'?'♂':'♀'}</b> <span class="v10Grade ${g.cls}">${g.name}</span><small>new bloodline · 2 days quarantine</small></div><div class="ctl">${x.bought?'<b style="color:#7fe08a;font-size:11px">BOUGHT ✓</b>':`<button class="btn small green" onclick="stImportBuy120(${i})">🪙 ${x.price}</button>`}</div></div>`;}).join('');
+}
+function quarHTMLV120(){
+ const q=st.quar120||[];if(!q.length)return '';
+ return `<div class="meta" style="margin-top:6px"><b>🧪 In quarantine</b></div>`+q.map(x=>`<div class="st120row"><div class="av">${dexAvatarHTML(x.fish,56,34)}</div><div class="in"><b>${sname(x.fish)} ${x.fish.sex==='M'?'♂':'♀'}</b><small>${x.until>st.day?'ready on day '+x.until:'waiting for room in your tanks (7 fish max)'}</small></div></div>`).join('');
+}
+function importPanelV120(){
+ const left=7-((Math.max(1,st.day)-1)%7);
+ return `<div class="v8panel"><div class="v8head"><b>📦 WEEKLY IMPORT</b><span>${left===7?'NEW TODAY':'NEW IN '+left+' DAY'+(left>1?'S':'')}</span></div>${impCardsV120()}${quarHTMLV120()}</div>`;
+}
+window.stImport120=function(){try{ensureHealthState();ensureStoreV120();if(st.imp120.week!==weekOf(st.day))makeOffersV120();st.imp120.shown=true;save();
+ const IM=window.ST120_IMPORTER;
+ pop('📦 WEEKLY IMPORT',`<div class="imp120"><div class="who">${IM?`<img src="${IM}" alt="">`:'<span class="sil">🧔</span>'}<div><b>Marco, the fish importer</b><small>"Fresh shipment this week! Pick what you like 📦"</small></div></div>${impCardsV120()}<div class="tip"><b>AFNICA tip:</b> imported fish bring new genes for breeding. They wait 2 days in quarantine before joining your tanks.</div></div>`,'LATER');}catch(e){console.error('AFNICA store import',e);}};
+window.stImportBuy120=function(i){
+ try{const x=st.imp120.offers[i];if(!x||x.bought)return;if(st.coins<x.price)return toast('Not enough coins');
+  st.coins-=x.price;x.bought=true;const sick=Math.random()<.15;st.quar120.push({fish:x.fish,until:st.day+2,sick});save();
+  toast(`📦 ${sname(x.fish)} bought · 2 days in quarantine`);try{coinsUI();}catch(e){}
+  if(document.querySelector('.imp120'))stImport120();if($('st120panel'))panel();}catch(e){console.error('AFNICA store import buy',e);}
+};
+/* release from quarantine (any screen): sick ones were caught and treated there */
+function quarTickV120(){
+ const q=st.quar120;if(!q||!q.length)return;let changed=false;
+ for(let i=0;i<q.length;i++){const x=q[i];if(x.until>st.day)continue;
+  const dst=[st.fish,st.fry].find(a=>Array.isArray(a)&&a.length<7);if(!dst)continue;
+  q.splice(i,1);i--;dst.push(x.fish);changed=true;
+  if(x.sick){st.coins=Math.max(0,st.coins-20);toast(`🧪 ${sname(x.fish)} had white spot in quarantine: treated (🪙 20) and released healthy`);}
+  else toast(`✅ ${sname(x.fish)} passed quarantine and joined your ${dst===st.fish?'Main':'Fry'} Tank`);}
+ if(changed){save();try{if($('st120panel'))panel();}catch(e){}}
+}
+setInterval(()=>{try{if(typeof st==='undefined'||!st||!st.started)return;ensureStoreV120();
+ if(st.imp120.week!==weekOf(st.day))makeOffersV120();
+ if(isMonday(st.day)&&!st.imp120.shown){const ov=document.getElementById('overlay');if(!ov||!ov.classList.contains('show')){stImport120();}}
+ quarTickV120();}catch(e){console.error('AFNICA store weekly',e);}},2500);
+
 /* ---------- screen ---------- */
-window.renderStoreV120=function(){
+window.renderStoreV120=function(force){
  try{
-  if($('st120stage')&&ST.gen&&typeof afnicaActiveScreen!=='undefined'&&afnicaActiveScreen==='store'){syncFish();panel();return;}   /* already open: keep the shop as it is */
+  if(force!==true&&$('st120stage')&&ST.gen&&typeof afnicaActiveScreen!=='undefined'&&afnicaActiveScreen==='store'){syncFish();panel();return;}   /* already open: keep the shop as it is */
   ensureHealthState();ensureStoreV120();setAfnicaScreenV104('store');
   const e=$('screen');if(!e)return;
   dayCheck();
   st.storeFish.forEach(f=>{delete f._res120;delete f._net120;});st.fish.concat(st.fry).forEach(f=>{delete f._from;});
   const away=batchSim();
   e.innerHTML=v8Top()+sceneHTML()+'<div id="st120panel"></div>'+v8Nav('store');
-  ST.cust=[];ST.queue=[];ST.pay=null;ST.says=[];ST.chatNext=0;ST.els=new Map();ST.door=false;ST.next=2.5;ST.sec=0;ST.saveT=0;ST.last=performance.now();
-  ST.clerk={c:null,ph:'idle',t:0,part:0,parts:null,bubT:0};
+  XS.P.by=XS.F.by=null;ST.friendNext=false;ST.cust=[];ST.queue=[];ST.pay=null;ST.says=[];ST.chatNext=0;ST.els=new Map();ST.door=false;ST.next=2.5;ST.sec=0;ST.saveT=0;ST.last=performance.now();
+  ST.clerk={c:null,ph:'idle',t:0,part:0,parts:null,bubT:0,offerEl:null};
   buildSlots();
   const cl=mkOwner();$('st120clerk').appendChild(cl.el);ST.clerk.parts=cl;
-  syncFish();panel();coinsUI();
+  syncFish();panel();coinsUI();todV120();
+  setTimeout(()=>{try{if(!ST.clerk.c)ownerSay(st.storeFish.length?pickV120(['Welcome back, boss! 😊','Morning, boss! ☕','All set, boss! 🐟']):'Boss, we need fish to sell! 🐟',2.6);}catch(e){}},900);
   const msgs=[],sm=st.store.lastSummary;
   if(away.n)msgs.push(`<div style="text-align:left;margin-bottom:10px"><b>While you were away</b><br>${away.n} customers visited · ${away.sales} sales · 🪙 ${away.revenue}</div>`);
   if(sm&&!sm.shown){sm.shown=true;msgs.push(`<b>Day ${sm.day} summary</b>`+summaryHTML(sm));}

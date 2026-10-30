@@ -37,5 +37,11 @@ if '<!-- V17.120 BEGIN -->' in s:
     s = s[:a] + block + s[b:]
 else:
     t = '</body></html>'; assert s.count(t) == 1; s = s.replace(t, block + t)
-open(GAME, 'w', encoding='utf-8', newline='').write(s)
+import time
+for _try in range(8):   # write beside the game, swap only when complete (another session / process may hold the file for a moment)
+    try:
+        tmp = GAME + '.tmp120'; open(tmp, 'w', encoding='utf-8', newline='').write(s); os.replace(tmp, GAME); break
+    except OSError as e:
+        print('retry write', e); time.sleep(1.5)
+else: raise SystemExit('could not write the game file')
 print('installed V17.120')
