@@ -23,7 +23,9 @@ let yT=0;for(;yT<h;yT++){let f=false;for(let x=0;x<w;x++)if(op(yT*w+x)){f=true;b
 let yB=h-1;for(;yB>0;yB--){let f=false;for(let x=0;x<w;x++)if(op(yB*w+x)){f=true;break;}if(f)break;}
 const hy1=yT+Math.round((yB-yT)*.14),col=new Array(w).fill(0);
 for(let y=yT;y<hy1;y++)for(let x=0;x<w;x++)if(op(y*w+x))col[x]++;
-const heads=[];let s=-1;for(let x=0;x<=w;x++){const o=x<w&&col[x]>2;if(o&&s<0)s=x;if(!o&&s>=0){if(x-s>25)heads.push((s+x-1)/2);s=-1;}}
+let heads=[];const bands=[];let s=-1;for(let x=0;x<=w;x++){const o=x<w&&col[x]>2;if(o&&s<0)s=x;if(!o&&s>=0){if(x-s>25){let m=0;for(let k=s;k<x;k++)m+=col[k];bands.push({c:(s+x-1)/2,m});}s=-1;}}
+/* a raised hand can stick up like a head: keep the 3 bands with the most pixels (the heads), left to right */
+heads=bands.sort((p,q)=>q.m-p.m).slice(0,3).map(b=>b.c).sort((p,q)=>p-q);
 if(heads.length>3){heads.sort((a,b)=>a-b);}if(heads.length!==3)return JSON.stringify({err:'heads '+heads.length,heads});
 /* seeds: every opaque pixel in a narrow column under each head, from the top to 60% height */
 /* split by a cheapest-path fill (Dijkstra): a step costs more across a colour edge or a faint pixel, so the boundary between two

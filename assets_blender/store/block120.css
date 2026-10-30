@@ -125,3 +125,23 @@ table.rep120{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:6p
 
 .st120p .bub.on{transform:translate(-50%,-100%) scale(var(--bs,1))}
 .st120p.sp .bub.on{transform:translate(0,-50%) scale(var(--bs,1))}
+
+.imp120 .who img{width:64px;height:64px;object-fit:cover;object-position:50% 20%}
+
+.imp120 .dlv{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0}.imp120 .dlv span{display:flex;flex-direction:column;align-items:center;background:#0d2b38;border-radius:8px;padding:4px 6px;font-size:10px}.imp120 .dlv i{font-style:normal}
+
+.imp120 .afc{width:64px;height:64px;border-radius:50%;overflow:hidden;background:#0d2b38;border:2px solid #ffd24b;flex:none;display:block}
+.imp120 .afc img{width:64px;height:64px;object-fit:cover;border:0;border-radius:0;background:none}
+.qt120{position:relative;height:190px;margin:8px 0;border:5px solid #0c1e28;border-radius:10px;overflow:hidden;background:#0a2a38}
+.qt120 .w{position:absolute;inset:0;background:linear-gradient(#4fb8c9,#1d7f93 60%,#145f70)}
+.qt120 .sd{position:absolute;left:0;right:0;bottom:0;height:22px;background:linear-gradient(#e9e2cf,#cfc6ad)}
+.qt120 .ht{position:absolute;right:14px;top:18px;width:9px;height:96px;border-radius:5px;background:linear-gradient(90deg,#6b7f8a,#c9d6de,#6b7f8a)}
+.qt120 .air{position:absolute;left:24px;bottom:18px;width:14px;height:10px;border-radius:50%;background:#9aa7ad}
+.qt120 .air:after{content:"";position:absolute;left:4px;bottom:10px;width:6px;height:150px;background:radial-gradient(circle,#ffffffaa 1.5px,transparent 2px) 0 0/6px 14px;animation:qt120b 2.2s linear infinite;opacity:.8}
+@keyframes qt120b{to{background-position:0 -14px}}
+.qt120 .lbl{position:absolute;left:50%;top:6px;transform:translateX(-50%);font:900 11px Inter,Arial;color:#fff;background:#0d2b38cc;border-radius:8px;padding:2px 8px;z-index:3}
+.qt120 .fb{position:absolute;inset:0}
+.qt120 .qf{position:absolute;left:0;top:0;width:44px;height:26px}
+.qt120 .gl{position:absolute;inset:0;background:linear-gradient(135deg,#fff3,#fff0 35%)}
+
+.spc120{display:inline-block;margin-left:4px;font-size:9px;font-weight:900;color:#2a1a0c;background:linear-gradient(90deg,#ffd24b,#ff9ad5,#9ad8ff);border-radius:6px;padding:1px 5px}

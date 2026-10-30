@@ -5,16 +5,19 @@ if(window.UI121===false)return;
 const $=id=>document.getElementById(id);
 const NAVMAP={home:'home',tank:'tank',breed:'breed',market:'market'};
 const TITLES={home:'FISHROOM',breed:'BREEDING',market:'ORDERS',dex:'FISHDEX',shop:'SUPPLIES',store:'MY FISH STORE',progress:'PROGRESS',settings:'SETTINGS',avatar:'CHARACTER'};
-let cur='home',hist=[],breedTab='info',onBreeder=false,guard=0,unread=0,badgeAt=0,explicitTank=false,tapped=false,sheetOpen=false,sheetScroll=0;
+let cur='home',hist=[],breedTab='info',onBreeder=false,onQuar=false,guard=0,unread=0,badgeAt=0,explicitTank=false,tapped=false,sheetOpen=false,sheetScroll=0;
 window.addEventListener('pointerdown',()=>{tapped=true},{once:true,capture:true});
 const events=[];
 const arrFor=k=>k==='fry'?st.fry:k==='breeder'?st.breederTank:st.fish;
 const alive=a=>(a||[]).filter(f=>f&&!f.dead).length;
-const tankName=k=>k==='fry'?'FRY TANK':k==='breeder'?'BREEDER TANK':'MAIN TANK';
+const tankName=k=>k==='fry'?'FRY TANK':k==='breeder'?'BREEDER TANK':k==='quar'?'QUARANTINE TANK':'MAIN TANK';
+/* V17.120: the quarantine tank (bought in the store) is the last tank of the Tank tab */
+const quarOpen=()=>!!(window.quarOwnedV120&&window.quarOwnedV120());
+const tankList=()=>['main','fry'].concat(breederOpen()?['breeder']:[],quarOpen()?['quar']:[]);
 const breederOpen=()=>!!(st.unlockedTanks&&st.unlockedTanks.tank3);
 /* the tank the Tank tab is showing: main / fry from v8Tank, or the Breeder Tank (its own renderer) */
-const curTank=()=>onBreeder?'breeder':(typeof v8Tank==='string'&&v8Tank!=='breeder'?v8Tank:'main');
-const openTank=k=>{if(k==='breeder')renderV103Breeder();else{onBreeder=false;switchTankV8(k);}};
+const curTank=()=>onQuar?'quar':onBreeder?'breeder':(typeof v8Tank==='string'&&v8Tank!=='breeder'?v8Tank:'main');
+const openTank=k=>{if(k==='quar'&&window.renderQuarV120){window.renderQuarV120();return;}onQuar=false;if(k==='breeder')renderV103Breeder();else{onBreeder=false;switchTankV8(k);}};
 const safe=(fn,tag)=>{try{return fn()}catch(e){console.error('AFNICA ui121 '+(tag||''),e)}};
 
 /* ---------- save defaults ---------- */
@@ -39,6 +42,7 @@ function notices(){
  safe(()=>{if(st.generalTreatment)out.push({ic:'💊',tx:'General treatment · day '+st.generalTreatment.day+'/3',go:'main'});},'treat');
  safe(()=>{if(coryAdultReadinessV172().ready&&!st.corySpawn)out.push({ic:'🐟',tx:'Corydoras are adults and ready to spawn',go:'breed'});},'cory');
  safe(()=>{if(st.corySpawn)out.push({ic:'🥚',tx:'Corydoras eggs will hatch next day',go:'breed'});},'spawn');
+ safe(()=>{if(window.importNoticesV120)window.importNoticesV120().forEach(n=>out.push(n));},'import');
  safe(()=>{const n=achList().filter(x=>x.done&&!x.claimed).length;if(n)out.push({ic:'🏆',tx:n+' achievement reward'+(n>1?'s':'')+' ready to claim',go:'progress'});},'ach');
  return out;
 }
@@ -106,7 +110,7 @@ function go(name,opts){
  safe(()=>{
   setAfnicaScreenV104(name);
   if(name==='home')showHome();
-  else if(name==='tank'){if(onBreeder&&breederOpen()){renderV103Breeder();return;}explicitTank=true;try{renderV8('home')}finally{explicitTank=false}}
+  else if(name==='tank'){if(onQuar&&quarOpen()&&window.renderQuarV120){window.renderQuarV120();return;}if(onBreeder&&breederOpen()){renderV103Breeder();return;}explicitTank=true;try{renderV8('home')}finally{explicitTank=false}}
   else if(name==='breed')showBreed(breedTab);
   else if(name==='market')renderV10Market();
   else if(name==='dex')renderV8('dex');
@@ -122,7 +126,7 @@ window.u121nav=function(k){if(k==='more'){layer('more');return;}layer(false);go(
 window.u121back=function(){layer(false);const p=hist.pop();const t=p&&p!==cur?p:'home';const prev=cur;go(t);/* go() recorded the jump as forward: drop it */if(hist[hist.length-1]===prev)hist.pop();};
 window.u121tank=function(k){layer(false);openTank(k);};
 window.u121cycle=function(dir){
- const list=['main','fry'].concat(breederOpen()?['breeder']:[]),i=Math.max(0,list.indexOf(curTank())),n=list[(i+dir+list.length)%list.length];
+ const list=tankList(),i=Math.max(0,list.indexOf(curTank())),n=list[(i+dir+list.length)%list.length];
  openTank(n);
 };
 function layer(kind){
@@ -141,7 +145,7 @@ function layer(kind){
 }
 window.u121layer=layer;
 function noticeRow(n){return `<div class="u121Card warn"><div class="ic" style="font-size:22px">${n.ic}</div><div class="tx"><b>${n.tx}</b></div><button class="go" onclick="u121notice('${n.go}')">GO</button></div>`}
-window.u121notice=function(g){layer(false);if(g==='breed'){go('breed');}else if(g==='progress')go('progress');else openTank(g);};
+window.u121notice=function(g){layer(false);if(g==='import'&&window.stImport120){window.stImport120();return;}if(g==='breed'){go('breed');}else if(g==='progress')go('progress');else openTank(g);};
 
 /* ---------- wrap existing renderers ---------- */
 const oldRenderV8=window.renderV8;
@@ -150,7 +154,7 @@ window.renderV8=function(s){
  /* at load, bootAfnica and later blocks re-render the tank by themselves: until the first tap those calls open Home instead */
  if(s==='home'&&!guard&&!explicitTank&&!tapped&&performance.now()<9000){showHome();return;}
  const sb=$('u121Sheet')&&$('u121Sheet').lastElementChild;if(sb)sheetScroll=sb.scrollTop;   /* the tank screen is rebuilt by every action: keep the sheet as it was */
- if(s==='home')onBreeder=false;
+ if(s==='home'){onBreeder=false;onQuar=false;}
  const r=oldRenderV8.apply(this,arguments);
  if(!guard)safe(()=>{
   if(s==='dex'){deco('dex');}
@@ -166,11 +170,16 @@ window.renderV9Fishroom=function(){if(guard)return oldRoom.apply(this,arguments)
 const oldBreeder=window.renderV103Breeder;
 window.renderV103Breeder=function(){
  const r=oldBreeder.apply(this,arguments);
- onBreeder=true;
+ onBreeder=true;onQuar=false;
  if(!guard)safe(()=>{deco('tank');document.body.classList.remove('u121tank');   /* the Tank tab, but the breeder page keeps its own tall layout */
   const sc=$('screen');tankBar(sc,'breeder',sc.firstElementChild);},'breeder');
  return r;
 };
+if(typeof window.renderQuarV120==='function'){
+ const oldQuar=window.renderQuarV120;
+ window.renderQuarV120=function(){const r=oldQuar.apply(this,arguments);onQuar=true;onBreeder=false;
+  if(!guard)safe(()=>{deco('tank');document.body.classList.remove('u121tank');const sc=$('screen');tankBar(sc,'quar',sc.firstElementChild);},'quar');return r;};
+}
 if(typeof window.renderStoreV120==='function'){
  const oldStore=window.renderStoreV120;
  window.renderStoreV120=function(){const r=oldStore.apply(this,arguments);if(!guard)safe(()=>deco('store'),'store');return r;};
@@ -220,7 +229,7 @@ window.u121nextDay=function(){window.nextDay();};
 /* ---------- Tank screen ---------- */
 /* the tank bar (arrows + one dot per tank + name) shared by Main, Fry and the Breeder Tank */
 function tankBar(scr,k,before){
- const list=['main','fry'].concat(breederOpen()?['breeder']:[]);
+ const list=tankList();
  const bar=document.createElement('div');bar.className='u121TankBar';
  bar.innerHTML=`<button onclick="u121cycle(-1)" aria-label="Previous tank">◀</button><div>${list.map(x=>`<i class="${x===k?'on':''}"></i>`).join('')}<span>${tankName(k)}</span></div><button onclick="u121cycle(1)" aria-label="Next tank">▶</button>`;
  if(before&&before.parentNode===scr)scr.insertBefore(bar,before);else scr.prepend(bar);

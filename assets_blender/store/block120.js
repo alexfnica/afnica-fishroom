@@ -31,8 +31,9 @@ function ensureStoreV120(){
  for(const k in d)if(s[k]===undefined)s[k]=d[k];
  if(!s.day||typeof s.day!=='object')s.day=newDayV120(s.rep);
  for(const k of ['sold','pricey','cheap','reqMiss','addon'])if(!s.day[k]||typeof s.day[k]!=='object')s.day[k]={};
+ if(!Array.isArray(s.hist))s.hist=[];
  if(!s.regulars||typeof s.regulars!=='object')s.regulars={};
- if(!st.imp120||typeof st.imp120!=='object')st.imp120={week:-1,offers:[],shown:false};if(!Array.isArray(st.quar120))st.quar120=[];if(!s.owned||typeof s.owned!=='object')s.owned={};
+ if(!st.imp120||typeof st.imp120!=='object')st.imp120={week:-1,offers:[],shown:false};if(!Array.isArray(st.quar120))st.quar120=[];if(!Array.isArray(st.ord120))st.ord120=[];if(!s.owned||typeof s.owned!=='object')s.owned={};
  if(!Array.isArray(st.storeFish))st.storeFish=[];
  placeFishV120();
 }
@@ -82,10 +83,13 @@ window.stRename120=function(){try{const i=$('st120name');if(!i)return;const v=i.
 /* store upgrades (st.store.owned): the plant tank and the freezer sell add-ons, the rug and poster make customers accept a little more */
 const UPG=[{k:'plants',name:'Plant tank',ic:'🌿',cost:400,txt:'Customers can add aquarium plants (🪙 15) to their fish.'},
  {k:'freezer',name:'Frozen food freezer',ic:'🧊',cost:500,txt:'Customers can add frozen food (🪙 10) to their fish.'},
+ {k:'qt',name:'Quarantine tank',ic:'🧪',cost:350,txt:'A separate tank for new fish: 7 days apart, sick ones are treated there. Shows in the TANK tab.'},
  {k:'rug',name:'Cosy rug',ic:'🟫',cost:200,txt:'+3% on the prices customers accept.'},
  {k:'poster',name:'Fish poster',ic:'🖼️',cost:150,txt:'+2% on the prices customers accept.'}];
 const ADDON={plants:{price:15,ic:'🌿',name:'plants'},frozen:{price:10,ic:'🧊',name:'frozen food'}};
 const owns=k=>!!(st.store&&st.store.owned&&st.store.owned[k]);
+const QCAP=12;   /* fish the quarantine tank holds */
+window.quarOwnedV120=()=>{try{return owns('qt');}catch(e){return false;}};
 const decorV120=()=>1+(owns('rug')?.03:0)+(owns('poster')?.02:0)+(owns('plants')?.02:0);
 /* time of day on the shop: daylight / evening glow / night (dimmer, CLOSED sign); uses the same hour as the arrivals */
 function todV120(){try{const h=window.__afHourOverride!=null?+window.__afHourOverride:new Date().getHours(),tod=h<8||h>=22?'night':h>=18?'eve':'day',sg=$('st120stage');
@@ -151,6 +155,7 @@ function dayCheck(){
    st.storeFish.forEach(f=>{if(st.day-(f.storeSince||st.day)>=7)f.health=Math.max(10,(f.health==null?100:f.health)-3);});
   }
   s.lastSummary=Object.assign({},dd,{day:s.dayNo,rep1:s.rep,shown:false});
+  (s.hist||(s.hist=[])).push({day:s.dayNo,revenue:dd.revenue||0,sales:dd.sales||0,customers:dd.customers||0});if(s.hist.length>14)s.hist.splice(0,s.hist.length-14);
   s.dayNo++;s.day=newDayV120(s.rep);n++;
  }
  if(s.dayNo<st.day)s.dayNo=st.day;
@@ -443,7 +448,14 @@ window.stBuy120=function(k){
  try{const u=UPG.find(x=>x.k===k);if(!u||owns(k))return;if(st.coins<u.cost)return toast('Not enough coins for the '+u.name);
   st.coins-=u.cost;st.store.owned[k]=true;save();toast(u.ic+' '+u.name+' added to your store!');coinsUI();renderStoreV120(true);}catch(e){console.error('AFNICA store buy',e);}
 };
-window.stReport120=function(){try{const s=st.store;pop('📋 TODAY’S STORE REPORT',summaryHTML(Object.assign({},s.day,{rep1:s.rep,day:st.day})),'OK');}catch(e){console.error('AFNICA store report',e);}};
+/* the last 7 days (6 closed days + today so far): takings as bars, sales count on top */
+function weekChartV120(){
+ const s=st.store,d=(s.hist||[]).slice(-6).concat([{day:st.day,revenue:s.day.revenue||0,sales:s.day.sales||0,today:true}]),mx=Math.max(1,...d.map(x=>x.revenue));
+ const bw=34,gap=8,H=70,W=d.length*(bw+gap);
+ return `<div style="text-align:left;font-size:11px;opacity:.85;margin-bottom:2px">Takings, last ${d.length} days</div><svg viewBox="0 0 ${W} ${H+30}" width="100%" style="max-width:${W}px;display:block;margin:0 auto 8px">${d.map((x,i)=>{const h=Math.round(x.revenue/mx*H),X=i*(bw+gap);
+  return `<rect x="${X}" y="${H-h+12}" width="${bw}" height="${Math.max(1,h)}" rx="4" fill="${x.today?'#ffd24b':'#3bc8f5'}"/><text x="${X+bw/2}" y="${H-h+8}" text-anchor="middle" font-size="9" fill="#fff" font-family="Inter,Arial">🪙${x.revenue}</text><text x="${X+bw/2}" y="${H+26}" text-anchor="middle" font-size="9" fill="#9bb6c4" font-family="Inter,Arial">${x.today?'today':'day '+x.day}</text>`;}).join('')}</svg>`;
+}
+window.stReport120=function(){try{const s=st.store;pop('📋 TODAY’S STORE REPORT',weekChartV120()+summaryHTML(Object.assign({},s.day,{rep1:s.rep,day:st.day})),'OK');}catch(e){console.error('AFNICA store report',e);}};
 function panel(){
  boardUI();
  const el=$('st120panel');if(!el)return;
@@ -463,7 +475,7 @@ function panel(){
   ${speciesRowsV120()}
   <div class="v8panel"><div class="v8head"><b>ON DISPLAY</b><span>${st.storeFish.length}/${cap()}</span></div>${st.storeFish.map(f=>f._res120?`<div class="st120row"><div class="in"><b>${sname(f)}</b> <small>being sold…</small></div></div>`:rowHTML(f,'shop')).join('')||'<div class="meta">Nothing on display.</div>'}</div>
   <div class="v8panel"><div class="v8head"><b>🛠️ STORE UPGRADES</b><span>🪙 ${st.coins}</span></div>${UPG.map(u=>`<div class="st120row"><div class="av" style="font-size:24px;text-align:center">${u.ic}</div><div class="in"><b>${u.name}</b><small>${u.txt}</small></div><div class="ctl">${owns(u.k)?'<b style="color:#7fe08a;font-size:11px">OWNED ✓</b>':`<button class="btn small green" onclick="stBuy120('${u.k}')">🪙 ${u.cost}</button>`}</div></div>`).join('')}</div>
-  <div class="v8panel"><div class="v8head"><b>STOCK FROM YOUR TANKS</b><span>${elig.length} ELIGIBLE</span></div><div class="meta">Healthy adult fish from the Main and Fry tanks (not pregnant).</div>${elig.map(x=>rowHTML(x[0],'stock')).join('')||'<div class="meta">No eligible adult fish right now.</div>'}</div>`;
+  <div class="v8panel"><div class="v8head"><b>STOCK FROM YOUR TANKS</b><span>${elig.length} ELIGIBLE</span></div><div class="meta">Healthy adult fish from the Main and Fry tanks (not pregnant).</div>${elig.length?`<div style="display:flex;gap:6px;margin:6px 0"><button class="btn small green" style="flex:1" onclick="stStockAll120('main')">STOCK ALL FROM MAIN</button><button class="btn small green" style="flex:1" onclick="stStockAll120('fry')">STOCK ALL FROM FRY</button></div>`:''}${elig.map(x=>rowHTML(x[0],'stock')).join('')||'<div class="meta">No eligible adult fish right now.</div>'}</div>`;
 }
 function coinsUI(){document.querySelectorAll('.v8money .v8pill').forEach(p=>{if(p.textContent.indexOf('🪙')===0)p.textContent='🪙 '+st.coins;});}
 window.stStock120=function(id){
@@ -476,6 +488,12 @@ window.stStock120=function(id){
   src.splice(i,1);f.storeSlot=null;f.storeFrom=key;f.storePct=st.store.markupPct;f.storeSince=st.day;delete f._res120;delete f._net120;delete f._from;
   st.storeFish.push(f);placeFishV120();save();syncFish();panel();
  }catch(e){console.error('AFNICA store stock',e);}
+};
+window.stStockAll120=function(key){
+ try{const src=key==='fry'?st.fry:st.fish;let n=0;
+  for(const f of src.slice()){if(st.storeFish.length>=cap())break;if(!eligibleV120(f))continue;const i=src.indexOf(f);src.splice(i,1);f.storeSlot=null;f.storeFrom=key;f.storePct=st.store.markupPct;f.storeSince=st.day;st.storeFish.push(f);n++;}
+  placeFishV120();save();syncFish();panel();toast(n?`🏪 ${n} fish stocked from the ${key==='fry'?'Fry':'Main'} Tank`+(st.storeFish.length>=cap()?' · display full':''):'No eligible fish there (or the display is full)');
+ }catch(e){console.error('AFNICA store stock all',e);}
 };
 window.stReturn120=function(id){
  try{
@@ -556,6 +574,8 @@ function spawn(){
   sayLater(c,c.req.minRank?'Looking for a top-grade § ✨':'Looking for a § 🔎',t0+.9,3,{id:'req'+sp,species:sp,sex:'M',age:200,genes:{color:80,pattern:80,fins:80,vitality:80}});}
  else if(c.regular)sayLater(c,pickV120(['Back again! 😄','Hello again! 👋','My favourite shop! ⭐']),t0+.9,2.4);
  if(c.regular&&Math.random()<.3){ST.friendNext=true;ST.next=Math.min(ST.next,2.5);}   /* sometimes brings a friend */
+ if(Math.random()<.3){const L=[];if(owns('plants'))L.push('Nice plants in here! 🌿');if(owns('rug'))L.push('Love the rug 😊');if(owns('poster'))L.push('Cool poster 🖼️');if(owns('freezer'))L.push('Oh, frozen food too! 🧊');
+  if(st.storeFish.length>=8)L.push('Great selection! 🐟');if(st.store.rep>=40)L.push('Everyone talks about this shop ⭐');L.push('Clean tanks here 👍','Cosy little shop 😊');sayLater(c,pickV120(L),t0+3.2,2.4);}
  /* with a plant tank / freezer some customers have a look there too */
  if(owns('plants')&&Math.random()<.25)c.visits.push('P');if(owns('freezer')&&Math.random()<.25)c.visits.push('F');
 }
@@ -580,7 +600,7 @@ function talkPair(a,b,t){a.talkTo=b;b.talkTo=a;a.talkUntil=b.talkUntil=t+3.4;a.c
 function socialTick(t){
  for(let i=ST.says.length-1;i>=0;i--){const q=ST.says[i];if(t>=q.at){if(!q.c.dead&&q.c.alpha>.5)bubble(q.c,q.txt,q.sec,q.f);ST.says.splice(i,1);}}
  if(t<(ST.chatNext||0))return;
- const C=ST.cust.filter(c=>!c.dead&&c.alpha>.9&&c.bubT<=0&&t-(c.chatT||-99)>14);
+ const C=ST.cust.filter(c=>!c.marco&&!c.dead&&c.alpha>.9&&c.bubT<=0&&t-(c.chatT||-99)>14);
  const near=(a,b,d)=>Math.hypot(a.x-b.x,(a.y-b.y)*1.4)<d;
  let done=false;
  for(let i=0;i<C.length&&!done;i++)for(let j=0;j<C.length&&!done;j++){if(i===j)continue;const a=C[i],b=C[j];
@@ -636,7 +656,7 @@ function leave(c){
 }
 function reQueue(){ST.queue.forEach((q,i)=>{if(q.state==='wait'||q.state==='toQueue'){q.state='toQueue';route(q,[QS[Math.min(i,3)]]);}});}
 function custTick(c,dt,t){
- if(c.alpha<1&&!c.leaving)c.alpha=Math.min(1,c.alpha+dt*2.5);
+ if(c.alpha<1&&!c.leaving&&c.state!=='marcoGo')c.alpha=Math.min(1,c.alpha+dt*2.5);
  if(c.bubT>0){c.bubT-=dt;if(c.bubT<=0)c.parts.bub.classList.remove('on');}
  const arrived=stepWalk(c,dt);
  switch(c.state){
@@ -659,6 +679,8 @@ function custTick(c,dt,t){
   case 'toQueue':if(arrived){c.state='wait';c.faceT=1;if(!ST.pay&&!ST.clerk.c&&ST.queue[0]===c){ST.queue.shift();ST.pay=c;c.state='toPay';route(c,[PAY]);reQueue();}}break;
   case 'wait':c.wait+=dt;if(c.wait>45){const f=c.want;if(f)delete f._res120;c.want=null;ST.queue.splice(ST.queue.indexOf(c),1);bubble(c,pickV120(['Too slow! 😠','I can’t wait any longer 😤']),2.6);walkout(c,'queue');leave(c);reQueue();}break;
   case 'toPay':if(arrived){c.state='atpay';c.faceT=-1;   /* turned toward the owner, who stands to their left */ST.clerk.c=c;ST.clerk.t=0;ST.clerk.ph='';}break;
+  case 'marco':if(arrived&&!c.arr){c.arr=true;const MP=window.ST120_MARCO||{};if(MP.thumbs)marcoStillV120(c,MP.thumbs);bubble(c,'Delivery for you, boss! 📦',2.4);setTimeout(()=>{try{deliveryPopV120();}catch(e){}},2200);}break;
+  case 'marcoGo':c.t-=dt;if(c.t<=0){c.alpha=Math.max(0,c.alpha-dt*2);if(c.alpha<=0)c.dead=true;}break;
   case 'exit':if(c.happy&&!c.bye&&c.x<170&&c.bubT<=0){c.bye=true;bubble(c,pickV120(['Bye! 👋','See you! 👋']),1.4);}
    if(arrived||(c.leaving!==undefined&&c.x<70&&c.path.length<=1)){c.alpha=Math.max(0,c.alpha-dt*3);if(c.alpha<=0)c.dead=true;}else if(c.x<120)c.alpha=Math.max(0,Math.min(c.alpha,(c.x-DOOR.x)/70+.3));break;
  }
@@ -745,7 +767,7 @@ function loop(now,gen){
   try{swimTickV120(dt);}catch(e){}
   for(const c of ST.cust)custTick(c,dt,t);
   try{socialTick(t);}catch(e){console.error('AFNICA store social',e);}
-  for(let i=ST.cust.length-1;i>=0;i--)if(ST.cust[i].dead){ST.lastPi=ST.cust[i].pi;ST.cust[i].parts.el.remove();ST.cust.splice(i,1);}
+  for(let i=ST.cust.length-1;i>=0;i--)if(ST.cust[i].dead){if(!ST.cust[i].marco)ST.lastPi=ST.cust[i].pi;ST.cust[i].parts.el.remove();ST.cust.splice(i,1);}
   /* clerk faces left, customers' bag fish colour */
   clerkTick(dt,t);
   /* door */
@@ -762,57 +784,113 @@ const weekOf=d=>Math.floor((Math.max(1,d)-1)/7),isMonday=d=>(Math.max(1,d)-1)%7=
 /* one imported fish of species sp around the offer's grade level gr (each fish its own genes), sex chosen by the player */
 const IMPMAX=10;   /* the importer brings at most 10 fish of each species per week */
 const QDAYS=7;   /* imported fish stay 7 game days in quarantine (owner) */
-function impFishV120(sp,gr,sex){
+function impFishV120(sp,gr,sex,mut){
  const g=()=>Math.max(30,Math.min(99,Math.round(gr+(Math.random()*8-4))));
  const id='imp'+st.day+'_'+sp+'_'+Math.floor(Math.random()*1e7);
- return {id,name:id,species:sp,sex:sex||(Math.random()<.5?'M':'F'),age:(S[sp].adult||10)+4,genes:{color:g(),pattern:g(),fins:g(),vitality:g(),mutation:null},health:100,dead:false,disease:null,treatment:null,hungerDays:0,sickDays:0,imported:true};
+ const f={id,name:id,species:sp,sex:sex||(Math.random()<.5?'M':'F'),age:(S[sp].adult||10)+4,genes:{color:g(),pattern:g(),fins:g(),vitality:g(),mutation:null},health:100,dead:false,disease:null,treatment:null,hungerDays:0,sickDays:0,imported:true};
+ if(mut){const k={'Iridescent Color':'color','Wild Pattern':'pattern','Extended Fins':'fins','High Vitality':'vitality'}[mut];f.genes.mutation=mut;if(k)f.genes[k]=Math.min(99,f.genes[k]+14);}   /* same boost as a bred mutation */
+ return f;
 }
 function makeOffersV120(){
  const sps=Object.keys(S).filter(k=>S[k]&&S[k].price&&S[k].adult&&FCOL[k]).sort(()=>Math.random()-.5).slice(0,3);
  st.imp120={week:weekOf(st.day),shown:false,offers:sps.map(sp=>{const r=Math.random(),gr=r<.1?88:r<.45?79:68,sample=impFishV120(sp,gr,'M');
   return {sp,gr,price:Math.round(sellValueV9(sample)*1.6/5)*5,left:IMPMAX,sample};})};
+ if(Math.random()<.2&&st.imp120.offers.length){   /* 1 week in 5: a special edition (S grade with a mutation, only 3 fish) */
+  const o=st.imp120.offers[Math.floor(Math.random()*st.imp120.offers.length)],mut=['Iridescent Color','Wild Pattern','Extended Fins','High Vitality'][Math.floor(Math.random()*4)];
+  o.gr=90;o.mut=mut;o.sample=impFishV120(o.sp,90,'M',mut);o.left=3;o.max=3;o.price=Math.round(sellValueV9(o.sample)*2.2/5)*5;}
 }
 /* saves from before the 10-per-species offer: one fish per card -> a 10-fish card of the same species and level */
 function fixOffersV120(){const o=st.imp120&&st.imp120.offers;if(!Array.isArray(o))return;
  o.forEach((x,i)=>{if(x.fish&&!x.sp){const f=x.fish,gr=Math.round((f.genes.color+f.genes.pattern+f.genes.fins+f.genes.vitality)/4);o[i]={sp:f.species,gr,price:x.price,left:x.bought?IMPMAX-1:IMPMAX,sample:f};}});}
 function impCardsV120(){
  fixOffersV120();const o=st.imp120.offers||[];if(!o.length)return '<div class="meta">No shipment this week.</div>';
- return o.map((x,i)=>{const f=x.sample,g=gradeV10(f);return `<div class="st120row"><div class="av">${dexAvatarHTML(f,56,34)}</div><div class="in"><b>${sname(f)}</b> <span class="v10Grade ${g.cls}">${g.name}</span><small>🪙 ${x.price} each · <b>${x.left} / ${IMPMAX} left</b> · 7 days quarantine</small></div><div class="ctl">${x.left>0?`<button class="btn small green" onclick="stImportBuy120(${i},'M')">BUY ♂</button><button class="btn small green" onclick="stImportBuy120(${i},'F')">BUY ♀</button>`:'<b style="color:#ffb347;font-size:11px">SOLD OUT</b>'}</div></div>`;}).join('');
+ return o.map((x,i)=>{const f=x.sample,g=gradeV10(f);return `<div class="st120row"><div class="av">${dexAvatarHTML(f,56,34)}</div><div class="in"><b>${sname(f)}</b> <span class="v10Grade ${g.cls}">${g.name}</span>${x.mut?`<span class="spc120">✨ SPECIAL · ${x.mut}</span>`:''}<small>🪙 ${x.price} each · <b>${x.left} / ${x.max||IMPMAX} left</b> · delivered tomorrow</small></div><div class="ctl">${x.left>0?`<button class="btn small green" onclick="stImportBuy120(${i},'M')">BUY ♂</button><button class="btn small green" onclick="stImportBuy120(${i},'F')">BUY ♀</button>`:'<b style="color:#ffb347;font-size:11px">SOLD OUT</b>'}</div></div>`;}).join('');
 }
 function quarHTMLV120(){
  const q=st.quar120||[];if(!q.length)return '';
  return `<div class="meta" style="margin-top:6px"><b>🧪 In quarantine</b></div>`+q.map(x=>`<div class="st120row"><div class="av">${dexAvatarHTML(x.fish,56,34)}</div><div class="in"><b>${sname(x.fish)} ${x.fish.sex==='M'?'♂':'♀'}</b><small>${x.until>st.day?'ready on day '+x.until:'waiting for room in your tanks (7 fish max)'}</small></div></div>`).join('');
 }
 function importPanelV120(){
- const left=7-((Math.max(1,st.day)-1)%7);
- return `<div class="v8panel"><div class="v8head"><b>📦 WEEKLY IMPORT</b><span>${left===7?'NEW TODAY':'NEW IN '+left+' DAY'+(left>1?'S':'')}</span></div>${impCardsV120()}${quarHTMLV120()}</div>`;
+ const left=7-((Math.max(1,st.day)-1)%7),ord=(st.ord120||[]).length?`<div class="meta" style="margin-top:6px"><b>🚚 On the way</b> · ${st.ord120.length} fish · Marco delivers on day ${Math.min(...st.ord120.map(o=>o.due))}</div>`:'';
+ return `<div class="v8panel"><div class="v8head"><b>📦 WEEKLY IMPORT</b><span>${left===7?'NEW TODAY':'NEW IN '+left+' DAY'+(left>1?'S':'')}</span></div>${impCardsV120()}${ord}${quarHTMLV120()}</div>`;
 }
+window.importNoticesV120=function(){
+ const out=[];ensureStoreV120();const o=(st.imp120&&st.imp120.week===weekOf(st.day))?st.imp120.offers||[]:[];
+ const left=o.reduce((a,x)=>a+(x.left||0),0);
+ if(left&&!st.imp120.ordered)out.push({ic:'📦',tx:`Marco has a new shipment: ${o.map(x=>S[x.sp]?S[x.sp].name:x.sp).join(', ')}${o.some(x=>x.mut)?' ✨':''}`,go:'import'});
+ const ord=st.ord120||[];if(ord.length)out.push({ic:'🚚',tx:`Marco delivers ${ord.length} fish on day ${Math.min(...ord.map(x=>x.due))}`,go:'import'});
+ const q=st.quar120||[];if(q.length)out.push({ic:'🧪',tx:`Quarantine: ${q.length} fish, next ready on day ${Math.min(...q.map(x=>x.until))}`,go:owns('qt')?'quar':'import'});
+ return out;
+};
 window.stImport120=function(){try{ensureHealthState();ensureStoreV120();if(st.imp120.week!==weekOf(st.day))makeOffersV120();st.imp120.shown=true;save();
  const IM=window.ST120_IMPORTER;
- pop('📦 WEEKLY IMPORT',`<div class="imp120"><div class="who">${IM?`<img src="${IM}" alt="">`:'<span class="sil">🧔</span>'}<div><b>Marco, the fish importer</b><small>"Fresh shipment this week! Pick what you like 📦"</small></div></div>${impCardsV120()}<div class="tip"><b>AFNICA tip:</b> imported fish bring new genes for breeding. Put them in quarantine for 7 days first: new fish can carry diseases.</div></div>`,'LATER');}catch(e){console.error('AFNICA store import',e);}};
-/* buying asks where the fish goes: 7 days of quarantine (recommended) or straight into the Main Tank at the player's risk */
-let impPend=null;
+ pop('📦 WEEKLY IMPORT',`<div class="imp120"><div class="who">${IM?`<img src="${IM}" alt="">`:'<span class="sil">🧔</span>'}<div><b>Marco, the fish importer</b><small>"Fresh shipment this week! Pick what you like 📦"</small></div></div>${impCardsV120()}<div class="tip"><b>AFNICA tip:</b> imported fish bring new genes for breeding. Marco delivers your order the next day; then put them in quarantine for 7 days: new fish can carry diseases.</div></div>`,'LATER');}catch(e){console.error('AFNICA store import',e);}};
+/* ordering: the player pays now, Marco brings the fish the next game day (st.ord120); where they go is chosen at delivery */
 window.stImportBuy120=function(i,sex){
  try{fixOffersV120();const x=st.imp120.offers[i];if(!x||x.left<=0)return toast('Sold out for this week');if(st.coins<x.price)return toast('Not enough coins');
-  impPend={i,sex:sex==='F'?'F':'M',back:!!document.querySelector('.imp120')};
-  pop('🧪 QUARANTINE?',`<div class="imp120"><div class="tip" style="margin:0 0 8px"><b>AFNICA:</b> new fish can carry ich, fungus or bacteria without showing it. A ${QDAYS}-day quarantine is the safe way, boss: if one is sick, it is treated there and joins your tank healthy.</div>
-   <button class="btn green wide" style="margin-bottom:6px" onclick="stImportGo120(true)">🧪 QUARANTINE ${QDAYS} DAYS (recommended)</button>
-   <button class="btn wide" style="background:#a34040;margin-bottom:4px" onclick="stImportGo120(false)">⚠️ STRAIGHT TO THE MAIN TANK</button>
-   <div class="meta" style="font-size:11px;opacity:.85">At your own risk: a sick fish brings its disease into your tank, and it can spread.</div></div>`,'CANCEL');
- }catch(e){console.error('AFNICA store import buy',e);}
+  const f=impFishV120(x.sp,x.gr,sex==='F'?'F':'M',x.mut);st.coins-=x.price;x.left--;st.ord120.push({fish:f,due:st.day+1,sick:Math.random()<.15});save();
+  st.imp120.ordered=true;toast(`📦 ${sname(f)} ${f.sex==='M'?'♂':'♀'} ordered (${x.left} left) · Marco delivers tomorrow`);try{coinsUI();}catch(e){}
+  if(!owns('qt')&&!st.store.qtTip){qtTipV120(true);return;}
+  if(document.querySelector('.imp120'))stImport120();if($('st120panel'))panel();}catch(e){console.error('AFNICA store import buy',e);}
 };
-window.stImportGo120=function(q){
- try{const P=impPend;impPend=null;if(!P)return;const x=st.imp120.offers[P.i];if(!x||x.left<=0)return toast('Sold out for this week');if(st.coins<x.price)return toast('Not enough coins');
-  const f=impFishV120(x.sp,x.gr,P.sex),sick=Math.random()<.15;st.coins-=x.price;x.left--;
-  const dst=!q?[st.fish,st.fry].find(a=>Array.isArray(a)&&a.length<7):null;
-  if(q||!dst){st.quar120.push({fish:f,until:st.day+QDAYS,sick});toast(`🧪 ${sname(f)} ${f.sex==='M'?'♂':'♀'} in quarantine for ${QDAYS} days (${x.left} left)`+(!q?' · your tanks are full':''));}
-  else{if(sick){const r=Math.random();f.disease=r<.6?'ich':r<.8?'fungus':'bacteria';f.sickDays=0;f.treatment=null;f.health=Math.max(10,(f.health||100)-15);}
-   dst.push(f);toast(sick?`⚠️ The new ${sname(f)} brought ${f.disease==='ich'?'ich':f.disease} into your ${dst===st.fish?'Main':'Fry'} Tank! Treat it fast.`:`✅ ${sname(f)} ${f.sex==='M'?'♂':'♀'} went straight into your ${dst===st.fish?'Main':'Fry'} Tank (${x.left} left)`);}
-  save();try{coinsUI();}catch(e){}
-  if(typeof closePop==='function')closePop();if(P.back)setTimeout(()=>stImport120(),60);if($('st120panel'))panel();
- }catch(e){console.error('AFNICA store import go',e);}
+/* the delivery: one choice for the whole box: 7 days of quarantine (recommended) or straight into the tanks at the player's risk */
+let delivering=false;
+function qFreeV120(){return Math.max(0,QCAP-(st.quar120||[]).length);}
+function dueOrdersV120(){return (st.ord120||[]).filter(o=>o.due<=st.day);}
+function afnicaFaceV120(){const F=window.ST120_AFNICA_FACE;return F?`<img src="${F}" alt="">`:'<span class="sil">🧑</span>';}   /* square crop centred on his head (cut_afnica_face.py) */
+/* AFNICA suggests a quarantine tank (once, when the player orders without one) */
+function qtTipV120(back){
+ st.store.qtTip=true;save();
+ pop('🧪 A TIP FROM AFNICA',`<div class="imp120"><div class="who"><span class="afc">${afnicaFaceV120()}</span><div><b>AFNICA</b><small>"Boss, before Marco brings the fish: get a quarantine tank."</small></div></div>
+  <div class="tip" style="margin:0 0 8px">New fish can carry ich, fungus or bacteria without showing it. In a quarantine tank they stay apart for ${QDAYS} days: if one is sick, it is treated there and never touches your Main Tank. It's the best way to keep your fish safe.</div>
+  <button class="btn green wide" style="margin-bottom:6px" onclick="stBuyQt120(${back?1:0})">🧪 BUY A QUARANTINE TANK · 🪙 350</button>
+  <button class="btn wide" style="background:#2b4a5a" onclick="closePop();${back?'setTimeout(()=>stImport120(),60);':''}">MAYBE LATER</button></div>`,'OK');
+ {const btn=document.querySelector('#popup > .btn:last-child');if(btn)btn.style.display='none';}
+}
+window.stBuyQt120=function(back){
+ try{if(owns('qt'))return;if(st.coins<350)return toast('Not enough coins for the quarantine tank');st.coins-=350;st.store.owned.qt=true;save();try{coinsUI();}catch(e){}
+  toast('🧪 Quarantine tank set up! You will find it in the TANK tab.');if(typeof closePop==='function')closePop();
+  if(back===1)setTimeout(()=>stImport120(),60);else if(back===2)setTimeout(()=>deliveryPopV120(),60);if($('st120panel'))panel();}catch(e){console.error('AFNICA store qt',e);}
 };
-/* release from quarantine (any screen): sick ones were caught and treated there */
+function deliveryPopV120(){
+ const due=dueOrdersV120();if(!due.length){delivering=false;return;}delivering=true;
+ const MP=window.ST120_MARCO||{},pic=MP.thumbs||window.ST120_IMPORTER;
+ pop('📦 DELIVERY FROM MARCO',`<div class="imp120"><div class="who">${pic?`<img src="${pic}" alt="" style="object-position:50% 8%">`:'<span class="sil">🧔</span>'}<div><b>Marco</b><small>"Your fish are here, boss! ${due.length} fish, all in good shape… I think 😉 See you on Monday, day ${nextMondayV120()}!"</small></div></div>
+  <div class="dlv">${due.map(o=>`<span>${dexAvatarHTML(o.fish,52,30)}<i>${sname(o.fish)} ${o.fish.sex==='M'?'♂':'♀'}</i></span>`).join('')}</div>
+  <div class="tip" style="margin:6px 0 8px"><b>AFNICA:</b> new fish can carry ich, fungus or bacteria without showing it. A ${QDAYS}-day quarantine is the safe way, boss: a sick one is treated there and joins your tank healthy.</div>
+  ${owns('qt')?`<button class="btn green wide" style="margin-bottom:6px" onclick="stDeliver120(true)">🧪 QUARANTINE ${QDAYS} DAYS (recommended)</button>${due.length>qFreeV120()?`<div class="meta" style="font-size:11px;color:#ffb347;margin:-2px 0 6px">The quarantine tank has room for ${qFreeV120()} more; the other ${due.length-qFreeV120()} would go straight into your tanks.</div>`:''}`:`<button class="btn green wide" style="margin-bottom:6px" onclick="stBuyQt120(2)">🧪 BUY A QUARANTINE TANK (🪙 350) · recommended</button>`}
+  <button class="btn wide" style="background:#a34040;margin-bottom:4px" onclick="stDeliver120(false)">⚠️ STRAIGHT TO THE MAIN TANK</button>
+  <div class="meta" style="font-size:11px;opacity:.85">At your own risk: a sick fish brings its disease into your tank, and it can spread.</div></div>`,'QUARANTINE');
+ /* only the two choices: the pop-up's own bottom button is hidden (pop() rebuilds it for every other pop-up) */
+ {const btn=document.querySelector('#popup > .btn:last-child');if(btn)btn.style.display='none';}
+}
+window.stDeliver120=function(q){
+ try{const due=dueOrdersV120();if(!due.length){if(typeof closePop==='function')closePop();delivering=false;return;}
+  st.ord120=st.ord120.filter(o=>o.due>st.day);let sickIn=[],inQ=0,inT=0;
+  if(q&&!owns('qt'))q=false;let room=qFreeV120();
+  due.forEach(o=>{const toQ=q&&room>0;if(toQ)room--;const f=o.fish,dst=!toQ?[st.fish,st.fry].find(a=>Array.isArray(a)&&a.length<7):null;
+   if(toQ||!dst){st.quar120.push({fish:f,until:st.day+QDAYS,sick:o.sick});inQ++;}
+   else{if(o.sick){const r=Math.random();f.disease=r<.6?'ich':r<.8?'fungus':'bacteria';f.sickDays=0;f.treatment=null;f.health=Math.max(10,(f.health||100)-15);sickIn.push(f);}dst.push(f);inT++;}});
+  save();if(typeof closePop==='function')closePop();delivering=false;
+  if(sickIn.length)toast(`⚠️ A new ${sname(sickIn[0])} brought ${sickIn[0].disease} into your tank! Treat it fast.`);
+  else toast(inT?`✅ ${inT} new fish went straight into your tanks`+(inQ?` · ${inQ} in quarantine (tanks full)`:''):`🧪 ${inQ} new fish in quarantine for ${QDAYS} days`);
+  marcoLeaveV120();setTimeout(()=>{try{toast(`📦 Marco will be back on day ${nextMondayV120()} with a new shipment`);}catch(e){}},2600);if($('st120panel'))panel();
+ }catch(e){console.error('AFNICA store delivery',e);}
+};
+/* in the shop Marco walks in with the box, stops by the counter (thumbs up), then waves and leaves after the choice */
+function marcoVisitV120(){
+ const MP=window.ST120_MARCO;if(!MP||!MP.box||!$('st120stage')||ST.cust.some(c=>c.marco))return false;
+ const parts=mkSprite(MP.box,.52,null);
+ const c={marco:true,type:'shopper',budget:0,sense:1,pi:-1,id:++ST.uid,sz:1,parts,x:DOOR.x,y:DOOR.y,hx:1,hy:.3,speed:0,maxSp:50,phase:0,face:1,faceT:1,alpha:0,state:'marco',path:[],seed:1,visits:[],slot:null,want:null,t:0,wait:0,bagged:false,pointing:false,bubT:0,leaving:false};
+ $('st120stage').appendChild(parts.el);ST.cust.push(c);sndV120('bell');route(c,[{x:110,y:372},{x:548,y:398}]);return true;
+}
+function marcoStillV120(c,src){const P=c.parts;P.rig={R:null};P.img.src=src;P.img.style.display='block';P.cv.style.display='none';c.face=c.faceT=1;}
+const nextMondayV120=()=>(weekOf(st.day)+1)*7+1;
+function marcoLeaveV120(){
+ const c=ST.cust.find(x=>x.marco);if(!c)return;const MP=window.ST120_MARCO||{};
+ if(MP.wave)marcoStillV120(c,MP.wave);bubble(c,'See you next week! 👋',1.8);c.state='marcoGo';c.t=2;
+}
+/* release from quarantine/* release from quarantine (any screen): sick ones were caught and treated there */
 function quarTickV120(){
  const q=st.quar120;if(!q||!q.length)return;let changed=false;
  for(let i=0;i<q.length;i++){const x=q[i];if(x.until>st.day)continue;
@@ -825,7 +903,28 @@ function quarTickV120(){
 setInterval(()=>{try{if(typeof st==='undefined'||!st||!st.started)return;ensureStoreV120();
  if(st.imp120.week!==weekOf(st.day))makeOffersV120();
  if(isMonday(st.day)&&!st.imp120.shown){const ov=document.getElementById('overlay');if(!ov||!ov.classList.contains('show')){stImport120();}}
- quarTickV120();}catch(e){console.error('AFNICA store weekly',e);}},2500);
+ quarTickV120();
+ if(!delivering&&dueOrdersV120().length){const ov=document.getElementById('overlay');if(!ov||!ov.classList.contains('show')){delivering=true;if(!marcoVisitV120())deliveryPopV120();}}
+}catch(e){console.error('AFNICA store weekly',e);}},2500);
+
+/* ---------- the quarantine tank (TANK tab, once bought) ---------- */
+let QG=0;
+window.renderQuarV120=function(){
+ try{ensureHealthState();ensureStoreV120();setAfnicaScreenV104('quar');const e=$('screen');if(!e)return;const q=st.quar120||[];
+  const row=x=>{const start=x.until-QDAYS,d=Math.min(QDAYS,Math.max(0,st.day-start)),found=x.sick&&st.day>=start+2;
+   return `<div class="st120row"><div class="av">${dexAvatarHTML(x.fish,56,34)}</div><div class="in"><b>${sname(x.fish)} ${x.fish.sex==='M'?'♂':'♀'}</b><small>${found?'💊 white spot found · being treated':'looks healthy'} · day ${d}/${QDAYS} · ${x.until>st.day?'ready on day '+x.until:'ready, waiting for room (7 fish per tank)'}</small></div></div>`;};
+  e.innerHTML=v8Top()+`<div class="qt120" id="qt120"><div class="w"></div><div class="sd"></div><i class="ht"></i><i class="air"></i><div class="lbl">🧪 QUARANTINE · ${q.length}/${QCAP}</div><div class="fb" id="qt120fb"></div><div class="gl"></div></div>
+   <div class="v8panel"><div class="v8head"><b>🧪 QUARANTINE TANK</b><span>${q.length}/${QCAP}</span></div><div class="meta">New fish from Marco stay here ${QDAYS} days before joining your tanks. A sick one is treated here (🪙 20) and leaves healthy.</div>${q.map(row).join('')||'<div class="meta">Empty. Fish you put in quarantine from Marco’s deliveries show up here.</div>'}</div>`+v8Nav('home');
+  const fb=$('qt120fb'),els=q.map(x=>{const d=document.createElement('div');d.className='qf'+(isBottom(x.fish)?' bt':'');d.innerHTML=dexAvatarHTML(x.fish,44,26);fb.appendChild(d);
+   const b=isBottom(x.fish);return {el:d,q:{x:20+Math.random()*240,y:b?150:20+Math.random()*100,tx:0,ty:0,w:Math.random()*2,f:1,fs:1,bot:b}};});
+  const gen=++QG;let last=performance.now();
+  const tick=now=>{if(gen!==QG||!document.getElementById('qt120'))return;requestAnimationFrame(tick);const dt=Math.min(.1,(now-last)/1000);last=now;const W2=fb.clientWidth||300;
+   els.forEach(o=>{const q=o.q;if(q.w>0)q.w-=dt;else{const dx=q.tx-q.x,dy=q.ty-q.y,d=Math.hypot(dx,dy);if(d<2){q.w=q.bot?1+Math.random()*3:Math.random()*1.5;q.tx=10+Math.random()*(W2-60);q.ty=q.bot?146+Math.random()*6:14+Math.random()*110;}
+    else{const sp=q.bot?6:14,st2=Math.min(d,sp*dt);q.x+=dx/d*st2;q.y+=dy/d*st2;if(Math.abs(dx)>2)q.f=dx>0?1:-1;}}q.fs+=(q.f-q.fs)*Math.min(1,dt*6);
+    o.el.style.transform=`translate(${q.x.toFixed(1)}px,${q.y.toFixed(1)}px) scaleX(${(FISHFACE*Math.sign(q.fs||1)*Math.max(.15,Math.abs(q.fs))).toFixed(3)})`;});};
+  requestAnimationFrame(tick);
+ }catch(err){console.error('AFNICA quarantine tank',err);}
+};
 
 /* ---------- screen ---------- */
 window.renderStoreV120=function(force){

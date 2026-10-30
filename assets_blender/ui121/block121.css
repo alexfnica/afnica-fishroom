@@ -76,3 +76,6 @@ body.u121shop #screen .card .meta{font-size:11px!important;margin:0!important}
 body.u121shop #screen .card .btn{grid-column:1/-1;margin-top:6px!important}
 @media (max-height:720px){.u121Card{padding:7px 10px;margin-bottom:6px}.u121Card .ic{font-size:24px}.u121Quick{margin-top:6px}.u121Quick button{padding:9px}.u121Sub{margin:6px 2px 4px}}
 body.u121tank .v8hero .v8dock{left:4px!important;right:4px!important}
+/* pop-ups above everything on the screen (the tank's button bar has z-index 50); toasts above pop-ups */
+.overlay.show{z-index:1500!important}
+.toast{z-index:1600!important}

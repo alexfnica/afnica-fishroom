@@ -29,6 +29,10 @@ def asp(f):
     b = open(f, 'rb').read(24); w, h = struct.unpack('>II', b[16:24]); return round(w / h, 3)
 if pp: logo += 'window.ST120_PEOPLE_ASPECT=[' + ','.join(str(asp(f)) for f in pp) + '];' + chr(10)
 logo += 'window.ST120_BAGFISH=' + _json.dumps({k: v for k, v in BF.items() if k.startswith('owner')}) + ';' + chr(10)
+if os.path.exists(os.path.join(HERE, 'poses', 'afnica_face.png')): logo += 'window.ST120_AFNICA_FACE="%s";' % uri(os.path.join('poses', 'afnica_face.png')) + chr(10)   # AFNICA's round face for tips
+MF = os.path.join(HERE, 'marco', 'marco_face.png')   # Marco, the weekly importer (cut_marco.py)
+if os.path.exists(os.path.join(HERE, 'marco', 'marco_box.png')): logo += 'window.ST120_MARCO={' + ','.join('%s:"%s"' % (k, uri(os.path.join('marco', 'marco_%s.png' % k))) for k in ('box', 'wave', 'thumbs')) + '};' + chr(10)
+if os.path.exists(MF): logo += 'window.ST120_IMPORTER="%s";' % uri(os.path.join('marco', 'marco_face.png')) + chr(10)
 print('people sprites:', len(pp))
 block = '<!-- V17.120 BEGIN -->\n<style>\n' + rd('block120.css') + '</style>\n<script>\n' + logo + rd('walk120.js') + rd('block120.js') + '\n</script>\n<!-- V17.120 END -->\n'
 s = open(GAME, encoding='utf-8', newline='').read()
