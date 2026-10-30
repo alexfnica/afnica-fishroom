@@ -147,3 +147,7 @@ table.rep120{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:6p
 .spc120{display:inline-block;margin-left:4px;font-size:9px;font-weight:900;color:#2a1a0c;background:linear-gradient(90deg,#ffd24b,#ff9ad5,#9ad8ff);border-radius:6px;padding:1px 5px}
 
 img.anc120{display:block;object-fit:contain;image-rendering:auto}
+
+#st120clerk{transition:opacity .8s}
+#st120clerk.off{opacity:0;pointer-events:none}
+.st120closed .meta b{color:#ffd24b}

@@ -92,9 +92,25 @@ const QCAP=12;   /* fish the quarantine tank holds */
 window.quarOwnedV120=()=>{try{return owns('qt');}catch(e){return false;}};
 const decorV120=()=>1+(owns('rug')?.03:0)+(owns('poster')?.02:0)+(owns('plants')?.02:0);
 /* time of day on the shop: daylight / evening glow / night (dimmer, CLOSED sign); uses the same hour as the arrivals */
-function todV120(){try{const h=window.__afHourOverride!=null?+window.__afHourOverride:new Date().getHours(),tod=h<8||h>=22?'night':h>=18?'eve':'day',sg=$('st120stage');
- if(sg&&sg.dataset.tod!==tod){sg.dataset.tod=tod;const d=$('st120door');if(d)d.classList.toggle('closed',tod==='night');}}catch(e){}}
-function hourF(){const h=window.__afHourOverride!=null?+window.__afHourOverride:new Date().getHours();return h<8||h>=22?0:(h>=10&&h<19?1.3:.7);}
+/* opening hours (owner): the store sells 10:00-18:00 on the real clock (the game clock is real time). Outside them no new
+   customers come in, the door says CLOSED, AFNICA goes home once the last customer is served and the store menu is locked. */
+const OPEN_H=10,CLOSE_H=18;
+function hourNowV120(){const d=new Date();return window.__afHourOverride!=null?+window.__afHourOverride:d.getHours()+d.getMinutes()/60;}
+function storeOpenV120(){const h=hourNowV120();return h>=OPEN_H&&h<CLOSE_H;}
+window.storeOpenV120=storeOpenV120;window.STORE_HOURS120=[OPEN_H,CLOSE_H];
+/* seconds of opening hours between two timestamps (for the sales while the player was away; at most the last 7 days) */
+function openSecsV120(a,b){let t=Math.max(a,b-7*864e5),n=0;while(t<b){const d=new Date(t),nx=new Date(d.getFullYear(),d.getMonth(),d.getDate(),d.getHours()+1).getTime(),e=Math.min(b,nx),h=d.getHours();if(h>=OPEN_H&&h<CLOSE_H)n+=(e-t)/1000;t=e;}return n;}
+/* "3 h 20 min" until the store opens / closes */
+function untilV120(hh){let m=Math.round(((hh-hourNowV120())+24)%24*60);const h=Math.floor(m/60);m%=60;return (h?h+' h ':'')+m+' min';}
+/* time of day on the shop: daylight / evening glow / night (dimmer); CLOSED sign and AFNICA's shift follow the opening hours */
+function todV120(){try{const h=hourNowV120(),tod=h<8||h>=22?'night':h>=18?'eve':'day',sg=$('st120stage'),open=storeOpenV120();
+ if(sg&&sg.dataset.tod!==tod)sg.dataset.tod=tod;
+ const d=$('st120door');if(d)d.classList.toggle('closed',!open);
+ /* AFNICA stays until the queue and the customer at the till are done, then leaves; back at opening time */
+ const cl=$('st120clerk'),busy=ST.clerk&&(ST.clerk.c||ST.pay||ST.queue.length);if(cl){const off=!open&&!busy;if(cl.classList.contains('off')!==off)cl.classList.toggle('off',off);}
+ if(ST.wasOpen!==open){const first=ST.wasOpen===undefined;ST.wasOpen=open;if(!first){panel();if(open)ownerSay(pickV120(['Morning, boss! We are open ☀️','Doors open, boss! 🐟']),2.6);else if(busy)ownerSay('Closing time, boss! Last customers 🕕',2.6);}}
+}catch(e){console.error('AFNICA store hours',e);}}
+function hourF(){if(!storeOpenV120())return 0;const h=hourNowV120();return h>=11&&h<17?1.3:.8;}
 function cap(){return st.store.tanks*st.store.slotsPerTank;}
 function sname(f){const sp=S[f.species];return sp?sp.name:f.species;}
 function sicon(f){const sp=S[f.species];return sp&&sp.icon?sp.icon:'🐟';}
@@ -162,7 +178,7 @@ function dayCheck(){
 }
 function batchSim(){
  const s=st.store,now=Date.now(),out={n:0,sales:0,revenue:0};
- const el=s.lastSimAt?(now-s.lastSimAt)/1000:0;
+ const el=s.lastSimAt?openSecsV120(s.lastSimAt,now):0;   /* only the opening hours in between */
  s.lastSimAt=now;
  if(el<60||!st.storeFish.length)return out;
  const n=Math.min(40,Math.floor(el/(30/(1+.15*repLevel()))*.58)),rep0=s.rep;
@@ -480,11 +496,15 @@ window.stReport120=function(){try{const s=st.store;pop('📋 TODAY’S STORE REP
 function panel(){
  boardUI();
  const el=$('st120panel');if(!el)return;
+ if(!storeOpenV120()){el.innerHTML=`<div class="v8panel st120closed"><div class="v8head"><b>🏪 ${storeNameV120()}</b><span>🔒 CLOSED</span></div>
+  <div class="meta"><b>Open every day 10:00 – 18:00.</b> AFNICA has gone home; the store opens again in <b>${untilV120(OPEN_H)}</b>.</div>
+  <div class="meta">Weekly imports from Marco are still in ORDERS.</div></div>`;return;}
  const s=st.store,d=s.day,lvl=repLevel();
  const elig=[];
  st.fish.forEach(f=>{if(eligibleV120(f))elig.push([f,'main']);});
  st.fry.forEach(f=>{if(eligibleV120(f))elig.push([f,'fry']);});
  el.innerHTML=`<div class="v8panel"><div class="v8head"><b>🏪 ${storeNameV120()}</b><span>★ LEVEL ${lvl}</span></div>
+  <div class="meta">🕙 Open 10:00 – 18:00 · closes in <b>${untilV120(CLOSE_H)}</b></div>
   <div class="meta">On sale today: <b style="color:#ff6b5a">${(()=>{const sa=saleV120(),f=sa.species&&st.storeFish.find(x=>x.species===sa.species);return f?sname(f)+' −'+sa.pct+'%':'nothing'})()}</b> <button class="btn small blue" style="padding:4px 8px;min-height:24px;font-size:10px" onclick="stSale120()">CHANGE</button></div>
   <div class="st120rep"><i style="width:${s.rep}%"></i></div><div class="meta">Reputation ${s.rep}/100 · higher reputation = more customers and higher prices they accept.</div>
   <div class="meta">Today: <b>${d.customers}</b> customers · <b>${d.sales}</b> sales · 🪙 <b>${d.revenue}</b> · lifetime ${s.totalSales} sales, 🪙 ${s.totalRevenue}</div>
@@ -961,8 +981,8 @@ window.renderStoreV120=function(force){
   ST.clerk={c:null,ph:'idle',t:0,part:0,parts:null,bubT:0,offerEl:null};
   buildSlots();
   const cl=mkOwner();$('st120clerk').appendChild(cl.el);ST.clerk.parts=cl;
-  syncFish();panel();coinsUI();todV120();
-  setTimeout(()=>{try{if(!ST.clerk.c)ownerSay(st.storeFish.length?pickV120(['Welcome back, boss! 😊','Morning, boss! ☕','All set, boss! 🐟']):'Boss, we need fish to sell! 🐟',2.6);}catch(e){}},900);
+  ST.wasOpen=undefined;syncFish();panel();coinsUI();todV120();
+  setTimeout(()=>{try{if(!ST.clerk.c&&storeOpenV120())ownerSay(st.storeFish.length?pickV120(['Welcome back, boss! 😊','Morning, boss! ☕','All set, boss! 🐟']):'Boss, we need fish to sell! 🐟',2.6);}catch(e){}},900);
   const msgs=[],sm=st.store.lastSummary;
   if(away.n)msgs.push(`<div style="text-align:left;margin-bottom:10px"><b>While you were away</b><br>${away.n} customers visited · ${away.sales} sales · 🪙 ${away.revenue}</div>`);
   if(sm&&!sm.shown){sm.shown=true;msgs.push(`<b>Day ${sm.day} summary</b>`+summaryHTML(sm));}

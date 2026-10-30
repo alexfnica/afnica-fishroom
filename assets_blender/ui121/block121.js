@@ -64,13 +64,26 @@ window.toast=function(t){
  return oldToast.apply(this,arguments);
 };
 
+/* ---------- in-game clock (owner: real time) ----------
+   Shows the time and whether the store is open; when the date changes while the game is open (midnight) the game moves to
+   the next day by itself, like NEXT DAY. __afHourOverride (tests) shows that hour instead. */
+let clockDate=new Date().toDateString();
+function clockTick(){
+ try{const el=$('u121Clock'),d=new Date();
+  if(el){let h=d.getHours(),m=d.getMinutes();if(window.__afHourOverride!=null&&!isNaN(+window.__afHourOverride)){const o=+window.__afHourOverride;h=Math.floor(o);m=Math.round((o-h)*60);}
+   const open=window.storeOpenV120?window.storeOpenV120():(h>=10&&h<18),txt=`🕒 ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')} <i class="${open?'op':'cl'}">${open?'OPEN':'CLOSED'}</i>`;
+   if(el.innerHTML!==txt)el.innerHTML=txt;}
+  const ds=d.toDateString();if(ds!==clockDate){clockDate=ds;if(typeof window.nextDay==='function'){window.nextDay();try{toast('🌙 Midnight: a new day in the fishroom');}catch(e){}}}
+ }catch(e){console.error('AFNICA clock',e);}
+}
+setInterval(clockTick,1000);
 /* ---------- shell ---------- */
 function buildShell(){
  if($('u121Head'))return;
  const app=document.querySelector('.app'),scr=$('screen');if(!app||!scr)return;
  const head=document.createElement('div');head.id='u121Head';head.className='u121Head';
- head.innerHTML='<button class="u121Back" id="u121Back" onclick="u121back()" aria-label="Back">←</button><b id="u121Title">FISHROOM</b><button class="u121Pill" id="u121Lvl" onclick="u121go(\'progress\')"></button><button class="u121Pill" id="u121Coins" onclick="u121go(\'shop\')"></button><button class="u121Pill" id="u121Food" onclick="u121go(\'shop\')"></button><button class="u121Bell" id="u121Bell" onclick="u121layer(\'notes\')" aria-label="Notifications">🔔<i id="u121Badge" data-n="0"></i></button>';
- app.insertBefore(head,scr);
+ head.innerHTML='<button class="u121Back" id="u121Back" onclick="u121back()" aria-label="Back">←</button><b id="u121Title">FISHROOM</b><span class="u121Pill u121Clock" id="u121Clock" title="Game time (real clock). Store open 10:00-18:00"></span><button class="u121Pill" id="u121Lvl" onclick="u121go(\'progress\')"></button><button class="u121Pill" id="u121Coins" onclick="u121go(\'shop\')"></button><button class="u121Pill" id="u121Food" onclick="u121go(\'shop\')"></button><button class="u121Bell" id="u121Bell" onclick="u121layer(\'notes\')" aria-label="Notifications">🔔<i id="u121Badge" data-n="0"></i></button>';
+ app.insertBefore(head,scr);clockTick();
  const nav=document.createElement('div');nav.id='u121Nav';nav.className='u121Nav';
  nav.innerHTML=[['home','🏠','HOME'],['tank','🐠','TANK'],['breed','❤️','BREEDING'],['market','📦','ORDERS'],['more','☰','MORE']].map(n=>`<button data-k="${n[0]}" onclick="u121nav('${n[0]}')"><em>${n[1]}</em>${n[2]}</button>`).join('');
  app.insertBefore(nav,scr.nextSibling);
