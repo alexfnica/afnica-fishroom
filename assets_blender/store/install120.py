@@ -20,11 +20,17 @@ pp = [os.path.join(PZ, 'person%02d_walk.png' % (i + 1)) if os.path.exists(os.pat
 # new people that exist only as a pose sheet (person19_walk.png ...): extra customers after the original ones, numbers in a row
 nn = len(pp) + 1
 while os.path.exists(os.path.join(PZ, 'person%02d_walk.png' % nn)): pp.append(os.path.join(PZ, 'person%02d_walk.png' % nn)); nn += 1
+FR = _json.load(open(os.path.join(PZ, 'frames.json'))) if os.path.exists(os.path.join(PZ, 'frames.json')) else {}
 def puri(f): return '"data:image/png;base64,%s"' % base64.b64encode(open(f, 'rb').read()).decode()
 def poses(i):
     b, q = os.path.join(HERE, cleanp('person%02d_bag' % (i + 1))), os.path.join(PZ, 'person%02d_point.png' % (i + 1))
     fb = BF.get('person%02d_bag' % (i + 1)) if b.endswith('_clean.png') else None
-    return '{bag:%s,point:%s,fish:%s}' % (puri(b) if os.path.exists(b) else 'null', puri(q) if os.path.exists(q) else 'null', _json.dumps(fb))
+    fr = FR.get('person%02d' % (i + 1))
+    if fr:   # V17.123: walk-cycle frame strips (poses/frames.json), the strip pictures embedded as data URIs
+        fr = _json.loads(_json.dumps(fr))
+        for k in ('a', 'b'):
+            if k in fr: fr[k]['src'] = 'data:image/webp;base64,' + base64.b64encode(open(os.path.join(PZ, fr[k]['src']), 'rb').read()).decode()
+    return '{bag:%s,point:%s,fish:%s,frames:%s}' % (puri(b) if os.path.exists(b) else 'null', puri(q) if os.path.exists(q) else 'null', _json.dumps(fb), _json.dumps(fr))
 if pp: logo += 'window.ST120_POSES=[' + ','.join(poses(i) for i in range(len(pp))) + '];' + chr(10)
 if pp: logo += 'window.ST120_PEOPLE=[' + ','.join('"data:image/png;base64,%s"' % base64.b64encode(open(f, 'rb').read()).decode() for f in pp) + '];' + chr(10)
 import struct

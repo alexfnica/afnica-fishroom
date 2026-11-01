@@ -1,0 +1,452 @@
+{
+ "_note": "V17.123 walk-cycle frame strips (cut from the Gemini 8-pose sheets in assets_blender/incoming/sheet_new*.jpg). a = parent, b = child; frame indices are 0-based cells of the strip; kid = child height / parent height, off = child centre right of the parent centre, in parent heights",
+ "person21": {
+  "kid": 0.58,
+  "off": 0.3,
+  "a": {
+   "src": "person21_fa.webp",
+   "cw": 124,
+   "ch": 372,
+   "foot": 366,
+   "h": 300,
+   "walk": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "point": 6,
+   "stand": 7
+  },
+  "b": {
+   "src": "person21_fb.webp",
+   "cw": 172,
+   "ch": 372,
+   "foot": 366,
+   "h": 300,
+   "walk": [
+    0,
+    1,
+    2,
+    3,
+    4
+   ],
+   "point": 6,
+   "stand": 3
+  }
+ },
+ "person22": {
+  "kid": 0.594,
+  "off": 0.3,
+  "a": {
+   "src": "person22_fa.webp",
+   "cw": 118,
+   "ch": 372,
+   "foot": 366,
+   "h": 300,
+   "walk": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "point": 6,
+   "stand": 7
+  },
+  "b": {
+   "src": "person22_fb.webp",
+   "cw": 154,
+   "ch": 372,
+   "foot": 366,
+   "h": 300,
+   "walk": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "point": 7,
+   "stand": 3
+  }
+ },
+ "person23": {
+  "kid": 0.571,
+  "off": 0.3,
+  "a": {
+   "src": "person23_fa.webp",
+   "cw": 127,
+   "ch": 372,
+   "foot": 366,
+   "h": 300,
+   "walk": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "point": 6,
+   "stand": 7
+  },
+  "b": {
+   "src": "person23_fb.webp",
+   "cw": 210,
+   "ch": 372,
+   "foot": 366,
+   "h": 300,
+   "walk": [
+    1,
+    3,
+    4,
+    5
+   ],
+   "point": 7,
+   "stand": 3
+  }
+ },
+ "person01": {
+  "a": {
+   "src": "person01_fa.webp",
+   "cw": 198,
+   "ch": 372,
+   "foot": 366,
+   "h": 300,
+   "walk": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "point": 4,
+   "stand": 5
+  }
+ },
+ "person02": {
+  "a": {
+   "src": "person02_fa.webp",
+   "cw": 115,
+   "ch": 372,
+   "foot": 366,
+   "h": 300,
+   "walk": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "point": 6,
+   "stand": 5
+  }
+ },
+ "person03": {
+  "a": {
+   "src": "person03_fa.webp",
+   "cw": 152,
+   "ch": 372,
+   "foot": 366,
+   "h": 300,
+   "walk": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "point": 6,
+   "stand": 7
+  }
+ },
+ "person04": {
+  "a": {
+   "src": "person04_fa.webp",
+   "cw": 140,
+   "ch": 372,
+   "foot": 366,
+   "h": 300,
+   "walk": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "point": 6,
+   "stand": 7
+  }
+ },
+ "person05": {
+  "a": {
+   "src": "person05_fa.webp",
+   "cw": 177,
+   "ch": 372,
+   "foot": 366,
+   "h": 300,
+   "walk": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "point": 6,
+   "stand": 7
+  }
+ },
+ "person06": {
+  "a": {
+   "src": "person06_fa.webp",
+   "cw": 150,
+   "ch": 372,
+   "foot": 366,
+   "h": 300,
+   "walk": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "point": 6,
+   "stand": 3
+  }
+ },
+ "person07": {
+  "a": {
+   "src": "person07_fa.webp",
+   "cw": 160,
+   "ch": 372,
+   "foot": 366,
+   "h": 300,
+   "walk": [
+    0,
+    1,
+    2,
+    3,
+    4
+   ],
+   "point": 5,
+   "stand": 6
+  }
+ },
+ "person08": {
+  "a": {
+   "src": "person08_fa.webp",
+   "cw": 187,
+   "ch": 372,
+   "foot": 366,
+   "h": 300,
+   "walk": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "point": 6,
+   "stand": 7
+  }
+ },
+ "person09": {
+  "a": {
+   "src": "person09_fa.webp",
+   "cw": 155,
+   "ch": 372,
+   "foot": 366,
+   "h": 300,
+   "walk": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "point": 6,
+   "stand": 7
+  }
+ },
+ "person10": {
+  "a": {
+   "src": "person10_fa.webp",
+   "cw": 134,
+   "ch": 372,
+   "foot": 366,
+   "h": 300,
+   "walk": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "point": 6,
+   "stand": 7
+  }
+ },
+ "person11": {
+  "a": {
+   "src": "person11_fa.webp",
+   "cw": 150,
+   "ch": 372,
+   "foot": 366,
+   "h": 300,
+   "walk": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "point": 6,
+   "stand": 7
+  }
+ },
+ "person12": {
+  "a": {
+   "src": "person12_fa.webp",
+   "cw": 162,
+   "ch": 372,
+   "foot": 366,
+   "h": 300,
+   "walk": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "point": 6,
+   "stand": 7
+  }
+ },
+ "person13": {
+  "a": {
+   "src": "person13_fa.webp",
+   "cw": 147,
+   "ch": 372,
+   "foot": 366,
+   "h": 300,
+   "walk": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "point": 6,
+   "stand": 5
+  }
+ },
+ "person24": {
+  "a": {
+   "src": "person24_fa.webp",
+   "cw": 175,
+   "ch": 372,
+   "foot": 366,
+   "h": 300,
+   "walk": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "point": 6,
+   "stand": 7
+  }
+ },
+ "person15": {
+  "kid": 0.598,
+  "off": 0.3,
+  "a": {
+   "src": "person15_fa.webp",
+   "cw": 165,
+   "ch": 372,
+   "foot": 366,
+   "h": 300,
+   "walk": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "point": 6,
+   "stand": 7
+  },
+  "b": {
+   "src": "person15_fb.webp",
+   "cw": 177,
+   "ch": 372,
+   "foot": 366,
+   "h": 300,
+   "walk": [
+    0,
+    1,
+    2,
+    3,
+    4
+   ],
+   "point": 6,
+   "stand": 5
+  }
+ },
+ "person16": {
+  "kid": 0.616,
+  "off": 0.3,
+  "a": {
+   "src": "person16_fa.webp",
+   "cw": 119,
+   "ch": 372,
+   "foot": 366,
+   "h": 300,
+   "walk": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "point": 6,
+   "stand": 3
+  },
+  "b": {
+   "src": "person16_fb.webp",
+   "cw": 213,
+   "ch": 372,
+   "foot": 366,
+   "h": 300,
+   "walk": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "point": 7,
+   "stand": 6
+  }
+ }
+}

@@ -106,12 +106,13 @@ function untilV120(hh){let m=Math.round(((hh-hourNowV120())+24)%24*60);const h=M
 function todV120(){try{const h=hourNowV120(),tod=h<8||h>=22?'night':h>=18?'eve':'day',sg=$('st120stage'),open=storeOpenV120();
  if(sg&&sg.dataset.tod!==tod)sg.dataset.tod=tod;
  const d=$('st120door');if(d)d.classList.toggle('closed',!open);
- /* AFNICA stays until the queue and the customer at the till are done, then leaves; back at opening time */
- const cl=$('st120clerk'),busy=ST.clerk&&(ST.clerk.c||ST.pay||ST.queue.length);if(cl){const off=!open&&!busy;if(cl.classList.contains('off')!==off)cl.classList.toggle('off',off);}
+ /* AFNICA stays until every customer still in the shop is done, then leaves; back at opening time */
+ const cl=$('st120clerk'),busy=ST.clerk&&(ST.clerk.c||ST.pay||ST.queue.length||ST.cust.some(c=>!c.leaving&&!c.marco));if(cl){const off=!open&&!busy;if(cl.classList.contains('off')!==off)cl.classList.toggle('off',off);}
  if(ST.wasOpen!==open){const first=ST.wasOpen===undefined;ST.wasOpen=open;if(!first){panel();if(open)ownerSay(pickV120(['Morning, boss! We are open ☀️','Doors open, boss! 🐟']),2.6);else if(busy)ownerSay('Closing time, boss! Last customers 🕕',2.6);}}
 }catch(e){console.error('AFNICA store hours',e);}}
 function hourF(){if(!storeOpenV120())return 0;const h=hourNowV120();return h>=11&&h<17?1.3:.8;}
 function cap(){return st.store.tanks*st.store.slotsPerTank;}
+const MAXC120=8;   /* up to 8 customers in the shop at once (owner: more customers), arriving about every 8-17 s */
 function sname(f){const sp=S[f.species];return sp?sp.name:f.species;}
 function sicon(f){const sp=S[f.species];return sp&&sp.icon?sp.icon:'🐟';}
 
@@ -255,13 +256,18 @@ const PTI=new Map();
 function pointFor(src){let e=PTI.get(src);if(!e){e={im:null};PTI.set(src,e);const im=new Image();im.onload=()=>{try{
  const w=im.naturalWidth,h=im.naturalHeight,c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');g.drawImage(im,0,0);const D=g.getImageData(0,0,w,h).data;
  let gr=h-1;for(;gr>0;gr--){let f=false;for(let x=0;x<w;x++)if(D[(gr*w+x)*4+3]>110){f=true;break;}if(f)break;}e.ground=gr;e.ax=hipX(im);e.im=im;}catch(er){console.error('AFNICA store point pose',er);}};im.src=src;}return e;}
+/* V17.123 walk-cycle frames: real drawn poses (one strip per person, cut from a Gemini 8-pose sheet) shown one after another instead of bending one picture;
+   a = parent, b = child (walks beside the parent); cfg from poses/frames.json */
+function framesFor(cfg){const e={ok:false,cfg};let left=0;
+ for(const k of ['a','b']){const S=cfg[k];if(!S)continue;left++;S.im=new Image();S.im.onload=()=>{if(--left===0)e.ok=true;};S.im.onerror=()=>console.error('AFNICA store frames',k);S.im.src=S.src;}
+ return e;}
 function mkSprite(src,asp,pose){
  const wide=asp>.5;   /* pairs are ~0.55-0.8 wide for their height, single people ~0.41-0.47 */
  const d=document.createElement('div');d.className='st120p sp'+(wide?' wide':'');
  d.innerHTML=`<div class="shd${wide?' w':''}"></div><div class="sprw"><img src="${src}" alt=""><canvas class="wk${wide?' wkw':''}" width="${wide?480:200}" height="320"></canvas><svg class="bagh" width="22" height="28" viewBox="0 0 22 28"><path d="M3 4 q-3 8 1 18 q7 5 14 0 q4 -10 1 -18z" fill="#9ee2f7" fill-opacity=".65" stroke="#e8fbff" stroke-width="1.2"/><path d="M4 4 q7 -8 13 0" stroke="#e8fbff" stroke-width="1.6" fill="none"/><path class="bf" d="M6 15 q5 -5 10 0 q-5 5 -10 0z" fill="#ff9a3c"/></svg></div><div class="bub"></div>`;
  const w=d.querySelector('.sprw'),bag=d.querySelector('.bagh');
  if(wide){bag.style.left='96px';bag.style.top='96px';}
- return {spr:true,wide,rad:wide?60:40,rig:rigFor(src,wide),bagRig:pose&&pose.bag?rigFor(pose.bag,wide,true):null,bagFish:pose&&pose.fish||null,ptP:pose&&pose.point?pointFor(pose.point):null,cv:d.querySelector('.wk'),shd:d.querySelector('.shd'),el:d,svg:w,img:w.firstChild,bagEl:bag,bag:{setAttribute(a,v){bag.style.display=v==='visible'?'block':'none';}},bf:d.querySelector('.bf'),bub:d.querySelector('.bub')};
+ return {spr:true,wide,rad:wide?60:40,rig:rigFor(src,wide),bagRig:pose&&pose.bag?rigFor(pose.bag,wide,true):null,bagFish:pose&&pose.fish||null,ptP:pose&&pose.point?pointFor(pose.point):null,fr:pose&&pose.frames?framesFor(pose.frames):null,cv:d.querySelector('.wk'),shd:d.querySelector('.shd'),el:d,svg:w,img:w.firstChild,bagEl:bag,bag:{setAttribute(a,v){bag.style.display=v==='visible'?'block':'none';}},bf:d.querySelector('.bf'),bub:d.querySelector('.bub')};
 }
 function poseP(c,t){
  const P=c.parts,mv=Math.min(1,c.speed/30),sw=Math.sin(c.phase)*mv,sd=c.seed;
@@ -269,6 +275,24 @@ function poseP(c,t){
   const bob=-Math.abs(Math.sin(c.phase))*2.6*mv+Math.sin(t*2+sd)*.5*(1-mv);
   let rock=Math.sin(c.phase)*2.4*mv,sq=1+Math.abs(Math.sin(c.phase))*.012*mv+Math.sin(t*1.6+sd)*.004*(1-mv);
   if(c.state==='look'){rock=-3+Math.sin(t*3+sd)*(c.pointing?3:1);}
+  /* V17.123: a person with frame strips walks with them (a bought bag still uses the bag picture below) */
+  const FS=P.fr&&P.fr.ok&&!c.bagged?P.fr.cfg:null;
+  if(FS){try{
+   if(P.img.style.display!=='none'){P.img.style.display='none';P.cv.style.display='block';}
+   const g=P.cv.getContext('2d'),m=Math.min(1,c.speed/25),cw=P.wide?240:100,d=c.dist||0;
+   g.setTransform(2,0,0,2,0,0);g.clearRect(0,0,cw,160);g.translate(cw/2,156);
+   const ptOn=c.state==='look'&&c.pointing&&m<.2;c.pt=ptOn?1:0;
+   /* frame from the distance walked (no foot sliding); standing = the still pose, pointing = the point pose */
+   const pick=(S,cyc)=>{if(m<.2)return ptOn?S.point:S.stand;const n=S.walk.length;return S.walk[((Math.floor(cyc*n)%n)+n)%n];};
+   const draw=(S,ix,hg,dx)=>{const k=hg/S.h;g.drawImage(S.im,ix*S.cw,0,S.cw,S.ch,dx-S.cw/2*k,-S.foot*k,S.cw*k,S.ch*k);};
+   const H=150,B=FS.b,off=B?FS.off*H:0,ax=-off*.3,CY=window.FRCYC123||.62,cyA=d/(CY*H);   /* stride per cycle in heights: a little short of the drawn stride so the slow shop walk still steps ~4 frames/s */
+   draw(FS.a,pick(FS.a,cyA),H,ax);
+   if(B)draw(B,pick(B,d/(CY*H*FS.kid)),H*FS.kid,ax+off);
+   const st2=Math.floor(cyA*2);
+   if(P.shd)P.shd.style.transform=`scaleX(${(1+.14*m*Math.abs(Math.sin(cyA*2*Math.PI))).toFixed(3)})`;
+   if(c.stepIx!==undefined&&st2!==c.stepIx&&m>.6&&c.alpha>.8)sndV120('step');c.stepIx=st2;
+   P.cv.style.transform='';P.bag.setAttribute('visibility','hidden');return;
+  }catch(er){console.error('AFNICA store frames',er);P.fr.ok=false;}}
   const RB=c.bagged&&P.bagRig&&P.bagRig.R,R=RB||(P.rig&&P.rig.R);   /* with a bag pose the bag is really in the hand */
   if(R){
    /* real walk: legs swing from the hip, distance-driven so the planted foot does not slide */
@@ -281,15 +305,15 @@ function poseP(c,t){
    if(bag){const cyc=(c.dist||0)/(window.cycleLenV120(R.pair?R.parts[0].R:R)*k),tgt=.16*m*Math.sin(2*Math.PI*cyc-1.3);
     c.bagV=(c.bagV||0)+((tgt-(c.bagA||0))*30-(c.bagV||0)*7)*pdt;c.bagA=(c.bagA||0)+c.bagV*pdt;bag.ang=c.bagA;}
    if(R.pair){
-    if(c.pt<.99){g.globalAlpha=1-c.pt;window.drawPairV120(g,R,c.dist||0,m,k,bag,0);
+    if(c.pt<.5){g.globalAlpha=1-2*c.pt;window.drawPairV120(g,R,c.dist||0,m,k,bag,0);
      /* the bought fish in the parent's bag (bag pose): the painted fish was taken out, the real one is drawn at its box */
      const FB=RB&&P.bagFish,im=c.bagImg;if(FB&&im&&im.complete&&im.naturalWidth){const gr=R.parts[0].R.ground,w=Math.max(FB[2]*1.35,FB[3]*2.4,FB[5]*.085),h=w*im.naturalHeight/im.naturalWidth;
       g.save();g.scale(k,k);g.translate(-R.w/2,-gr);g.drawImage(im,FB[0]+FB[2]/2-w/2,FB[1]+FB[3]/2-h/2,w,h);g.restore();}}
-    if(c.pt>.01){g.globalAlpha=c.pt;const kp=150/PT.im.naturalHeight;g.save();g.scale(kp,kp);g.translate(-PT.im.naturalWidth/2,-PT.ground);g.drawImage(PT.im,0,0);g.restore();}
+    if(c.pt>.5){g.globalAlpha=2*c.pt-1;const kp=150/PT.im.naturalHeight;g.save();g.scale(kp,kp);g.translate(-PT.im.naturalWidth/2,-PT.ground);g.drawImage(PT.im,0,0);g.restore();}
     g.globalAlpha=1;}
    else{const FB=RB&&P.bagFish,over=FB&&c.bagImg&&c.bagImg.complete&&c.bagImg.naturalWidth?(x=>{const im=c.bagImg,w=Math.max(FB[2]*1.35,FB[3]*2.4,FB[5]*.085),h=w*im.naturalHeight/im.naturalWidth;   /* never smaller than ~8.5% of the person's height */x.drawImage(im,FB[0]+FB[2]/2-w/2,FB[1]+FB[3]/2-h/2,w,h);}):null;
-    if(c.pt<.99){g.globalAlpha=1-c.pt;window.drawWalkV120(g,R,(c.dist||0)/(window.cycleLenV120(R)*k),m,k,bag,0,over);}
-    if(c.pt>.01){g.globalAlpha=c.pt;const kp=150/PT.im.naturalHeight;g.save();g.scale(kp,kp);g.translate(-PT.ax+((R.ax||R.w/2)-R.w/2)*k/kp,-PT.ground);g.drawImage(PT.im,0,0);g.restore();}
+    if(c.pt<.5){g.globalAlpha=1-2*c.pt;window.drawWalkV120(g,R,(c.dist||0)/(window.cycleLenV120(R)*k),m,k,bag,0,over);}
+    if(c.pt>.5){g.globalAlpha=2*c.pt-1;const kp=150/PT.im.naturalHeight;g.save();g.scale(kp,kp);g.translate(-PT.ax+((R.ax||R.w/2)-R.w/2)*k/kp,-PT.ground);g.drawImage(PT.im,0,0);g.restore();}
     g.globalAlpha=1;}
    {const cyc=(c.dist||0)/(window.cycleLenV120(R.pair?R.parts[0].R:R)*k),st2=Math.floor(cyc*2);
     if(P.shd)P.shd.style.transform=`scaleX(${(1+.14*m*Math.abs(Math.sin(cyc*2*Math.PI))).toFixed(3)})`;
@@ -421,8 +445,35 @@ const SWIM=[{x:14,y:14},{x:88,y:20},{x:34,y:40},{x:104,y:44}],FLOOR=[{x:10,y:70}
 const isBottom=f=>f.species==='cory'||f.species==='anc';
 /* each display fish wanders inside its tank: swimmers pick a new spot every few seconds (turning round through a short
    squeeze), bottom fish creep along the sand with pauses */
+/* corydoras behave as in the fishroom tanks (V17.83 CORYDORAS LIFE, simplified for the small display tanks): the group
+   digs through one patch of sand together (head-down bobbing, sand puffs) and drifts on to the next; now and then the
+   whole group rests side by side facing the same way; one sometimes darts up to the surface for air and back; a cory
+   with fewer than 3 companions is shy and stays by the plant, moving little. Tank units: x 0..124, sand y ~70. */
+const CORYG={};
+function coryTickV120(dt){
+ const by={};for(const el of ST.els.values()){const q=el.sw;if(q&&q.cory&&!el.classList.contains('gone'))(by[q.ti]=by[q.ti]||[]).push(el);}
+ for(const ti in by){const L=by[ti],n=L.length;let G=CORYG[ti];
+  if(!G||G.n!==n){G=CORYG[ti]={n,mode:'forage',px:20+Math.random()*84,t:6+Math.random()*6,face:Math.random()<.5?1:-1};}
+  G.t-=dt;
+  if(G.t<=0){if(n>=3&&G.mode==='forage'&&Math.random()<.25){G.mode='rest';G.t=20+Math.random()*12;G.face=Math.random()<.5?1:-1;G.px=24+Math.random()*60;}
+   else{G.mode='forage';G.t=8+Math.random()*7;const np=n<3?10+Math.random()*24:12+Math.random()*96;G.face=np>G.px?1:-1;G.px=np;}}
+  L.forEach((el,i)=>{const q=el.sw;q.coryOn=true;
+   if(q.dash){q.dash-=dt;const up=q.dash>1.2;q.tx=q.x;q.ty=up?5:70;const sp=up?42:30,dy=q.ty-q.y;q.y+=Math.sign(dy)*Math.min(Math.abs(dy),sp*dt);q.tilt=up?-35:20;if(q.dash<=0||(!up&&Math.abs(dy)<.5)){q.dash=0;q.y=Math.min(q.y,72);}return;}
+   if(!q.airT)q.airT=40+Math.random()*60;q.airT-=dt;if(q.airT<=0&&G.mode!=='rest'&&n>=2){q.airT=45+Math.random()*60;q.dash=2.6;return;}
+   const off=G.mode==='rest'?(i-(n-1)/2)*9:((i*37)%21-10)+Math.sin(performance.now()/1700+i*2)*3;
+   q.tx=Math.max(4,Math.min(116,G.px+off));q.ty=69+(i%3)*1.6;
+   const dx=q.tx-q.x,dy=q.ty-q.y,d=Math.hypot(dx,dy),sp=n<3?4:7;
+   if(d>.6){q.x+=dx/d*Math.min(d,sp*dt);q.y+=dy/d*Math.min(d,sp*dt);if(Math.abs(dx)>1.5)q.f=dx>0?1:-1;q.tilt=0;}
+   else if(G.mode==='rest'){q.f=G.face;q.tilt=0;}
+   else{q.tilt=-10-6*Math.max(0,Math.sin(performance.now()/260+i*1.7));   /* head down, digging */
+    if(Math.random()<dt*.5&&q.fb){const p2=document.createElement('i');p2.className='cpuff120';p2.style.left=(q.x+(q.f>0?30:2))+'px';p2.style.top=(q.y+14)+'px';q.fb.appendChild(p2);setTimeout(()=>p2.remove(),1300);}}
+  });}
+}
 function swimTickV120(dt){
+ try{coryTickV120(dt);}catch(e){console.error('AFNICA store cory',e);}
  for(const el of ST.els.values()){const q=el.sw;if(!q)continue;
+  if(q.coryOn){q.coryOn=false;q.fs+=(q.f-q.fs)*Math.min(1,dt*6);q.tl=(q.tl||0)+((q.tilt||0)-(q.tl||0))*Math.min(1,dt*8);
+   el.style.transform=`translate(${q.x.toFixed(1)}px,${q.y.toFixed(1)}px)`;el.firstChild.style.transform=`scaleX(${(FISHFACE*Math.sign(q.fs||1)*Math.max(.15,Math.abs(q.fs))).toFixed(3)}) rotate(${q.tl.toFixed(1)}deg)`;continue;}
   if(q.w>0)q.w-=dt;else{const dx=q.tx-q.x,dy=q.ty-q.y,d=Math.hypot(dx,dy);
    if(d<1.5){q.w=q.bot?1+Math.random()*3:Math.random()*1.2;q.tx=q.bot?6+Math.random()*112:4+Math.random()*116;q.ty=q.bot?68+Math.random()*6:6+Math.random()*44;}
    else{const sp=q.bot?5:11+3*Math.sin(performance.now()/700+q.x),st2=Math.min(d,sp*dt);q.x+=dx/d*st2;q.y+=dy/d*st2;if(Math.abs(dx)>2)q.f=dx>0?1:-1;}}
@@ -440,6 +491,7 @@ function syncFish(){
   if(!el){el=document.createElement('div');el.className='sf'+(isBottom(f)?' bt':'');el.innerHTML=`<div class="d" style="animation-duration:${(isBottom(f)?9:5)+Math.random()*4}s;animation-delay:-${(Math.random()*6).toFixed(1)}s">${avV120(f,32,19)}</div>`;ST.els.set(f.id,el);}
   if(el.parentNode!==fb)fb.appendChild(el);
   const p=(bot?FLOOR:SWIM)[k%4];if(!el.sw){el.sw={x:p.x,y:p.y,tx:p.x,ty:p.y,f:Math.random()<.5?1:-1,fs:1,w:Math.random()*3,bot};el.style.left='0px';el.style.top='0px';el.firstChild.style.animation='none';}
+  el.sw.cory=f.species==='cory';el.sw.ti=ti;el.sw.fb=fb;
   el.classList.toggle('gone',!!f._net120);seen.add(f.id);
  });
  for(const [id,el] of ST.els)if(!seen.has(id)){el.remove();ST.els.delete(id);}
@@ -664,6 +716,7 @@ function socialTick(t){
  if(done)ST.chatNext=t+5+Math.random()*4;
 }
 function nextStep(c){
+ if(!storeOpenV120()&&c.visits.length){c.visits.length=0;if(Math.random()<.5)bubble(c,pickV120(['Oh, closing time! 🕕','Time to go 👋']),2);}   /* after closing they decide on what they have seen */
  if(c.visits.length){
   const ti=c.visits.shift(),sl=typeof ti==='string'?(XS[ti]&&!XS[ti].by?XS[ti]:null):freeSlot(ti,c);if(!sl)return nextStep(c);
   c.slot=sl;sl.by=c;if(sl.both)sl.both.forEach(s=>s.by=c);c.state='goto';route(c,viaRow(c,sl.x,sl.y));return;
@@ -748,7 +801,9 @@ window.stOffer120=function(yes){
 };
 let bossT=0;
 function bossSay(txt,sec){const t=performance.now()/1000;if(t<bossT)return;bossT=t+12;setTimeout(()=>{if(!ST.clerk.c)ownerSay(txt,sec||2.4);},2600);}
-function ownerSay(txt,sec){const K=ST.clerk;if(!K.parts||!K.parts.bub)return;K.parts.bub.textContent=txt;K.parts.bub.classList.add('on');K.bubT=sec||1.6;}
+function ownerSay(txt,sec){const K=ST.clerk;if(!K.parts||!K.parts.bub)return;K.parts.bub.textContent=txt;K.parts.bub.classList.add('on');K.bubT=3;
+ /* every line stays 3 s (owner), unless a new line replaces it; on its own clock, whatever the counter is doing */
+ const b=K.parts.bub,id=(K.bubId=(K.bubId||0)+1);clearTimeout(K.bubTO);K.bubTO=setTimeout(()=>{if(K.bubId===id)b.classList.remove('on');},3000);}
 function clerkTick(dt,t){
  const K=ST.clerk,P=K.parts;
  if(!K.c){K.ph='idle';K.part=0;poseClerk(t);return;}
@@ -802,8 +857,8 @@ function loop(now,gen){
   ST.next-=dt;
   if(ST.next<=0){
    const hf=hourF();
-   if(hf>0&&st.storeFish.length&&ST.cust.length<5&&!ST.cust.some(o=>Math.hypot(o.x-DOOR.x,o.y-DOOR.y)<(o.parts.rad||40)+50)){spawn();ST.next=(18+Math.random()*20)/((1+.15*repLevel())*Math.max(.3,hf||.3));}
-   else ST.next=hf>0&&st.storeFish.length&&ST.cust.length<5?1.5:(18+Math.random()*20)/((1+.15*repLevel())*Math.max(.3,hf||.3));   /* doorway busy: try again shortly */
+   if(hf>0&&st.storeFish.length&&ST.cust.length<MAXC120&&!ST.cust.some(o=>Math.hypot(o.x-DOOR.x,o.y-DOOR.y)<(o.parts.rad||40)+50)){spawn();ST.next=(8+Math.random()*9)/((1+.15*repLevel())*Math.max(.3,hf||.3));}
+   else ST.next=hf>0&&st.storeFish.length&&ST.cust.length<MAXC120?1.5:(8+Math.random()*9)/((1+.15*repLevel())*Math.max(.3,hf||.3));   /* doorway busy: try again shortly */
   }
   try{swimTickV120(dt);}catch(e){}
   for(const c of ST.cust)custTick(c,dt,t);

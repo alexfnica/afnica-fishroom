@@ -151,3 +151,10 @@ img.anc120{display:block;object-fit:contain;image-rendering:auto}
 #st120clerk{transition:opacity .8s}
 #st120clerk.off{opacity:0;pointer-events:none}
 .st120closed .meta b{color:#ffd24b}
+
+.cpuff120{position:absolute;width:7px;height:5px;margin:-2px 0 0 -3px;border-radius:50%;pointer-events:none;z-index:3;background:radial-gradient(ellipse,rgba(222,204,166,.7) 0 35%,rgba(210,192,152,.3) 60%,rgba(200,180,140,0) 100%);animation:cpuff120 1.3s ease-out forwards}
+@keyframes cpuff120{from{transform:scale(.4);opacity:.95}to{transform:translate(0,-6px) scale(1.8);opacity:0}}
+
+/* owner bubble wraps */
+.st120stage .own .bub{white-space:normal;width:max-content;max-width:250px;text-align:center;transform:translate(-56%,-100%) scale(.6);transform-origin:56% 100%}
+.st120stage .own .bub.on{transform:translate(-56%,-100%) scale(1)}
