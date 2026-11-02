@@ -284,7 +284,7 @@ function poseP(c,t){
    const ptOn=c.state==='look'&&c.pointing&&m<.2;c.pt=ptOn?1:0;
    /* frame from the distance walked (no foot sliding); standing = the still pose, pointing = the point pose */
    const pick=(S,cyc)=>{if(m<.2)return ptOn?S.point:S.stand;const n=S.walk.length;return S.walk[((Math.floor(cyc*n)%n)+n)%n];};
-   const draw=(S,ix,hg,dx)=>{const k=hg/S.h;g.drawImage(S.im,ix*S.cw,0,S.cw,S.ch,dx-S.cw/2*k,-S.foot*k,S.cw*k,S.ch*k);};
+   const draw=(S,ix,hg,dx)=>{const k=hg/S.h;dx=Math.min(dx,cw/2-S.cw*k/2);   /* a long pointing arm stays inside the canvas */g.drawImage(S.im,ix*S.cw,0,S.cw,S.ch,dx-S.cw/2*k,-S.foot*k,S.cw*k,S.ch*k);};
    const H=150,B=FS.b,off=B?FS.off*H:0,ax=-off*.3,CY=window.FRCYC123||.62,cyA=d/(CY*H);   /* stride per cycle in heights: a little short of the drawn stride so the slow shop walk still steps ~4 frames/s */
    draw(FS.a,pick(FS.a,cyA),H,ax);
    if(B)draw(B,pick(B,d/(CY*H*FS.kid)),H*FS.kid,ax+off);
@@ -643,7 +643,7 @@ function releaseSlot(c){if(c.slot){c.slot.by=null;if(typeof c.slot.tank==='strin
 function pickPersonV120(PP){
  if(!PP||!PP.length)return -1;
  const busy=new Set(ST.cust.map(c=>c.pi));if(ST.lastPi!=null&&PP.length>ST.cust.length+1)busy.add(ST.lastPi);
- const free=[];for(let i=0;i<PP.length;i++)if(!busy.has(i))free.push(i);
+ const free=[];for(let i=0;i<PP.length;i++)if(PP[i]&&!busy.has(i))free.push(i);   /* a removed customer's slot is empty; indexes stay, saved regulars use them */
  if(!free.length)return -1;
  const R=(st.store&&st.store.regulars)||{},w=free.map(i=>1+Math.min(4,R[i]||0)*.6),tot=w.reduce((a,b)=>a+b,0);   /* regulars come back more often */
  let x=Math.random()*tot;for(let k=0;k<free.length;k++){x-=w[k];if(x<=0)return free[k];}return free[free.length-1];

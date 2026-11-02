@@ -31,8 +31,9 @@ def poses(i):
         for k in ('a', 'b'):
             if k in fr: fr[k]['src'] = 'data:image/webp;base64,' + base64.b64encode(open(os.path.join(PZ, fr[k]['src']), 'rb').read()).decode()
     return '{bag:%s,point:%s,fish:%s,frames:%s}' % (puri(b) if os.path.exists(b) else 'null', puri(q) if os.path.exists(q) else 'null', _json.dumps(fb), _json.dumps(fr))
-if pp: logo += 'window.ST120_POSES=[' + ','.join(poses(i) for i in range(len(pp))) + '];' + chr(10)
-if pp: logo += 'window.ST120_PEOPLE=[' + ','.join('"data:image/png;base64,%s"' % base64.b64encode(open(f, 'rb').read()).decode() for f in pp) + '];' + chr(10)
+REMOVED = {13}   # customer #14 is out of the game; the empty slot keeps the other customers' indexes (saved regulars use them)
+if pp: logo += 'window.ST120_POSES=[' + ','.join('null' if i in REMOVED else poses(i) for i in range(len(pp))) + '];' + chr(10)
+if pp: logo += 'window.ST120_PEOPLE=[' + ','.join('""' if i in REMOVED else '"data:image/png;base64,%s"' % base64.b64encode(open(f, 'rb').read()).decode() for i, f in enumerate(pp)) + '];' + chr(10)
 import struct
 def asp(f):
     b = open(f, 'rb').read(24); w, h = struct.unpack('>II', b[16:24]); return round(w / h, 3)
