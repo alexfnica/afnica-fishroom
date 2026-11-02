@@ -257,17 +257,43 @@ function pointFor(src){let e=PTI.get(src);if(!e){e={im:null};PTI.set(src,e);cons
  const w=im.naturalWidth,h=im.naturalHeight,c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');g.drawImage(im,0,0);const D=g.getImageData(0,0,w,h).data;
  let gr=h-1;for(;gr>0;gr--){let f=false;for(let x=0;x<w;x++)if(D[(gr*w+x)*4+3]>110){f=true;break;}if(f)break;}e.ground=gr;e.ax=hipX(im);e.im=im;}catch(er){console.error('AFNICA store point pose',er);}};im.src=src;}return e;}
 /* V17.123 walk-cycle frames: real drawn poses (one strip per person, cut from a Gemini 8-pose sheet) shown one after another instead of bending one picture;
-   a = parent, b = child (walks beside the parent); cfg from poses/frames.json */
+   a = parent, b = child, p = both walking hand in hand (standing and pointing use a and b); cfg from poses/frames.json */
 function framesFor(cfg){const e={ok:false,cfg};let left=0;
- for(const k of ['a','b']){const S=cfg[k];if(!S)continue;left++;S.im=new Image();S.im.onload=()=>{if(--left===0)e.ok=true;};S.im.onerror=()=>console.error('AFNICA store frames',k);S.im.src=S.src;}
+ for(const k of ['a','b','p']){const S=cfg[k];if(!S)continue;left++;S.im=new Image();S.im.onload=()=>{if(--left===0)e.ok=true;};S.im.onerror=()=>console.error('AFNICA store frames',k);S.im.src=S.src;}
  return e;}
+/* draws a person from strips at feet-centre (0,0) and returns the parent's cycle position.
+   Between pictures the body keeps moving: head bob (stretch from the feet, so they stay on the floor) and a small lean; walk pictures blend for 70 ms.
+   Standing and pointing: breathing and a slow weight shift. The bag follows the hand (poses/frames.json 'hand') on a spring so it swings. */
+function drawFramesV123(g,FS,c,t,pdt,cw,m){
+ const still=m<.2,ptOn=c.state==='look'&&c.pointing&&still,d=c.dist||0,H=150,B=FS.b,off=B?FS.off*H:0,ax=-off*.3,CY=window.FRCYC123||.72,cyA=d/(CY*H),sd=c.seed||0;c.pt=ptOn?1:0;
+ const one=(S,cyc,hg,dx0,key,kid)=>{
+  let ix;if(still)ix=ptOn?S.point:S.stand;else{const n=S.walk.length;ix=S.walk[((Math.floor(cyc*n)%n)+n)%n];}
+  const st=c[key]||(c[key]={ix,prev:ix,tc:-9,w:!still});
+  if(st.ix!==ix){st.prev=st.ix;st.blend=st.w&&!still;st.ix=ix;st.tc=t;}st.w=!still;
+  const amp=kid?1.5:1;let sy,rot;
+  if(still){sy=1+.005*amp*Math.sin(t*1.9+sd+(kid?1.3:0));rot=.35*amp*Math.sin(t*.8+sd+(kid?2:0));if(ptOn)rot+=.45*amp*Math.sin(t*3.1+sd);}
+  else{const q=Math.sin(2*Math.PI*cyc);sy=1+.014*amp*q*q*m;rot=(.5*amp*Math.sin(4*Math.PI*cyc)+.7)*m;}
+  const k=hg/S.h,dx=Math.min(dx0,cw/2-S.cw*k/2),dr=(i)=>g.drawImage(S.im,i*S.cw,0,S.cw,S.ch,-S.cw/2*k,-S.foot*k,S.cw*k,S.ch*k);   /* a long pointing arm stays inside the canvas */
+  g.save();g.translate(dx,0);g.rotate(rot*Math.PI/180);g.scale(1,sy);
+  const a=st.blend?Math.min(1,(t-st.tc)/.07):1;if(a<1){dr(st.prev);g.globalAlpha=a;}dr(ix);g.restore();
+  return {S,ix,k,dx,sy};
+ };
+ const tog=FS.p&&!still,A=tog?one(FS.p,cyA,H,ax,'frP',false):one(FS.a,cyA,H,ax,'frA',false);
+ if(c.bagged){const h=A.S.hand&&A.S.hand[A.ix];if(h){const tx=A.dx+(h[0]-A.S.cw/2)*A.k,ty=(h[1]-A.S.foot)*A.k*A.sy,r=1-Math.exp(-pdt*16);
+   if(c.bagX===undefined){c.bagX=tx;c.bagY=ty;}c.bagX+=(tx-c.bagX)*r;c.bagY+=(ty-c.bagY)*r;
+   const tgt=.16*m*Math.sin(2*Math.PI*cyA-1.3);c.bagV=(c.bagV||0)+((tgt-(c.bagA||0))*30-(c.bagV||0)*7)*pdt;c.bagA=(c.bagA||0)+c.bagV*pdt;
+   g.save();g.translate(c.bagX,c.bagY);g.scale(.68,.68);window.drawBagV120(g,0,0,c.bagCol,c.bagA,c.bagImg);g.restore();}}
+ if(B&&!tog)one(B,d/(CY*H*FS.kid),H*FS.kid,ax+off,'frB',true);
+ return cyA;
+}
+window.drawFramesV123=drawFramesV123;
 function mkSprite(src,asp,pose){
  const wide=asp>.5;   /* pairs are ~0.55-0.8 wide for their height, single people ~0.41-0.47 */
  const d=document.createElement('div');d.className='st120p sp'+(wide?' wide':'');
  d.innerHTML=`<div class="shd${wide?' w':''}"></div><div class="sprw"><img src="${src}" alt=""><canvas class="wk${wide?' wkw':''}" width="${wide?480:200}" height="320"></canvas><svg class="bagh" width="22" height="28" viewBox="0 0 22 28"><path d="M3 4 q-3 8 1 18 q7 5 14 0 q4 -10 1 -18z" fill="#9ee2f7" fill-opacity=".65" stroke="#e8fbff" stroke-width="1.2"/><path d="M4 4 q7 -8 13 0" stroke="#e8fbff" stroke-width="1.6" fill="none"/><path class="bf" d="M6 15 q5 -5 10 0 q-5 5 -10 0z" fill="#ff9a3c"/></svg></div><div class="bub"></div>`;
  const w=d.querySelector('.sprw'),bag=d.querySelector('.bagh');
  if(wide){bag.style.left='96px';bag.style.top='96px';}
- return {spr:true,wide,rad:wide?60:40,rig:rigFor(src,wide),bagRig:pose&&pose.bag?rigFor(pose.bag,wide,true):null,bagFish:pose&&pose.fish||null,ptP:pose&&pose.point?pointFor(pose.point):null,fr:pose&&pose.frames?framesFor(pose.frames):null,cv:d.querySelector('.wk'),shd:d.querySelector('.shd'),el:d,svg:w,img:w.firstChild,bagEl:bag,bag:{setAttribute(a,v){bag.style.display=v==='visible'?'block':'none';}},bf:d.querySelector('.bf'),bub:d.querySelector('.bub')};
+ return {spr:true,wide,rad:wide?60:40,rig:pose&&pose.frames?null:rigFor(src,wide),bagRig:pose&&pose.bag&&!pose.frames?rigFor(pose.bag,wide,true):null,bagFish:pose&&pose.fish||null,ptP:pose&&pose.point?pointFor(pose.point):null,fr:pose&&pose.frames?framesFor(pose.frames):null,cv:d.querySelector('.wk'),shd:d.querySelector('.shd'),el:d,svg:w,img:w.firstChild,bagEl:bag,bag:{setAttribute(a,v){bag.style.display=v==='visible'?'block':'none';}},bf:d.querySelector('.bf'),bub:d.querySelector('.bub')};
 }
 function poseP(c,t){
  const P=c.parts,mv=Math.min(1,c.speed/30),sw=Math.sin(c.phase)*mv,sd=c.seed;
@@ -275,20 +301,13 @@ function poseP(c,t){
   const bob=-Math.abs(Math.sin(c.phase))*2.6*mv+Math.sin(t*2+sd)*.5*(1-mv);
   let rock=Math.sin(c.phase)*2.4*mv,sq=1+Math.abs(Math.sin(c.phase))*.012*mv+Math.sin(t*1.6+sd)*.004*(1-mv);
   if(c.state==='look'){rock=-3+Math.sin(t*3+sd)*(c.pointing?3:1);}
-  /* V17.123: a person with frame strips walks with them (a bought bag still uses the bag picture below) */
-  const FS=P.fr&&P.fr.ok&&!c.bagged?P.fr.cfg:null;
+  /* V17.123: a person with frame strips walks with them */
+  const FS=P.fr&&P.fr.ok?P.fr.cfg:null;
   if(FS){try{
    if(P.img.style.display!=='none'){P.img.style.display='none';P.cv.style.display='block';}
-   const g=P.cv.getContext('2d'),m=Math.min(1,c.speed/25),cw=P.wide?240:100,d=c.dist||0;
+   const g=P.cv.getContext('2d'),m=Math.min(1,c.speed/25),cw=P.wide?240:100,pdt=Math.min(.1,Math.max(0,t-(c.plt||t)));c.plt=t;
    g.setTransform(2,0,0,2,0,0);g.clearRect(0,0,cw,160);g.translate(cw/2,156);
-   const ptOn=c.state==='look'&&c.pointing&&m<.2;c.pt=ptOn?1:0;
-   /* frame from the distance walked (no foot sliding); standing = the still pose, pointing = the point pose */
-   const pick=(S,cyc)=>{if(m<.2)return ptOn?S.point:S.stand;const n=S.walk.length;return S.walk[((Math.floor(cyc*n)%n)+n)%n];};
-   const draw=(S,ix,hg,dx)=>{const k=hg/S.h;dx=Math.min(dx,cw/2-S.cw*k/2);   /* a long pointing arm stays inside the canvas */g.drawImage(S.im,ix*S.cw,0,S.cw,S.ch,dx-S.cw/2*k,-S.foot*k,S.cw*k,S.ch*k);};
-   const H=150,B=FS.b,off=B?FS.off*H:0,ax=-off*.3,CY=window.FRCYC123||.62,cyA=d/(CY*H);   /* stride per cycle in heights: a little short of the drawn stride so the slow shop walk still steps ~4 frames/s */
-   draw(FS.a,pick(FS.a,cyA),H,ax);
-   if(B)draw(B,pick(B,d/(CY*H*FS.kid)),H*FS.kid,ax+off);
-   const st2=Math.floor(cyA*2);
+   const cyA=drawFramesV123(g,FS,c,t,pdt,cw,m),st2=Math.floor(cyA*2);
    if(P.shd)P.shd.style.transform=`scaleX(${(1+.14*m*Math.abs(Math.sin(cyA*2*Math.PI))).toFixed(3)})`;
    if(c.stepIx!==undefined&&st2!==c.stepIx&&m>.6&&c.alpha>.8)sndV120('step');c.stepIx=st2;
    P.cv.style.transform='';P.bag.setAttribute('visibility','hidden');return;
@@ -651,7 +670,7 @@ function pickPersonV120(PP){
 function spawn(){
  if(window.ST120_PEOPLE&&window.ST120_PEOPLE.length&&pickPersonV120(window.ST120_PEOPLE)<0)return;   /* everyone is already inside */
  const p=newProfile(),pal=PALS[Math.floor(Math.random()*PALS.length)],PP=window.ST120_PEOPLE,pi=pickPersonV120(PP),parts=pi>=0?mkSprite(PP[pi],(window.ST120_PEOPLE_ASPECT||[])[pi],(window.ST120_POSES||[])[pi]):mkPerson(pal);
- const c=Object.assign(p,{pi,id:++ST.uid,sz:parts.spr?1:.8,parts,x:DOOR.x,y:DOOR.y,hx:1,hy:.3,speed:0,maxSp:52+Math.random()*16,phase:Math.random()*6,face:1,faceT:1,alpha:0,state:'enter',path:[],seed:Math.random()*6,visits:[],slot:null,want:null,t:0,wait:0,bagged:false,pointing:false,bubT:0,leaving:false});
+ const c=Object.assign(p,{pi,id:++ST.uid,sz:parts.spr?1:.8,parts,x:DOOR.x,y:DOOR.y,hx:1,hy:.3,speed:0,maxSp:60+Math.random()*18,phase:Math.random()*6,face:1,faceT:1,alpha:0,state:'enter',path:[],seed:Math.random()*6,visits:[],slot:null,want:null,t:0,wait:0,bagged:false,pointing:false,bubT:0,leaving:false});
  $('st120stage').appendChild(parts.el);ST.cust.push(c);sndV120('bell');st.store.day.customers++;
  const avail=[];for(let i=0;i<st.store.tanks;i++)if(tankFishV120(i).some(f=>!f._res120))avail.push(i);
  avail.sort(()=>Math.random()-.5);c.visits=avail.slice(0,1+Math.floor(Math.random()*Math.min(3,avail.length)));

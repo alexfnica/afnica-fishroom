@@ -401,7 +401,7 @@ function drawPairV120(ctx,P,dist,m,k,bag,pt){
   else drawWalkV120(ctx,R,dist/(cycleLenV120(R)*k),m,k,b,i===1?pt:0);   /* the child points with its free hand */
   ctx.restore();});
 }
-window.drawPairV120=drawPairV120;
+window.drawPairV120=drawPairV120;window.drawBagV120=drawBagV120;
 /* image px travelled per full cycle (two steps): during stance the foot moves 2*A*L back relative to the hip */
 function cycleLenV120(R){return 4*R.A*R.Lm*(R.kid?.8:R.coat?.6:1);}   /* same factor as the step (dF), so the foot on the floor stays put (no skating) */
 window.rigSpriteV120=rigSpriteV120;window.rigPairV120=rigPairV120;window.drawWalkV120=drawWalkV120;window.cycleLenV120=cycleLenV120;

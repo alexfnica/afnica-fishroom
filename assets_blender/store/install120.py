@@ -28,8 +28,9 @@ def poses(i):
     fr = FR.get('person%02d' % (i + 1))
     if fr:   # V17.123: walk-cycle frame strips (poses/frames.json), the strip pictures embedded as data URIs
         fr = _json.loads(_json.dumps(fr))
-        for k in ('a', 'b'):
+        for k in ('a', 'b', 'p'):
             if k in fr: fr[k]['src'] = 'data:image/webp;base64,' + base64.b64encode(open(os.path.join(PZ, fr[k]['src']), 'rb').read()).decode()
+    if fr: return '{bag:null,point:null,fish:null,frames:%s}' % _json.dumps(fr)   # strips replace the single bag / point pictures
     return '{bag:%s,point:%s,fish:%s,frames:%s}' % (puri(b) if os.path.exists(b) else 'null', puri(q) if os.path.exists(q) else 'null', _json.dumps(fb), _json.dumps(fr))
 REMOVED = {13}   # customer #14 is out of the game; the empty slot keeps the other customers' indexes (saved regulars use them)
 if pp: logo += 'window.ST120_POSES=[' + ','.join('null' if i in REMOVED else poses(i) for i in range(len(pp))) + '];' + chr(10)
